@@ -1,0 +1,4 @@
+EMAIL_SERVICE=zoho
+EMAIL_USER=support@core5.co.in
+EMAIL_PASS=Core5support@8800
+EMAIL_FROM=Core5 Academy <support@core5.co.in>

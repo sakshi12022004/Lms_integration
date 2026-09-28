@@ -1,0 +1,66 @@
+/* Outlook-style base */
+.fc {
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  background: #ffffff;
+}
+
+.fc-toolbar {
+  padding: 12px;
+}
+
+.fc-toolbar-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Buttons like Outlook */
+.fc-button {
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  color: #111827 !important;
+  box-shadow: none !important;
+}
+
+.fc-button-active {
+  background: #e5f0ff !important;
+  border-color: #2563eb !important;
+}
+
+/* Grid look */
+.fc-daygrid-day {
+  border: 1px solid #e5e7eb;
+}
+
+.fc-timegrid-slot {
+  border-color: #e5e7eb;
+}
+
+/* Event styles (Classroom inspired) */
+.fc-event {
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  border: none;
+}
+
+/* Event types */
+.fc-event.class {
+  background-color: #1a73e8;
+}
+
+.fc-event.assignment {
+  background-color: #34a853;
+}
+
+.fc-event.exam {
+  background-color: #ea4335;
+}
+
+.fc-event.holiday {
+  background-color: #6b7280;
+}
+
+/* Hover effect */
+.fc-event:hover {
+  opacity: 0.9;
+}
