@@ -128,9 +128,9 @@ const Courses = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Header */}
           <div className="mb-6 pb-6 border-b border-[#ebdcaa]/60">
-            <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight mb-1">{t('my_courses')}</h1>
+            <div className="flex flex-col lg:flex-row lg:items-center gap-5 lg:gap-8">
+              <div className="shrink-0">
+                <h1 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight mb-1 whitespace-nowrap">{t('my_courses')}</h1>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium">
                   {stats.totalCourses > 0
                     ? t('courses_enrolled').replace('{count}', stats.totalCourses).replace('{plural}', stats.totalCourses > 1 ? 's' : '')
@@ -138,45 +138,45 @@ const Courses = () => {
                 </p>
               </div>
 
-              {/* Horizontal Overview Strip */}
-              <div data-tour="courses-overview" className="flex items-center gap-3 sm:gap-4 flex-wrap">
-                <div className="bg-white border border-[#ebdcaa] px-5 py-3 min-w-[145px] sm:min-w-[155px] rounded-none flex items-center gap-3.5 shadow-xs hover:border-[#B99652] transition-colors">
+              {/* Horizontal Overview Strip Stretching Up to Title */}
+              <div data-tour="courses-overview" className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-white border border-[#ebdcaa] px-4 py-3 rounded-none flex items-center gap-3 shadow-xs hover:border-[#B99652] transition-colors w-full">
                   <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-[#B99652] shrink-0">
                     <BookOpen className="w-5 h-5 text-[#B99652]" />
                   </div>
-                  <div>
-                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] leading-none">{stats.totalCourses}</div>
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1">{t('total')}</div>
+                  <div className="min-w-0">
+                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] leading-none truncate">{stats.totalCourses}</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1 truncate">{t('total')}</div>
                   </div>
                 </div>
 
-                <div className="bg-white border border-[#ebdcaa] px-5 py-3 min-w-[145px] sm:min-w-[155px] rounded-none flex items-center gap-3.5 shadow-xs hover:border-[#B99652] transition-colors">
+                <div className="bg-white border border-[#ebdcaa] px-4 py-3 rounded-none flex items-center gap-3 shadow-xs hover:border-[#B99652] transition-colors w-full">
                   <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-[#B99652] shrink-0">
                     <Clock className="w-5 h-5 text-[#B99652]" />
                   </div>
-                  <div>
-                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-[#B99652] leading-none">{stats.inProgressCourses}</div>
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1">{t('in_progress')}</div>
+                  <div className="min-w-0">
+                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-[#B99652] leading-none truncate">{stats.inProgressCourses}</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1 truncate">{t('in_progress')}</div>
                   </div>
                 </div>
 
-                <div className="bg-white border border-[#ebdcaa] px-5 py-3 min-w-[145px] sm:min-w-[155px] rounded-none flex items-center gap-3.5 shadow-xs hover:border-emerald-500 transition-colors">
+                <div className="bg-white border border-[#ebdcaa] px-4 py-3 rounded-none flex items-center gap-3 shadow-xs hover:border-emerald-500 transition-colors w-full">
                   <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-emerald-600 shrink-0">
                     <CheckCircle className="w-5 h-5 text-emerald-600" />
                   </div>
-                  <div>
-                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-emerald-600 leading-none">{stats.completedCourses}</div>
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1">{t('completed')}</div>
+                  <div className="min-w-0">
+                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-emerald-600 leading-none truncate">{stats.completedCourses}</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1 truncate">{t('completed')}</div>
                   </div>
                 </div>
 
-                <div className="bg-white border border-[#ebdcaa] px-5 py-3 min-w-[145px] sm:min-w-[155px] rounded-none flex items-center gap-3.5 shadow-xs hover:border-indigo-500 transition-colors">
+                <div className="bg-white border border-[#ebdcaa] px-4 py-3 rounded-none flex items-center gap-3 shadow-xs hover:border-indigo-500 transition-colors w-full">
                   <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-indigo-600 shrink-0">
                     <TrendingUp className="w-5 h-5 text-indigo-600" />
                   </div>
-                  <div>
-                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] leading-none">{stats.totalProgress}%</div>
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1">{t('avg_progress')}</div>
+                  <div className="min-w-0">
+                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] leading-none truncate">{stats.totalProgress}%</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1 truncate">{t('avg_progress')}</div>
                   </div>
                 </div>
               </div>
