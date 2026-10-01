@@ -133,39 +133,37 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
           <X className="w-5 h-5" />
         </button>
 
-        {/* ================= LEFT COLUMN: ORANGE CARD WITH REAL STUDENT PHOTO ================= */}
-        <div className="hidden md:flex md:w-5/12 bg-gradient-to-br from-amber-600 via-amber-700 to-[#0B1528] text-white p-8 flex-col justify-between relative overflow-hidden">
-          {/* Abstract Arc Background SVG graphics */}
+        {/* ================= LEFT COLUMN: DEEP MIDNIGHT NAVY WITH REAL STUDENT PHOTO ================= */}
+        <div className="hidden md:flex md:w-5/12 bg-gradient-to-b from-[#0B1528] via-[#0c1933] to-[#070e1c] text-white p-8 flex-col justify-between relative overflow-hidden border-r border-[#ebdcaa]/20">
+          {/* Abstract Arc Background SVG graphics with warm golden tint */}
           <div className="absolute inset-0 pointer-events-none opacity-20">
             <svg className="w-full h-full" viewBox="0 0 400 600" fill="none">
-              <circle cx="200" cy="300" r="250" stroke="white" strokeWidth="2" />
-              <circle cx="200" cy="300" r="180" stroke="white" strokeWidth="1.5" />
-              <path d="M-50 450 Q 200 200 450 450" stroke="white" strokeWidth="2" />
+              <circle cx="200" cy="300" r="250" stroke="#B99652" strokeWidth="1.5" />
+              <circle cx="200" cy="300" r="180" stroke="#B99652" strokeWidth="1" />
+              <path d="M-50 450 Q 200 200 450 450" stroke="#B99652" strokeWidth="1.5" />
             </svg>
           </div>
 
           {/* Top Brand Header */}
           <div className="relative z-10 flex items-center">
-            <div className="bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-none shadow-lg border border-white/40 flex items-center">
-              <img 
-                src={core5Logo} 
-                alt="Core5 Academy Logo" 
-                className="h-8 sm:h-9 w-auto object-contain"
-              />
-            </div>
+            <img 
+              src={core5Logo} 
+              alt="Core5 Academy Logo" 
+              className="h-12 sm:h-14 w-auto object-contain drop-shadow-xl"
+            />
           </div>
 
           {/* Center Image Container */}
           <div className="relative z-10 my-4 flex items-center justify-center">
-            <div className="relative w-full max-w-[260px] aspect-square rounded-none overflow-hidden shadow-2xl border-4 border-white/20 group">
+            <div className="relative w-full max-w-[260px] aspect-square rounded-none overflow-hidden shadow-2xl border-2 border-[#B99652]/40 group">
               <img 
                 src={studentReadingImg} 
                 alt="Student sitting cross-legged reading book"
                 className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
               
-              <div className="absolute bottom-3 left-3 right-3 text-center bg-white/95 backdrop-blur-md py-2 px-3 rounded-none shadow-lg">
+              <div className="absolute bottom-3 left-3 right-3 text-center bg-white/95 backdrop-blur-md py-2 px-3 rounded-none shadow-lg border border-[#ebdcaa]/60">
                 <p className="text-xs font-bold text-[#0B1528]">Empowering Modern Learners</p>
                 <p className="text-[10px] text-slate-500 font-medium">Access assigned courses anytime</p>
               </div>
@@ -173,7 +171,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
           </div>
 
           {/* Bottom Footer Quote */}
-          <div className="relative z-10 text-xs text-white/90 font-medium leading-relaxed border-t border-white/20 pt-3">
+          <div className="relative z-10 text-xs text-slate-300 font-medium leading-relaxed border-t border-white/10 pt-3">
             <span>Transforming learning experiences across universities.</span>
           </div>
         </div>
