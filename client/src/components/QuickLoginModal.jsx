@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import studentReadingImg from '../assets/student_reading.jpg';
+import core5Logo from '../assets/core5-final-rbg.png';
 
 const roles = [
   { id: 'student', name: 'Student', icon: UserCheck },
@@ -144,16 +145,12 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
           </div>
 
           {/* Top Brand Header */}
-          <div className="relative z-10 flex items-center space-x-2">
-            <div className="w-9 h-9 rounded-none bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <span className="font-sans-body font-black text-lg tracking-tight">Core5 Academy</span>
-              <span className="block text-[10px] font-sans-body font-bold text-white/80 uppercase tracking-widest -mt-1">
-                LMS Ecosystem
-              </span>
-            </div>
+          <div className="relative z-10 flex items-center">
+            <img 
+              src={core5Logo} 
+              alt="Core5 Academy Logo" 
+              className="h-10 sm:h-11 w-auto object-contain drop-shadow-md"
+            />
           </div>
 
           {/* Center Image Container */}
