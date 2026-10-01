@@ -146,11 +146,13 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
 
           {/* Top Brand Header */}
           <div className="relative z-10 flex items-center">
-            <img 
-              src={core5Logo} 
-              alt="Core5 Academy Logo" 
-              className="h-10 sm:h-11 w-auto object-contain drop-shadow-md"
-            />
+            <div className="bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-none shadow-lg border border-white/40 flex items-center">
+              <img 
+                src={core5Logo} 
+                alt="Core5 Academy Logo" 
+                className="h-8 sm:h-9 w-auto object-contain"
+              />
+            </div>
           </div>
 
           {/* Center Image Container */}
