@@ -20,7 +20,7 @@ import { useTranslation } from "../context/TranslationContext";
 import AnnouncementBell from "./AnnouncementBell";
 import LoginFooter from './LoginFooter';
 import GuideBotLauncher from '../guidebot/runtime/GuideBotLauncher';
-import whiteLogo from '../../../core5 logo new new-modified (1).png';
+import whiteLogo from '../assets/core5-final-rbg.png';
 
 const MentorLayout = ({ children }) => {
   const location = useLocation();
@@ -99,21 +99,65 @@ const MentorLayout = ({ children }) => {
       : t("nav_dashboard");
 
   return (
-    <div className="h-screen bg-background overflow-hidden">
+    <div className="h-screen bg-[#fffdf0] overflow-hidden">
       {/* ================= DESKTOP SIDEBAR ================= */}
       <aside
         className={`
           fixed top-0 left-0 h-full z-40 hidden lg:block
           transition-all duration-300
           ${sidebarCollapsed ? "w-20" : "w-64"}
-          bg-gradient-to-b from-blue-700 via-indigo-700 to-cyan-700
-          shadow-[0_0_40px_rgba(0,0,0,0.25)]
+          bg-[#002366]
+          shadow-[0_0_40px_rgba(0,35,102,0.4)]
         `}
       >
-        <div className="flex flex-col h-full backdrop-blur-xl bg-white/5">
+        <div className="flex flex-col h-full bg-[#002366] relative overflow-hidden">
+
+          {/* Full Mountain / Pahad Silhouette Backdrop for the entire Sidebar */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+            {/* Ambient Stars & Subtle Glowing Accents */}
+            <div className="absolute top-[28%] right-6 w-1.5 h-1.5 rounded-full bg-amber-200/40" />
+            <div className="absolute top-[35%] left-7 w-1 h-1 rounded-full bg-white/40" />
+            <div className="absolute top-[42%] right-12 w-2 h-2 rounded-full bg-white/30 blur-[0.5px]" />
+            <div className="absolute bottom-[230px] right-6 w-12 h-12 rounded-full bg-gradient-to-tr from-amber-300/25 to-amber-100/5 blur-sm" />
+
+            {/* Multi-layered Mountain Silhouettes */}
+            <svg
+              className="absolute inset-x-0 bottom-0 w-full h-[380px] opacity-60 pointer-events-none"
+              viewBox="0 0 300 380"
+              preserveAspectRatio="none"
+              fill="none"
+            >
+              <defs>
+                <linearGradient id="mentor-nav-mountain-back" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#4b5d94" stopOpacity="0.85" />
+                  <stop offset="100%" stopColor="#1e274a" stopOpacity="0.9" />
+                </linearGradient>
+                <linearGradient id="mentor-nav-mountain-mid" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2e3e70" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#111833" stopOpacity="0.95" />
+                </linearGradient>
+                <linearGradient id="mentor-nav-mountain-front" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#1a254c" stopOpacity="0.95" />
+                  <stop offset="100%" stopColor="#060a18" stopOpacity="1" />
+                </linearGradient>
+              </defs>
+
+              {/* Glowing Moon behind peak */}
+              <circle cx="210" cy="85" r="14" fill="#ffd6a0" opacity="0.75" />
+
+              {/* Back Mountain Ridge */}
+              <path d="M 0 190 L 60 115 L 95 150 L 155 65 L 205 125 L 245 90 L 300 165 L 300 380 L 0 380 Z" fill="url(#mentor-nav-mountain-back)" />
+
+              {/* Mid Mountain Ridge */}
+              <path d="M 0 235 L 45 175 L 90 215 L 160 135 L 220 195 L 260 165 L 300 215 L 300 380 L 0 380 Z" fill="url(#mentor-nav-mountain-mid)" />
+
+              {/* Foreground Mountain Base */}
+              <path d="M 0 275 L 70 225 L 140 270 L 210 210 L 275 260 L 300 240 L 300 380 L 0 380 Z" fill="url(#mentor-nav-mountain-front)" />
+            </svg>
+          </div>
 
           {/* ===== LOGO ===== */}
-          <div className="h-24 sm:h-28 border-b border-white/20 flex items-center justify-center">
+          <div className="h-24 sm:h-28 border-b border-white/15 flex items-center justify-center relative z-10">
             {!sidebarCollapsed && (
               <img
                 src={whiteLogo}
@@ -130,9 +174,37 @@ const MentorLayout = ({ children }) => {
             )}
           </div>
 
+          {/* ================= USER INFO ================= */}
+          {!sidebarCollapsed && (
+            <div className="p-4 border-b border-white/15 relative z-10">
+              <div className="flex items-center space-x-3">
+                <div className="relative flex-shrink-0">
+                  <div className="w-11 h-11 rounded-full bg-[#f1be38] text-[#1e1b4b] flex items-center justify-center font-bold text-base shadow-md">
+                    {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'M'}
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-[#002366]"></div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate text-white">
+                    {user?.name || 'Mentor'}
+                  </p>
+                  <p className="text-white/70 text-xs truncate">
+                    {user?.email || 'mentor@example.com'}
+                  </p>
+                  <div className="flex items-center mt-1 space-x-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400">
+                      Active
+                    </span>
+                    <span className="text-white/50 text-xs capitalize">Mentor</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ===== NAV ===== */}
-          <nav className="flex-1 px-3 py-4 overflow-y-auto hide-scrollbar">
-            <div className="space-y-2">
+          <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto hide-scrollbar relative z-10">
+            <div className="space-y-1.5">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
@@ -142,23 +214,18 @@ const MentorLayout = ({ children }) => {
                     onClick={(e) => handleNavClick(e, item)}
                     data-tour={item.tourId}
                     className={`
-                      relative flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all duration-300
+                      relative flex items-center gap-3 px-3.5 py-3 rounded-none
+                      transition-all duration-200
                       ${isActive
-                        ? "bg-white/20 text-white shadow-lg"
-                        : "text-white/80 hover:bg-white/10"
+                        ? "bg-[#B99652]/30 text-amber-100 shadow-sm border-l-3 border-l-[#B99652] border-y border-r border-[#B99652]/30 backdrop-blur-xs font-semibold"
+                        : "text-white/70 hover:text-white hover:bg-white/10 hover:shadow-xs"
                       }
                       ${sidebarCollapsed ? "justify-center" : ""}
                     `}
                   >
-                    {/* Active glow bar */}
-                    {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 rounded-full bg-white" />
-                    )}
-
-                    <span className="shrink-0">{item.icon}</span>
+                    <span className={`shrink-0 ${isActive ? "text-amber-300" : "text-white/70"} transition-colors`}>{item.icon}</span>
                     {!sidebarCollapsed && (
-                      <span className="font-medium tracking-wide">
+                      <span className="font-medium text-sm tracking-wide">
                         {t(item.nameKey)}
                       </span>
                     )}
@@ -169,32 +236,30 @@ const MentorLayout = ({ children }) => {
           </nav>
 
           {/* ===== FOOTER ===== */}
-          <div className="p-4 border-t border-white/20 space-y-3">
+          <div className="p-4 border-t border-white/15 space-y-2.5 relative z-10">
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-xl
-              bg-white/10 text-white hover:bg-white/20 transition"
+              className="w-full flex items-center justify-between p-2.5 rounded-none bg-white/10 hover:bg-white/15 text-white/80 hover:text-white transition-all duration-200 border border-white/10"
             >
-              {sidebarCollapsed ? (
-                <ChevronRight />
-              ) : (
-                <>
-                  <span className="text-sm font-medium">{t('nav_collapse')}</span>
-                  <ChevronLeft />
-                </>
-              )}
+              <div className="flex items-center space-x-3">
+                <ChevronLeft className={`transition-transform duration-200 ${sidebarCollapsed ? "rotate-180" : ""}`} />
+                {!sidebarCollapsed && (
+                  <span className="font-medium text-xs">{t('nav_collapse') ?? 'Collapse'}</span>
+                )}
+              </div>
+              {sidebarCollapsed && <ChevronRight />}
             </button>
 
             <button
               onClick={handleLogout}
               className={`
-                w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                bg-red-500/20 text-red-100 hover:bg-red-500/30 transition
+                w-full flex items-center p-2.5 rounded-none
+                bg-red-500/15 hover:bg-red-500/25 text-red-300 hover:text-red-200 border border-red-500/20 transition-all duration-200 text-xs font-medium
                 ${sidebarCollapsed ? "justify-center" : ""}
               `}
             >
-              <LogOut size={18} />
-              {!sidebarCollapsed && <span className="font-medium">{t('nav_logout')}</span>}
+              <LogOut size={16} />
+              {!sidebarCollapsed && <span className="ml-2.5 font-medium">{t('nav_logout')}</span>}
             </button>
           </div>
         </div>
@@ -203,12 +268,20 @@ const MentorLayout = ({ children }) => {
       {/* ================= MAIN CONTENT ================= */}
       <main
         className={`transition-all duration-300 flex-1 overflow-hidden ${sidebarCollapsed ? "lg:ml-20" : "lg:ml-64"
-          } h-screen flex flex-col`}
+          } h-screen flex flex-col bg-[#fffdf4]`}
+        style={{
+          backgroundColor: '#fffdf4',
+          backgroundImage: `
+            linear-gradient(to right, rgba(200, 165, 70, 0.045) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(200, 165, 70, 0.045) 1px, transparent 1px)
+          `,
+          backgroundSize: '44px 44px'
+        }}
       >
         {/* ===== TOP BAR ===== */}
-        <header className="sticky top-0 z-30 bg-white border-b px-4 py-3">
+        <header className="sticky top-0 z-30 bg-[#fffdf4]/90 backdrop-blur-md border-b border-[#ebdcaa]/40 px-6 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold">{currentPage}</h1>
+            <h1 className="text-xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-wide">{currentPage}</h1>
             
             {/* Language selector removed for Mentor portal */}
 

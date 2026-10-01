@@ -212,8 +212,7 @@ const FeeStructure = () => {
 
   return (
     <AdminLayout>
-      <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-      <div className="max-w-6xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center">
@@ -532,7 +531,6 @@ const FeeStructure = () => {
           </div>
         )}
       </div>
-    </div>
     </AdminLayout>
   );
 };

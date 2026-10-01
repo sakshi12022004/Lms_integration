@@ -13,7 +13,7 @@ import { useAuth } from "../auth/auth";
 import QuotaLimitModal from './QuotaLimitModal';
 import { useTranslation } from "../context/TranslationContext";
 import GuideBotLauncher from '../guidebot/runtime/GuideBotLauncher';
-import whiteLogo from '../../../core5 logo new new-modified (1).png';
+import whiteLogo from '../assets/core5-final-rbg.png';
 
 const StudentLayout = ({ children }) => {
   const location = useLocation();
@@ -90,14 +90,58 @@ const StudentLayout = ({ children }) => {
           fixed top-0 left-0 h-full z-40 hidden lg:block
           transition-all duration-300
           ${sidebarCollapsed ? "w-20" : "w-64"}
-          bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900
-          shadow-[0_0_40px_rgba(0,0,0,0.5)]
+          bg-[#002366]
+          shadow-[0_0_40px_rgba(0,35,102,0.4)]
         `}
       >
-        <div className="flex flex-col h-full backdrop-blur-xl bg-white/5">
+        <div className="flex flex-col h-full bg-[#002366] relative overflow-hidden">
+
+          {/* Full Mountain / Pahad Silhouette Backdrop for the entire Sidebar */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+            {/* Ambient Stars & Subtle Glowing Accents */}
+            <div className="absolute top-[28%] right-6 w-1.5 h-1.5 rounded-full bg-amber-200/40" />
+            <div className="absolute top-[35%] left-7 w-1 h-1 rounded-full bg-white/40" />
+            <div className="absolute top-[42%] right-12 w-2 h-2 rounded-full bg-white/30 blur-[0.5px]" />
+            <div className="absolute bottom-[230px] right-6 w-12 h-12 rounded-full bg-gradient-to-tr from-amber-300/25 to-amber-100/5 blur-sm" />
+
+            {/* Multi-layered Mountain Silhouettes */}
+            <svg
+              className="absolute inset-x-0 bottom-0 w-full h-[380px] opacity-60 pointer-events-none"
+              viewBox="0 0 300 380"
+              preserveAspectRatio="none"
+              fill="none"
+            >
+              <defs>
+                <linearGradient id="nav-mountain-back" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#4b5d94" stopOpacity="0.85" />
+                  <stop offset="100%" stopColor="#1e274a" stopOpacity="0.9" />
+                </linearGradient>
+                <linearGradient id="nav-mountain-mid" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2e3e70" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#111833" stopOpacity="0.95" />
+                </linearGradient>
+                <linearGradient id="nav-mountain-front" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#1a254c" stopOpacity="0.95" />
+                  <stop offset="100%" stopColor="#060a18" stopOpacity="1" />
+                </linearGradient>
+              </defs>
+
+              {/* Glowing Moon behind peak */}
+              <circle cx="210" cy="85" r="14" fill="#ffd6a0" opacity="0.75" />
+
+              {/* Back Mountain Ridge */}
+              <path d="M 0 190 L 60 115 L 95 150 L 155 65 L 205 125 L 245 90 L 300 165 L 300 380 L 0 380 Z" fill="url(#nav-mountain-back)" />
+
+              {/* Mid Mountain Ridge */}
+              <path d="M 0 235 L 45 175 L 90 215 L 160 135 L 220 195 L 260 165 L 300 215 L 300 380 L 0 380 Z" fill="url(#nav-mountain-mid)" />
+
+              {/* Foreground Mountain Base */}
+              <path d="M 0 275 L 70 225 L 140 270 L 210 210 L 275 260 L 300 240 L 300 380 L 0 380 Z" fill="url(#nav-mountain-front)" />
+            </svg>
+          </div>
 
           {/* ===== LOGO ===== */}
-          <div className="h-24 sm:h-28 border-b border-white/20 flex items-center justify-center">
+          <div className="h-24 sm:h-28 border-b border-white/15 flex items-center justify-center relative z-10">
             {!sidebarCollapsed && (
               <img
                 src={whiteLogo}
@@ -116,15 +160,13 @@ const StudentLayout = ({ children }) => {
 
           {/* ================= USER INFO ================= */}
           {!sidebarCollapsed && (
-            <div className="p-4 border-b border-white/10">
+            <div className="p-4 border-b border-white/15 relative z-10">
               <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg">
-                    <span className="font-semibold text-white text-lg">
-                      {user?.name?.charAt(0)?.toUpperCase() || 'S'}
-                    </span>
+                <div className="relative flex-shrink-0">
+                  <div className="w-11 h-11 rounded-full bg-[#f1be38] text-[#1e1b4b] flex items-center justify-center font-bold text-base shadow-md">
+                    {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'S'}
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-slate-900"></div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-[#002366]"></div>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate text-white">
@@ -145,7 +187,7 @@ const StudentLayout = ({ children }) => {
           )}
 
           {/* ================= NAVIGATION ================= */}
-          <nav className="flex-1 min-h-0 p-4 overflow-y-auto hide-scrollbar">
+          <nav className="flex-1 min-h-0 p-4 overflow-y-auto hide-scrollbar relative z-10">
             <div className="space-y-2">
               {navItems.map(item => {
                 const isActive = location.pathname === item.path;
@@ -158,7 +200,7 @@ const StudentLayout = ({ children }) => {
                     className={`
                       group relative flex items-center rounded-xl px-3 py-3 transition-all duration-200
                       ${isActive
-                        ? 'bg-gradient-to-r from-blue-600/30 to-purple-600/30 text-white shadow-lg border border-white/20'
+                        ? 'bg-gradient-to-r from-blue-600/30 to-purple-600/30 text-white shadow-lg border border-white/20 backdrop-blur-xs'
                         : 'text-white/70 hover:text-white hover:bg-white/10 hover:shadow-md'
                       }
                       ${sidebarCollapsed ? 'justify-center' : ''}
@@ -189,12 +231,12 @@ const StudentLayout = ({ children }) => {
                         <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                       )}
                     </div>
-                    
+
                     {/* Tooltip for collapsed state */}
                     {sidebarCollapsed && (
-                      <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                      <div className="absolute left-full ml-2 px-2 py-1 bg-[#001c52] text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                         {item.label}
-                        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800 rotate-45"></div>
+                        <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-[#001c52] rotate-45"></div>
                       </div>
                     )}
                   </Link>
@@ -203,7 +245,7 @@ const StudentLayout = ({ children }) => {
             </div>
           </nav>
 
-          <div className="p-4 border-t border-white/10 space-y-3">
+          <div className="p-4 border-t border-white/15 space-y-3 relative z-10">
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 text-white/80 hover:text-white transition-all duration-200 group"
@@ -236,8 +278,8 @@ const StudentLayout = ({ children }) => {
       {/* ================= MOBILE SIDEBAR ================= */}
       {mobileMenuOpen && (
         <div className="mobile-backdrop" onClick={() => setMobileMenuOpen(false)}>
-          <div className="mobile-sidebar open bg-gradient-to-b from-slate-900 to-slate-800" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b border-white/10">
+          <div className="mobile-sidebar open bg-[#002366]" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-white/15">
               <div className="flex items-center justify-between">
                 <img src={whiteLogo} alt="Core5 Academy" className="h-10 w-auto" />
                 <button onClick={() => setMobileMenuOpen(false)}>
@@ -247,8 +289,8 @@ const StudentLayout = ({ children }) => {
             </div>
             <div className="p-5 border-b border-white/10">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">S</span>
+                <div className="w-10 h-10 rounded-full bg-[#f1be38] text-[#1e1b4b] flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-md">
+                  {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'S'}
                 </div>
                 <div>
                   <h1 className="font-bold text-lg">Student Portal</h1>

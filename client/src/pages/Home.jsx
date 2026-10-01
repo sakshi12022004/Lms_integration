@@ -154,7 +154,8 @@ function Home() {
         toast.success(`Welcome back, ${user.name || 'User'}!`);
         const role = user.role?.toLowerCase();
         switch (role) {
-          case 'superadmin': case 'admin': navigate('/admin/dashboard'); break;
+          case 'superadmin': navigate('/superadmin/dashboard'); break;
+          case 'admin': navigate('/admin/dashboard'); break;
           case 'mentor': case 'teacher': navigate('/mentor/dashboard'); break;
           case 'student': navigate('/student/dashboard'); break;
           case 'storekeeper': navigate('/storekeeper/dashboard'); break;
@@ -619,7 +620,18 @@ function Home() {
       </section>
 
       {/* ================= WHY US SECTION (REFERENCE LAYOUT: HEX PHOTO + CONNECTED ROLE BADGES) ================= */}
-      <section id="why-us" className="py-20 md:py-24 bg-transparent relative overflow-hidden">
+      <section
+        id="why-us"
+        className="py-20 md:py-24 relative overflow-hidden border-t border-b border-amber-900/5"
+        style={{
+          backgroundColor: '#fffdf4',
+          backgroundImage: `
+            linear-gradient(to right, rgba(200, 165, 70, 0.045) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(200, 165, 70, 0.045) 1px, transparent 1px)
+          `,
+          backgroundSize: '44px 44px'
+        }}
+      >
         {/* Shared rounded-hexagon clip paths */}
         <svg width="0" height="0" className="absolute" aria-hidden="true">
           <defs>
@@ -780,7 +792,18 @@ function Home() {
       </section>
 
       {/* ================= ENTERPRISE PRICING SECTION ================= */}
-      <section id="pricing" className="py-20 md:py-28 bg-transparent">
+      <section
+        id="pricing"
+        className="py-20 md:py-28 relative overflow-hidden border-b border-amber-900/5"
+        style={{
+          backgroundColor: '#fffdf4',
+          backgroundImage: `
+            linear-gradient(to right, rgba(200, 165, 70, 0.045) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(200, 165, 70, 0.045) 1px, transparent 1px)
+          `,
+          backgroundSize: '44px 44px'
+        }}
+      >
         <div className="container mx-auto px-4 md:px-8">
 
           {/* Section Header */}

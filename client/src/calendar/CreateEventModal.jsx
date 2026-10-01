@@ -190,7 +190,7 @@ const CreateEventModal = ({ role, onClose, onSuccess }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded bg-gray-200"
+              className="px-4 py-2 rounded-none bg-gray-200 text-gray-700 font-semibold text-xs"
             >
               Cancel
             </button>
@@ -198,7 +198,7 @@ const CreateEventModal = ({ role, onClose, onSuccess }) => {
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 rounded bg-primary text-white"
+              className="px-5 py-2 rounded-none bg-[#B99652] hover:bg-[#a38241] text-white font-semibold text-xs shadow-sm transition"
             >
               {loading ? "Creating..." : "Create"}
             </button>

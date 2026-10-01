@@ -8,6 +8,11 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/login" />;
   }
 
+  // Allow superadmin to access superadmin and admin routes
+  if (user.role === "superadmin" && (requiredRole === "superadmin" || requiredRole === "admin")) {
+    return children;
+  }
+
   // Allow teachers to access mentor routes
   if (requiredRole === "mentor" && (user.role === "mentor" || user.role === "teacher")) {
     return children;
@@ -17,6 +22,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   if (requiredRole && user.role !== requiredRole) {
     // Redirect to appropriate dashboard based on actual user role
     const dashboardMap = {
+      'superadmin': '/superadmin/dashboard',
       'admin': '/admin/dashboard',
       'mentor': '/mentor/dashboard',
       'teacher': '/mentor/dashboard',

@@ -206,21 +206,14 @@ const RootRedirect = () => {
   // Redirect based on user role
 
   const dashboardMap = {
-
+    'superadmin': '/superadmin/dashboard',
     'admin': '/admin/dashboard',
-
     'mentor': '/mentor/dashboard',
-
     'teacher': '/mentor/dashboard',
-
     'student': '/student/dashboard',
-
     'accountant': '/accountant/dashboard',
-
     'storekeeper': '/storekeeper/dashboard',
-
     'vendor': '/vendor/dashboard'
-
   };
 
   

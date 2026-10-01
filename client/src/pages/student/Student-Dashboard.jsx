@@ -14,6 +14,21 @@ import {
   XCircle,
   Clock,
   GraduationCap,
+  ArrowRight,
+  Search,
+  Bell,
+  Sun,
+  FileText,
+  Download,
+  Upload,
+  Compass,
+  TrendingUp,
+  Award,
+  Video,
+  ChevronLeft,
+  ChevronRight,
+  Megaphone,
+  UserCheck
 } from "lucide-react";
 
 const StudentDashboard = () => {
@@ -24,57 +39,49 @@ const StudentDashboard = () => {
   const [attendance, setAttendance] = useState(null);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalCourses: 0,
     totalProgress: 0,
     completedCourses: 0,
-    streakDays: 0,
+    streakDays: 4,
     certificatesCount: 0,
     attendancePercentage: 0,
   });
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         console.log("📊 Starting dashboard data fetch...");
-        console.log("API URL:", API);
-        console.log("Token available:", !!token);
 
         // Fetch classrooms
-        console.log("🔍 DEBUG: Fetching student classrooms...");
-        console.log("🔗 DEBUG: API URL:", `${API}/classrooms/student-classrooms`);
-        console.log("👤 DEBUG: User:", user);
-        console.log("🔑 DEBUG: Token available:", !!token);
-        
         const classroomsResponse = await axios.get(
           `${API}/classrooms/student-classrooms`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        
-        console.log("📊 DEBUG: Student classrooms response status:", classroomsResponse.status);
-        console.log("📋 DEBUG: Student classrooms response data:", classroomsResponse.data);
-        
         const classroomList = Array.isArray(classroomsResponse.data) ? classroomsResponse.data : [];
-        console.log("✅ DEBUG: Classrooms fetched:", classroomList.length);
-        console.log("📋 DEBUG: Classroom list:", classroomList);
         setClassrooms(classroomList);
 
-        // Fetch attendance for student (no classroom dependency)
+        // Fetch attendance for student
         let attendanceData = null;
         try {
-          // Fetch attendance records for this student
           const attendanceResponse = await axios.get(
             `${API}/attendance/student`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          
           const allRecords = Array.isArray(attendanceResponse.data) 
             ? attendanceResponse.data 
             : (attendanceResponse.data?.data || []);
-          const studentAttendance = Array.isArray(allRecords) ? allRecords : [];
-          attendanceData = studentAttendance;
+          attendanceData = Array.isArray(allRecords) ? allRecords : [];
           setAttendance(attendanceData);
         } catch (err) {
           console.error("❌ Attendance fetch error:", err.response?.data || err.message);
@@ -82,26 +89,15 @@ const StudentDashboard = () => {
 
         // Fetch results
         try {
-          console.log("🔄 Fetching results from: `${API}/results/my-results`");
           const resultsResponse = await axios.get(
             `${API}/results/my-results`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          console.log("📈 Results response received:", resultsResponse.data);
-
-          const studentResults = Array.isArray(resultsResponse.data) 
-            ? resultsResponse.data 
-            : [];
-          
-          console.log("✅ Results count:", studentResults.length);
+          const studentResults = Array.isArray(resultsResponse.data) ? resultsResponse.data : [];
           setResults(studentResults);
         } catch (resultsErr) {
-          console.error("❌ Results fetch error:", resultsErr.response?.data || resultsErr.message);
-          // Try universal routes as fallback
           try {
-            console.log("🔄 Trying universal results endpoint...");
             const studentId = user?.id || user?.userId || user?._id;
-            console.log("📝 Using student ID:", studentId);
             const universalResultsResponse = await axios.get(
               `${API}/results/student/${studentId}`,
               { headers: { Authorization: `Bearer ${token}` } }
@@ -109,32 +105,19 @@ const StudentDashboard = () => {
             const responseData = universalResultsResponse.data;
             const studentResults = Array.isArray(responseData?.data) ? responseData.data : 
                                  Array.isArray(responseData) ? responseData : [];
-            console.log("✅ Universal results count:", studentResults.length);
             setResults(studentResults);
           } catch (universalErr) {
-            console.error("❌ Universal results fetch also failed:", universalErr.response?.data || universalErr.message);
             setResults([]);
           }
         }
 
         // Fetch courses
         try {
-          console.log("🔄 Fetching courses from: `${API}/courses/student`");
           const coursesResponse = await axios.get(
             `${API}/courses/student`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          console.log("📚 Courses response received:", coursesResponse.data);
-
-          const enrolledCourses = Array.isArray(coursesResponse.data)
-            ? coursesResponse.data
-            : [];
-          
-          console.log("✅ Enrolled courses count:", enrolledCourses.length);
-
-          if (enrolledCourses.length === 0) {
-            console.warn("⚠️ No courses found for this student");
-          }
+          const enrolledCourses = Array.isArray(coursesResponse.data) ? coursesResponse.data : [];
 
           const coursesWithProgress = await Promise.all(
             enrolledCourses.map(async (course) => {
@@ -143,9 +126,7 @@ const StudentDashboard = () => {
                   `${API}/progress/${course._id}`,
                   { headers: { Authorization: `Bearer ${token}` } }
                 );
-
                 const progressData = progressResponse.data || {};
-
                 return {
                   ...course,
                   progress: progressData.completionPercentage || 0,
@@ -166,19 +147,14 @@ const StudentDashboard = () => {
           );
 
           setCourses(coursesWithProgress);
-          console.log("📊 Courses with progress set:", coursesWithProgress.length);
 
           const totalProgress =
             coursesWithProgress.length > 0
-              ? coursesWithProgress.reduce((acc, c) => acc + c.progress, 0) /
-              coursesWithProgress.length
+              ? coursesWithProgress.reduce((acc, c) => acc + c.progress, 0) / coursesWithProgress.length
               : 0;
 
-          const completedCourses = coursesWithProgress.filter(
-            (c) => c.progress === 100
-          ).length;
+          const completedCourses = coursesWithProgress.filter((c) => c.progress === 100).length;
 
-          // Calculate attendance percentage from attendance data
           let attendancePercentage = 0;
           if (attendanceData && Array.isArray(attendanceData)) {
             const total = attendanceData.length;
@@ -196,17 +172,8 @@ const StudentDashboard = () => {
             certificatesCount: 0,
             attendancePercentage: Math.round(attendancePercentage),
           });
-          
-          console.log("✅ Dashboard stats updated:", {
-            totalCourses: coursesWithProgress.length,
-            totalProgress: Math.round(totalProgress),
-            completedCourses,
-            attendancePercentage: Math.round(attendancePercentage),
-          });
         } catch (courseErr) {
-          console.error("❌ Course fetch error:", courseErr.response?.data || courseErr.message);
-          console.error("Course endpoint status:", courseErr.response?.status);
-          console.error("Full error:", courseErr);
+          console.error("❌ Course fetch error:", courseErr);
           setCourses([]);
         }
 
@@ -220,12 +187,19 @@ const StudentDashboard = () => {
     fetchDashboardData();
   }, [token, API]);
 
+  const filteredCourses = courses.filter((c) => {
+    if (!searchTerm) return true;
+    const title = (c.title || c.name || "").toLowerCase();
+    const desc = (c.description || "").toLowerCase();
+    return title.includes(searchTerm.toLowerCase()) || desc.includes(searchTerm.toLowerCase());
+  });
+
   if (loading) {
     return (
       <StudentLayout>
-        <div className="flex-1 overflow-y-auto scrollable-content p-3 sm:p-4 md:p-6">
+        <div className="flex-1 overflow-y-auto p-6 bg-[#f4f5fa] min-h-screen">
           <div className="flex items-center justify-center h-96">
-            <div className="animate-spin h-10 w-10 border-4 border-purple-500 border-t-transparent rounded-full"></div>
+            <div className="animate-spin h-10 w-10 border-4 border-[#5b3fd9] border-t-transparent rounded-full"></div>
           </div>
         </div>
       </StudentLayout>
@@ -234,319 +208,474 @@ const StudentDashboard = () => {
 
   return (
     <StudentLayout>
-      <div className="flex-1 overflow-y-auto scrollable-content p-3 sm:p-4 md:p-6">
-        <div className="responsive-container space-y-4 sm:space-y-6">
+      <div className="flex-1 overflow-y-auto bg-[#f4f5fa] text-[#141a33] font-['Plus_Jakarta_Sans',sans-serif] min-h-screen pb-12">
+        
+        {/* ================= TOPBAR ================= */}
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-4 px-6 md:px-8 py-4 bg-[#f4f5fa]/90 backdrop-blur-md border-b border-[#e6e8f1]">
 
-          {/* HEADER */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="responsive-text-2xl font-bold">Dashboard</h1>
-              <p className="text-gray-500 responsive-text-sm">Welcome back</p>
-            </div>
-            <div data-tour="announcement-bell"><AnnouncementBell /></div>
+
+          {/* Search bar */}
+          <div className="hidden md:flex items-center gap-2 flex-1 max-w-xl lg:max-w-2xl">
+            <input
+              type="search"
+              placeholder="Search my courses"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 h-10 px-4 bg-white border border-[#d0cbef] rounded-lg text-sm text-[#141a33] outline-none placeholder-[#7a809c] focus:border-[#5b3fd9] focus:ring-1 focus:ring-[#5b3fd9]/30 transition-all shadow-sm"
+            />
+            <button
+              type="button"
+              className="h-10 w-10 shrink-0 bg-[#d8ceff] hover:bg-[#c9bbff] text-[#5b3fd9] rounded-xl flex items-center justify-center transition-colors shadow-sm"
+            >
+              <Search className="w-4 h-4 stroke-[2.5]" />
+            </button>
           </div>
 
-          {/* WELCOME BANNER */}
-          <div className="responsive-card bg-gradient-to-r from-purple-500 to-purple-400 text-white relative overflow-hidden">
-            <div className="responsive-card-content flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-              <div className="flex-1">
-                <p className="responsive-text-sm opacity-80">{new Date().toDateString()}</p>
-                <h2 className="responsive-text-xl sm:text-2xl font-bold mt-2">
-                  Welcome back, {user?.name || "Student"}!
-                  {user?.studentId && (
-                    <div className="responsive-text-sm opacity-80 mt-1">
-                      Roll No: {user.studentId}
-                    </div>
-                  )}
+          {/* Right Header Actions */}
+          <div className="flex items-center gap-3">
+            <div data-tour="announcement-bell" className="p-1">
+              <AnnouncementBell />
+            </div>
+
+            <div className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-white transition-colors">
+              <div className="w-9 h-9 flex items-center justify-center text-[#141a33] flex-none">
+                <svg
+                  className="w-8 h-8 text-[#141a33]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="9.5" r="3.2" />
+                  <path d="M6.2 18.2C7.5 15.8 9.5 14.5 12 14.5s4.5 1.3 5.8 3.7" />
+                </svg>
+              </div>
+              <div className="hidden sm:block text-left">
+                <div className="text-xs font-bold text-[#141a33] leading-tight">{user?.name || "Student User"}</div>
+                <div className="text-[11px] text-[#7a809c]">{user?.studentId ? `Roll: ${user.studentId}` : "Student"}</div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* ================= CONTENT GRID ================= */}
+        <main className="grid grid-cols-1 lg:grid-cols-12 gap-6 px-6 md:px-8 pt-6">
+
+          {/* ================= LEFT / MAIN COLUMN (8 cols) ================= */}
+          <div className="lg:col-span-8 flex flex-col gap-6">
+
+            {/* HERO BANNER */}
+            <section className="relative overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[240px] rounded-none bg-gradient-to-r from-[#fbfaff] via-[#f5f1ff] to-[#efe9ff] border border-[#e6e8f1] shadow-sm">
+              <div className="md:col-span-7 p-6 sm:p-8 flex flex-col justify-center z-10">
+                <span className="text-[11px] font-extrabold tracking-wider text-[#7a809c] uppercase mb-2">YOUR LEARNING JOURNEY</span>
+                <h2 className="font-['DM_Serif_Display',serif] text-3xl sm:text-4xl text-[#141a33] leading-tight mb-3">
+                  Learn Today. <span className="text-[#5b3fd9] block">Build Tomorrow.</span>
                 </h2>
-                <p className="responsive-text-sm opacity-90 mt-1">
-                  {t('always_stay_updated_student_portal')}
+                <p className="text-xs sm:text-sm text-[#3a4160] max-w-sm mb-6 leading-relaxed">
+                  Access your enrolled courses, track your progress, and achieve your goals — all in one place.
                 </p>
-              </div>
-
-              {/* ✅ 3D CARTOON CHARACTER */}
-              <img
-                src="https://static.vecteezy.com/system/resources/previews/009/363/425/non_2x/back-to-school-3d-characters-png.png"
-                alt="3D Student"
-                className="w-24 h-24 sm:w-40 sm:h-40 object-contain drop-shadow-2xl flex-shrink-0"
-              />
-            </div>
-          </div>
-
-          {/* STATS */}
-          <div data-tour="stats-grid" className="dashboard-grid">
-            <div className="responsive-card animate-fade-in hover:scale-105 transition-all duration-300">
-              <div className="responsive-card-content">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 responsive-text-sm">{t('total_courses')}</p>
-                    <h3 className="responsive-text-lg sm:text-xl font-bold">{stats.totalCourses}</h3>
-                  </div>
-                  <BookOpen className="text-purple-500" size={20} />
+                <div>
+                  <Link
+                    to="/student/courses"
+                    className="inline-flex items-center gap-2 h-11 px-6 rounded-none bg-[#0f1731] hover:bg-[#1c2850] text-white font-semibold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg transform active:translate-y-0.5"
+                  >
+                    Explore My Courses <ArrowRight className="w-4 h-4" />
+                  </Link>
                 </div>
               </div>
-            </div>
-
-            <div className="responsive-card border-2 border-purple-400 animate-fade-in hover:scale-105 transition-all duration-300">
-              <div className="responsive-card-content">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 responsive-text-sm">{t('avg_progress')}</p>
-                    <h3 className="responsive-text-lg sm:text-xl font-bold">{stats.totalProgress}%</h3>
-                  </div>
-                  <Clock className="text-purple-500" size={20} />
-                </div>
+              <div className="md:col-span-5 relative flex items-center justify-center p-2 sm:p-4">
+                <img
+                  src="/student_result_illustration.png"
+                  alt="Student Result Illustration"
+                  className="w-full h-56 sm:h-64 md:h-72 object-contain drop-shadow-xl hover:scale-105 transition-transform duration-300"
+                />
               </div>
-            </div>
+            </section>
 
-            <div className="responsive-card animate-fade-in hover:scale-105 transition-all duration-300">
-              <div className="responsive-card-content">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 responsive-text-sm">{t('attendance')}</p>
-                    <h3 className="responsive-text-lg sm:text-xl font-bold">{stats.attendancePercentage.toFixed(1)}%</h3>
+            {/* STATS GRID */}
+            <section data-tour="stats-grid" className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {/* Total Courses */}
+              <div className="bg-white border border-[#e6e8f1] rounded-none p-4 relative overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-9 h-9 rounded-none bg-[#efebff] text-[#5b3fd9] flex items-center justify-center">
+                    <BookOpen className="w-4 h-4" />
                   </div>
-                  <CheckCircle className="text-green-500" size={20} />
+                  <span className="text-xs text-[#7a809c] font-medium">{t('total_courses')}</span>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* CLASSROOM & TIMETABLE */}
-          {classrooms.length > 0 && (
-            <div className="space-y-4 animate-slide-in">
-              <h2 className="font-bold text-lg">{t('my_classroom')}</h2>
-              {classrooms.map((classroom) => {
-                // Filter courses that belong to this classroom
-                const classroomCourses = courses.filter(course => course.classroomId === classroom.id || course.classroomId === classroom._id);
-                
-                return (
-                  <div key={classroom._id} className="bg-white rounded-2xl p-6 shadow hover:shadow-lg transition-all duration-300 transform hover:scale-105 border border-gray-100">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-800">
-                          {classroom.name} {classroom.section && `- ${classroom.section}`}
-                        </h3>
-                        <p className="text-gray-500 text-sm">
-                          {t('class_teacher')}: {classroom.classTeacher?.name || t('not_assigned')}
-                        </p>
-                      </div>
-                      {classroom.photo && (
-                        <img
-                          src={`${API}${classroom.photo}`}
-                          alt={classroom.name}
-                          className="w-24 h-24 rounded-lg object-cover"
-                        />
-                      )}
-                    </div>
-                    
-                    {/* Display courses if this classroom has any */}
-                    {classroomCourses.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">📚 {t('courses_in_classroom')}</h4>
-                        <div className="space-y-2">
-                          {classroomCourses.map((course) => (
-                            <div 
-                              key={course._id} 
-                              className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200 hover:from-blue-100 hover:to-indigo-100 transition-all duration-200 cursor-pointer hover:shadow-md group"
-                              onClick={() => {
-                                console.log('🎯 Clicking course:', course._id, course.title || course.name);
-                                navigate(`/student/course/${course._id}`);
-                              }}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <h5 className="font-semibold text-gray-800 text-sm group-hover:text-blue-700 transition-colors">
-                                    {course.title || course.name}
-                                  </h5>
-                                  <p className="text-xs text-gray-600 mt-1">
-                                    {course.description ? course.description.substring(0, 80) + '...' : t('no_description_available')}
-                                  </p>
-                                  {course.courseTeacher && (
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      {t('instructor')}: {course.courseTeacher.name}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="ml-4 text-right">
-                                  {course.progress !== undefined && (
-                                    <div className="text-xs text-gray-600 mb-1">
-                                      Progress: {course.progress}%
-                                    </div>
-                                  )}
-                                  <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                    <div 
-                                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300"
-                                      style={{ width: `${Math.min(100, course.progress || 0)}%`, maxWidth: '100%' }}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="mt-2 pt-2 border-t border-blue-200">
-                                <p className="text-xs text-blue-600 font-medium flex items-center group-hover:text-blue-800 transition-colors">
-                                  📚 Click to access materials, assessments & more →
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* ATTENDANCE & RESULTS QUICK VIEW */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Attendance Widget */}
-            <div data-tour="attendance-summary" className="bg-white rounded-2xl p-6 shadow hover:shadow-lg transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-lg">📊 Attendance Summary</h2>
-                <Link to="/student/attendance" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                  View All →
+                <div className="text-2xl font-extrabold text-[#141a33] my-1">{stats.totalCourses}</div>
+                <Link to="/student/courses" className="text-xs font-semibold text-[#5b3fd9] hover:underline inline-flex items-center gap-1">
+                  View all <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
-              <div className="space-y-3">
-                {attendance && Array.isArray(attendance) && attendance.length > 0 ? (
-                  <>
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                      <div className="bg-green-50 rounded-lg p-3 text-center">
-                        <p className="text-xs text-gray-600">Present</p>
-                        <p className="text-2xl font-bold text-green-600">{attendance.filter(a => a.status === 'present').length}</p>
-                      </div>
-                      <div className="bg-red-50 rounded-lg p-3 text-center">
-                        <p className="text-xs text-gray-600">Absent</p>
-                        <p className="text-2xl font-bold text-red-600">{attendance.filter(a => a.status === 'absent').length}</p>
-                      </div>
-                      <div className="bg-blue-50 rounded-lg p-3 text-center">
-                        <p className="text-xs text-gray-600">Total</p>
-                        <p className="text-2xl font-bold text-blue-600">{attendance.length}</p>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600">Last 5 records:</p>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {attendance.slice(0, 5).map((record, idx) => (
-                        <div key={idx} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                          <span className="text-sm text-gray-700">{new Date(record.date).toLocaleDateString()}</span>
-                          <span className={`text-xs px-2 py-1 rounded font-medium ${record.status === 'present' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {record.status === 'present' ? '✓ Present' : '✗ Absent'}
+
+              {/* Avg Progress */}
+              <div className="bg-white border border-[#e6e8f1] rounded-none p-4 relative overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-9 h-9 rounded-none bg-[#fff1e6] text-[#f07b1d] flex items-center justify-center">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs text-[#7a809c] font-medium">{t('avg_progress')}</span>
+                </div>
+                <div className="text-2xl font-extrabold text-[#141a33] my-1">{stats.totalProgress}%</div>
+                <span className="text-xs font-semibold text-[#f07b1d] inline-flex items-center gap-1">
+                  Overall completion
+                </span>
+              </div>
+
+              {/* Attendance */}
+              <div className="bg-white border border-[#e6e8f1] rounded-none p-4 relative overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-9 h-9 rounded-none bg-[#e8f7ee] text-[#16a34a] flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs text-[#7a809c] font-medium">{t('attendance')}</span>
+                </div>
+                <div className="text-2xl font-extrabold text-[#141a33] my-1">{stats.attendancePercentage.toFixed(1)}%</div>
+                <Link to="/student/attendance" className="text-xs font-semibold text-[#16a34a] hover:underline inline-flex items-center gap-1">
+                  View records <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
+
+              {/* Completed Courses */}
+              <div className="bg-white border border-[#e6e8f1] rounded-none p-4 relative overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-9 h-9 rounded-none bg-[#e8efff] text-[#2563eb] flex items-center justify-center">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs text-[#7a809c] font-medium">Completed</span>
+                </div>
+                <div className="text-2xl font-extrabold text-[#141a33] my-1">{stats.completedCourses}</div>
+                <Link to="/student/results" className="text-xs font-semibold text-[#2563eb] hover:underline inline-flex items-center gap-1">
+                  View results <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
+            </section>
+
+            {/* CONTINUE LEARNING SECTION */}
+            <section className="bg-white border border-[#e6e8f1] rounded-none p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-[#141a33]">Continue Learning</h3>
+                  <p className="text-xs text-[#7a809c]">Pick up where you left off</p>
+                </div>
+                <Link to="/student/courses" className="text-xs font-semibold text-[#5b3fd9] hover:underline inline-flex items-center gap-1">
+                  View All <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
+
+              {filteredCourses.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredCourses.slice(0, 3).map((course, index) => (
+                    <Link
+                      key={course._id}
+                      to={`/student/course/${course._id}`}
+                      className="group border border-[#e6e8f1] rounded-none overflow-hidden bg-white hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                    >
+                      <div
+                        className="h-28 relative bg-cover bg-center p-3 flex flex-col justify-between rounded-none"
+                        style={{
+                          backgroundImage: course.photo 
+                            ? `url(${API}${course.photo})` 
+                            : (course.title && (course.title.toLowerCase().includes('math') || course.title.toLowerCase().includes('algebra') || course.title.toLowerCase().includes('geometry') || course.title.toLowerCase().includes('stat') || course.title.toLowerCase().includes('calc')))
+                              ? `url(${['/banners/math_blueprint.png', '/banners/math_geometry.png', '/banners/math_stats.png'][index % 3]})`
+                              : (course.title && (course.title.toLowerCase().includes('scienc') || course.title.toLowerCase().includes('physic') || course.title.toLowerCase().includes('chemist') || course.title.toLowerCase().includes('biolog') || course.title.toLowerCase().includes('experiment') || course.title.toLowerCase().includes('lab')))
+                                ? `url(${['/banners/science_general.png', '/banners/science_physics.png', '/banners/science_chemistry.png'][index % 3]})`
+                                : 'linear-gradient(135deg, #5b3fd9 0%, #2563eb 100%)',
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"></div>
+                        <div className="relative z-10 flex justify-between items-start">
+                          <span className={`px-2.5 py-0.5 rounded-none text-[10px] font-bold backdrop-blur-md ${course.progress === 100 ? 'bg-emerald-500/80 text-white' : 'bg-[#5b3fd9]/80 text-white'}`}>
+                            {course.progress === 100 ? "Completed" : "In Progress"}
                           </span>
                         </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-gray-500 text-sm">No attendance records yet</p>
-                )}
-              </div>
-            </div>
+                      </div>
+                      <div className="p-3.5">
+                        <h4 className="font-bold text-sm text-[#141a33] line-clamp-1 group-hover:text-[#5b3fd9] transition-colors">{course.title}</h4>
+                        <p className="text-xs text-[#7a809c] mt-0.5 mb-3 line-clamp-1">
+                          {course.completedChapters}/{course.totalChapters || 0} chapters completed
+                        </p>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-semibold text-[#3a4160]">
+                            <span>Progress</span>
+                            <span>{course.progress}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-[#eceef5] rounded-none overflow-hidden">
+                            <div className="h-full bg-[#5b3fd9] rounded-none transition-all duration-300" style={{ width: `${course.progress}%` }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-[#7a809c] py-4">No enrolled courses available matching your search.</p>
+              )}
+            </section>
 
-            {/* Results Widget */}
-            <div data-tour="result-summary" className="bg-white rounded-2xl p-6 shadow hover:shadow-lg transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-lg">📊 Results Summary</h2>
-                <Link to="/student/results" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                  View All →
-                </Link>
-              </div>
-              <div className="space-y-3">
-                {results && results.length > 0 ? (
-                  <>
-                    <div className="space-y-3 max-h-60 overflow-y-auto">
-                      {results.slice(0, 3).map((result, idx) => (
-                        <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-semibold text-gray-800">{result.term || 'Examination'}</h4>
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${result.overallPercentage >= 85 ? 'bg-green-100 text-green-700' : result.overallPercentage >= 70 ? 'bg-blue-100 text-blue-700' : result.overallPercentage >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                              {result.overallStatus || 'PASS'} ({result.overallPercentage || 0}%)
+            {/* CLASSROOMS & ENROLLED COURSES SECTION */}
+            {classrooms.length > 0 && (
+              <section className="bg-white border border-[#e6e8f1] rounded-none p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-[#141a33]">{t('my_classroom')}</h3>
+                    <p className="text-xs text-[#7a809c]">Classes and section details</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {classrooms.map((classroom) => {
+                    const classroomCourses = courses.filter(c => c.classroomId === classroom.id || c.classroomId === classroom._id);
+                    return (
+                      <div key={classroom._id} className="border border-[#e6e8f1] rounded-none p-5 bg-[#f8f9fc]">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h4 className="text-base font-bold text-[#141a33]">
+                              {classroom.name} {classroom.section && `- ${classroom.section}`}
+                            </h4>
+                            <p className="text-xs text-[#7a809c]">
+                              {t('class_teacher')}: {classroom.classTeacher?.name || t('not_assigned')}
+                            </p>
+                          </div>
+                          {classroom.photo && (
+                            <img src={`${API}${classroom.photo}`} alt={classroom.name} className="w-16 h-16 rounded-none object-cover border" />
+                          )}
+                        </div>
+
+                        {classroomCourses.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-[#e6e8f1]">
+                            <p className="text-xs font-bold text-[#3a4160] mb-2">📚 {t('courses_in_classroom')}:</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {classroomCourses.map((c) => (
+                                <div
+                                  key={c._id}
+                                  onClick={() => navigate(`/student/course/${c._id}`)}
+                                  className="p-3 rounded-none bg-white border border-[#e6e8f1] hover:border-[#5b3fd9] cursor-pointer transition-all flex items-center justify-between group"
+                                >
+                                  <div>
+                                    <div className="text-xs font-bold text-[#141a33] group-hover:text-[#5b3fd9] transition-colors">{c.title}</div>
+                                    <div className="text-[11px] text-[#7a809c] mt-0.5">{c.completedChapters}/{c.totalChapters || 0} chapters</div>
+                                  </div>
+                                  <ArrowRight className="w-4 h-4 text-[#7a809c] group-hover:text-[#5b3fd9] transition-colors" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* ATTENDANCE & RESULTS SUMMARY DUAL ROW */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Attendance Quick Summary */}
+              <div data-tour="attendance-summary" className="bg-white border border-[#e6e8f1] rounded-none p-6 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-[#141a33] flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-[#16a34a]" /> Attendance Summary
+                    </h3>
+                    <Link to="/student/attendance" className="text-xs font-semibold text-[#5b3fd9] hover:underline">
+                      View All →
+                    </Link>
+                  </div>
+                  {attendance && Array.isArray(attendance) && attendance.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-[#e8f7ee] p-2.5 rounded-none">
+                          <p className="text-[10px] text-[#16a34a] font-semibold uppercase">Present</p>
+                          <p className="text-lg font-bold text-[#16a34a]">{attendance.filter(a => a.status === 'present').length}</p>
+                        </div>
+                        <div className="bg-[#fdecec] p-2.5 rounded-none">
+                          <p className="text-[10px] text-[#ef4444] font-semibold uppercase">Absent</p>
+                          <p className="text-lg font-bold text-[#ef4444]">{attendance.filter(a => a.status === 'absent').length}</p>
+                        </div>
+                        <div className="bg-[#e8efff] p-2.5 rounded-none">
+                          <p className="text-[10px] text-[#2563eb] font-semibold uppercase">Total</p>
+                          <p className="text-lg font-bold text-[#2563eb]">{attendance.length}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {attendance.slice(0, 4).map((record, idx) => (
+                          <div key={idx} className="flex justify-between items-center p-2 bg-[#f8f9fc] rounded-none text-xs">
+                            <span className="text-[#3a4160]">{new Date(record.date).toLocaleDateString()}</span>
+                            <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold ${record.status === 'present' ? 'bg-[#e8f7ee] text-[#16a34a]' : 'bg-[#fdecec] text-[#ef4444]'}`}>
+                              {record.status === 'present' ? '✓ Present' : '✗ Absent'}
                             </span>
                           </div>
-                          
-                          {result.subjects && (
-                            <div className="mb-2">
-                              <p className="text-xs text-gray-600 mb-1">Subject-wise Marks:</p>
-                              <div className="flex flex-wrap gap-2">
-                                {Array.isArray(result.subjects) ? result.subjects.map((subject, subIdx) => (
-                                  <span key={subIdx} className="text-xs bg-white px-2 py-1 rounded border">
-                                    {subject.name}: {subject.marks}/{subject.total}
-                                  </span>
-                                )) : (
-                                  <span className="text-xs text-gray-500">Subjects data available</span>
-                                )}
-                              </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[#7a809c] py-4">No attendance records recorded yet.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Results Quick Summary */}
+              <div data-tour="result-summary" className="bg-white border border-[#e6e8f1] rounded-none p-6 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-[#141a33] flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-[#2563eb]" /> Academic Results
+                    </h3>
+                    <Link to="/student/results" className="text-xs font-semibold text-[#2563eb] hover:underline">
+                      View All →
+                    </Link>
+                  </div>
+                  {results && results.length > 0 ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {results.slice(0, 2).map((res, idx) => (
+                        <div key={idx} className="p-3 bg-[#f8f9fc] border border-[#e6e8f1] rounded-none space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-[#141a33]">{res.term || "Term Exam"}</span>
+                            <span className="text-xs font-bold text-[#16a34a]">{res.overallPercentage || 0}%</span>
+                          </div>
+                          {res.subjects && Array.isArray(res.subjects) && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {res.subjects.slice(0, 3).map((sub, sIdx) => (
+                                <span key={sIdx} className="text-[10px] bg-white px-1.5 py-0.5 rounded-none border border-[#e6e8f1] text-[#3a4160]">
+                                  {sub.name}: {sub.marks}
+                                </span>
+                              ))}
                             </div>
-                          )}
-                          
-                          {result.comments && (
-                            <p className="text-xs text-gray-600 italic">"${result.comments}"</p>
                           )}
                         </div>
                       ))}
                     </div>
-                    {results.length > 3 && (
-                      <p className="text-xs text-gray-500 text-center">Showing latest 3 of {results.length} results</p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm text-gray-600 mb-3">Click the button above to view your detailed report cards and marks.</p>
-                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                      <p className="text-sm text-blue-900">
-                        <span className="font-semibold">Tip:</span> Your results will appear here as soon as your teachers publish them. Check back regularly for updates!
-                      </p>
-                    </div>
-                  </>
-                )}
+                  ) : (
+                    <p className="text-xs text-[#7a809c] py-4">Report cards will appear here as soon as teachers publish them.</p>
+                  )}
+                </div>
               </div>
             </div>
+
           </div>
 
-          {/* COURSES */}
-          <div data-tour="enrolled-courses" className="space-y-4">
-            <h2 className="font-bold text-lg">Enrolled Courses</h2>
+          {/* ================= RIGHT / SIDE COLUMN (4 cols) ================= */}
+          <div className="lg:col-span-4 flex flex-col gap-6 h-full">
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {courses.map((course, index) => (
-                <Link
-                  key={course._id}
-                  to={`/student/course/${course._id}`}
-                  data-tour={index === 0 ? 'first-course-card' : undefined}
-                  className="relative rounded-xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-xl group animate-scale-in"
-                  style={{
-                    animationDelay: `${index * 0.1}s`,
-                    backgroundImage: course.photo ? `url(${API}${course.photo})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    minHeight: '200px'
-                  }}
-                >
-                  <div className="absolute inset-0 bg-black/50 group-hover:bg-black/60 transition-all duration-300"></div>
-                  <div className="relative p-5 text-white h-full flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <BookOpen className="text-white" size={20} />
-                        {course.progress === 100 && <Trophy className="text-yellow-400" size={20} />}
-                      </div>
-                      <h3 className="font-bold text-lg mb-2">{course.title}</h3>
-                      {course.description && (
-                        <p className="text-sm opacity-90 mb-3 line-clamp-2">{course.description}</p>
-                      )}
-                    </div>
-                    <div>
-                      <ProgressBar progress={course.progress} />
-                      <p className="text-xs mt-2 opacity-80">
-                        {course.completedChapters}/{course.totalChapters} chapters completed
-                      </p>
-                    </div>
+            {/* DAILY MOTIVATION QUOTE CARD */}
+            <section className="relative overflow-hidden p-6 min-h-[180px] rounded-[18px] border border-[#e3dcff] bg-gradient-to-br from-[#f3efff] to-[#e8e1ff]">
+              <h3 className="text-lg font-bold text-[#141a33] max-w-[170px] leading-snug">
+                Small steps every day, lead to big results.
+              </h3>
+              <p className="text-xs text-[#3a4160] mt-2 max-w-[170px]">
+                You're doing great, keep going!
+              </p>
+              {/* Decorative Plant SVG */}
+              <svg className="absolute right-[-6px] bottom-[-4px] w-32 h-40" viewBox="0 0 130 160" fill="none">
+                <path d="M40 150h50l-6-34H46z" fill="#fff" opacity="0.9"/>
+                <g fill="#7f6be0" opacity="0.85">
+                  <path d="M65 118C62 90 50 70 30 58c14 20 22 38 30 60z"/>
+                  <path d="M66 118c2-34 14-58 38-74-12 24-20 46-32 74z"/>
+                  <path d="M64 118C58 84 60 50 72 20c2 34-2 64-8 98z"/>
+                </g>
+                <g fill="#a797f0" opacity="0.8">
+                  <path d="M62 118c-12-18-28-26-48-28 16 10 30 18 44 30z"/>
+                  <path d="M68 118c10-20 26-30 50-34-18 10-32 20-44 34z"/>
+                </g>
+              </svg>
+            </section>
+
+            {/* QUICK ACTIONS */}
+            <section className="bg-white border border-[#e6e8f1] rounded-none p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-[#141a33]">Quick Actions</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <Link to="/student/courses" className="flex items-center gap-2.5 p-2.5 border border-[#e6e8f1] rounded-none hover:border-[#5b3fd9] hover:bg-[#efebff]/50 transition-all group">
+                  <div className="w-8 h-8 rounded-none bg-[#efebff] text-[#5b3fd9] flex items-center justify-center flex-none">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#5b3fd9] leading-tight">View Courses</span>
+                    <span className="block text-[10px] text-[#7a809c]">My Portal</span>
                   </div>
                 </Link>
-              ))}
-            </div>
+
+                <Link to="/student/attendance" className="flex items-center gap-2.5 p-2.5 border border-[#e6e8f1] rounded-none hover:border-[#16a34a] hover:bg-[#e8f7ee]/50 transition-all group">
+                  <div className="w-8 h-8 rounded-none bg-[#e8f7ee] text-[#16a34a] flex items-center justify-center flex-none">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#16a34a] leading-tight">Attendance</span>
+                    <span className="block text-[10px] text-[#7a809c]">Records</span>
+                  </div>
+                </Link>
+
+                <Link to="/student/results" className="flex items-center gap-2.5 p-2.5 border border-[#e6e8f1] rounded-none hover:border-[#2563eb] hover:bg-[#e8efff]/50 transition-all group">
+                  <div className="w-8 h-8 rounded-none bg-[#e8efff] text-[#2563eb] flex items-center justify-center flex-none">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#2563eb] leading-tight">Academic Results</span>
+                    <span className="block text-[10px] text-[#7a809c]">Grades</span>
+                  </div>
+                </Link>
+
+                <div
+                  onClick={() => {
+                    const bellBtn = document.querySelector('[data-tour="announcement-bell"] button');
+                    if (bellBtn) bellBtn.click();
+                  }}
+                  className="flex items-center gap-2.5 p-2.5 border border-[#e6e8f1] rounded-none hover:border-[#f07b1d] hover:bg-[#fff1e6]/50 cursor-pointer transition-all group"
+                >
+                  <div className="w-8 h-8 rounded-none bg-[#fff1e6] text-[#f07b1d] flex items-center justify-center flex-none">
+                    <Megaphone className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#f07b1d] leading-tight">Announcements</span>
+                    <span className="block text-[10px] text-[#7a809c]">Notices</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* EXPLORE COURSES / LEARNING JOURNEY CARD */}
+            <section
+              className="flex-1 min-h-[320px] flex flex-col justify-between rounded-none border border-[#e6e8f1] shadow-sm bg-[#f4f7fc] p-6 relative overflow-hidden group hover:shadow-md transition-all"
+            >
+              {/* Background Image - Seamlessly integrated illustration flush to bottom */}
+              <img
+                src="/student_journey_card_bg.png?v=2"
+                alt="Student Learning Journey"
+                className="absolute inset-0 w-full h-full object-cover object-bottom pointer-events-none select-none transition-transform duration-500 group-hover:scale-[1.02]"
+              />
+
+              {/* Floating Content merged over the illustration */}
+              <div className="relative z-10 max-w-[280px]">
+                <span className="inline-block px-2.5 py-0.5 bg-white/90 backdrop-blur-xs border border-[#d6e3f5] text-[10px] font-bold tracking-wider text-[#2563eb] uppercase mb-2 shadow-xs">
+                  Learning Journey
+                </span>
+                <h3 className="text-base font-bold text-[#141a33] leading-snug">
+                  Explore Courses & Expand Skills
+                </h3>
+                <p className="text-xs text-[#4b5563] mt-1.5 leading-relaxed font-medium">
+                  Discover new subjects, master key topics, and advance your knowledge today.
+                </p>
+
+                <div className="mt-4">
+                  <Link
+                    to="/student/courses"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold rounded-none shadow-sm transition-all group-hover:gap-3"
+                  >
+                    Explore Courses
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            </section>
+
           </div>
 
-        </div>
+        </main>
       </div>
     </StudentLayout>
   );

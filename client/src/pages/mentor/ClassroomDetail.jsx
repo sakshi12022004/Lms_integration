@@ -13,6 +13,17 @@ import {
   BarChart3,
   Clock,
   ArrowLeft,
+  UserPlus,
+  CalendarCheck,
+  Tag,
+  UserCheck,
+  ExternalLink,
+  Settings,
+  UserMinus,
+  GraduationCap,
+  Sparkles,
+  BookMarked,
+  Search,
 } from "lucide-react";
 
 const ClassroomDetail = () => {
@@ -26,6 +37,7 @@ const ClassroomDetail = () => {
   const [mentors, setMentors] = useState([]);
   const [students, setStudents] = useState([]); // Students assigned to classroom
   const [allStudents, setAllStudents] = useState([]); // All students for assignment dropdown
+  const [studentSearch, setStudentSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   // Modal states
@@ -87,17 +99,11 @@ const ClassroomDetail = () => {
           }
         );
         const classroomStudentsData = await classroomStudentsRes.json();
-        console.log('🔍 Classroom students response:', classroomStudentsData);
         
-        // Handle both wrapped and direct responses
         let classroomStudents = unwrapResponse(classroomStudentsData);
-        
-        // If it's already an array, use it directly
         if (Array.isArray(classroomStudentsData)) {
           classroomStudents = classroomStudentsData;
         }
-        
-        console.log('🔍 Processed classroom students:', classroomStudents);
         setStudents(Array.isArray(classroomStudents) ? classroomStudents : []);
 
         // Fetch mentors for course creation dropdown
@@ -146,7 +152,7 @@ const ClassroomDetail = () => {
           description: courseForm.description,
           category: courseForm.category,
           duration: courseForm.duration,
-          mentorId: courseForm.courseTeacherId, // Map courseTeacherId to mentorId for backend
+          mentorId: courseForm.courseTeacherId,
           classroomId: classroomId,
           studentIds: courseForm.studentIds,
         }),
@@ -158,7 +164,6 @@ const ClassroomDetail = () => {
       }
 
       const response = await res.json();
-      // Handle both wrapped { message, course } and direct course responses
       const newCourse = response.course || response;
       setCourses([...courses, newCourse]);
       setShowCreateCourseModal(false);
@@ -171,7 +176,6 @@ const ClassroomDetail = () => {
         studentIds: [],
       });
       toast.success("Course created successfully!");
-      // Observed by GuideBot (ActionGuard) only — fires strictly after the request succeeded.
       window.dispatchEvent(new CustomEvent('guidebot:action-success', { detail: { actionId: 'course-created' } }));
     } catch (err) {
       console.error("Create course error:", err);
@@ -197,9 +201,7 @@ const ClassroomDetail = () => {
         return;
       }
 
-      // Assign each student to the classroom
       for (const studentId of selectedStudents) {
-        console.log(`Assigning student ${studentId} to classroom ${classroomId}`);
         const res = await fetch(`${API}/classrooms/assign-student`, {
           method: "POST",
           headers: {
@@ -214,16 +216,12 @@ const ClassroomDetail = () => {
 
         if (!res.ok) {
           const error = await res.json();
-          console.error(`Failed to assign student ${studentId}:`, error);
           throw new Error(error.message || `Failed to assign student ${studentId}`);
         }
-        const result = await res.json();
-        console.log(`Successfully assigned student:`, result);
       }
 
       setShowAssignStudentsModal(false);
       toast.success("Students assigned successfully!");
-      // Observed by GuideBot (ActionGuard) only — fires strictly after the requests succeeded.
       window.dispatchEvent(new CustomEvent('guidebot:action-success', { detail: { actionId: 'classroom-students-assigned' } }));
 
       // Refresh classroom data and students
@@ -231,10 +229,9 @@ const ClassroomDetail = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const classroomData = await classroomRes.json();
-      const classroom = unwrapResponse(classroomData);
-      setClassroom(classroom);
+      const updatedClassroom = unwrapResponse(classroomData);
+      setClassroom(updatedClassroom);
 
-      // Also refresh students list
       const classroomStudentsRes = await fetch(
         `${API}/classrooms/${classroomId}/students`,
         {
@@ -242,29 +239,38 @@ const ClassroomDetail = () => {
         }
       );
       const classroomStudentsData = await classroomStudentsRes.json();
-      console.log('🔍 Refreshed classroom students response:', classroomStudentsData);
-      
-      // Handle both wrapped and direct responses
-      let classroomStudents = unwrapResponse(classroomStudentsData);
-      
-      // If it's already an array, use it directly
+      let updatedStudents = unwrapResponse(classroomStudentsData);
       if (Array.isArray(classroomStudentsData)) {
-        classroomStudents = classroomStudentsData;
+        updatedStudents = classroomStudentsData;
       }
-      
-      console.log('🔍 Refreshed processed classroom students:', classroomStudents);
-      setStudents(Array.isArray(classroomStudents) ? classroomStudents : []);
+      setStudents(Array.isArray(updatedStudents) ? updatedStudents : []);
     } catch (err) {
       console.error("Assign student error:", err);
       toast.error(err.message || "Failed to assign students");
     }
   };
 
+  const filteredAllStudents = allStudents.filter(s => 
+    !studentSearch || 
+    (s.name && s.name.toLowerCase().includes(studentSearch.toLowerCase())) ||
+    (s.email && s.email.toLowerCase().includes(studentSearch.toLowerCase()))
+  );
+
   if (loading) {
     return (
       <MentorLayout>
-        <div className="p-6 flex justify-center items-center h-screen">
-          <div className="text-xl text-gray-500">Loading...</div>
+        <div 
+          className="p-6 flex justify-center items-center h-screen"
+          style={{
+            backgroundColor: "#fffdf4",
+            backgroundImage: "linear-gradient(to right, #ebdcaa20 1px, transparent 1px), linear-gradient(to bottom, #ebdcaa20 1px, transparent 1px)",
+            backgroundSize: "44px 44px"
+          }}
+        >
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-3 border-[#002366] border-t-transparent animate-spin"></div>
+            <div className="text-sm font-semibold text-[#1e1b4b]">Loading classroom details...</div>
+          </div>
         </div>
       </MentorLayout>
     );
@@ -272,45 +278,62 @@ const ClassroomDetail = () => {
 
   return (
     <MentorLayout>
-      <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-        {/* Enhanced Header */}
-        <div className="flex items-center justify-between mb-8">
+      <div 
+        className="p-4 sm:p-6 md:p-8 min-h-screen text-[#1e1b4b]"
+        style={{
+          backgroundColor: "#fffdf4",
+          backgroundImage: "linear-gradient(to right, #ebdcaa20 1px, transparent 1px), linear-gradient(to bottom, #ebdcaa20 1px, transparent 1px)",
+          backgroundSize: "44px 44px"
+        }}
+      >
+        {/* Top Header Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate("/mentor/classrooms")}
-              className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition duration-200"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#ebdcaa] text-[#1e1b4b] rounded-none hover:bg-[#ebdcaa]/25 transition duration-200 text-xs sm:text-sm font-semibold shadow-sm"
             >
-              <ArrowLeft size={20} /> Back to Classrooms
+              <ArrowLeft size={17} className="text-[#002366]" /> Back to Classrooms
             </button>
             <div>
-              <h1 className="text-4xl font-bold text-gray-900">
+              <h1 className="text-3xl sm:text-4xl font-bold text-[#1e1b4b] font-['DM_Serif_Display',serif] tracking-tight">
                 {classroom?.name}
               </h1>
               {classroom?.section && (
-                <p className="text-lg text-gray-600 mt-1">Section: {classroom.section}</p>
+                <p className="text-sm font-medium text-slate-500 mt-0.5">
+                  Section: <span className="font-semibold text-[#002366]">{classroom.section}</span>
+                  {classroom.academicYear && <span className="text-slate-400"> • {classroom.academicYear}</span>}
+                </p>
               )}
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500">Total Students: <span className="text-2xl font-bold text-blue-600">{students.length}</span></p>
-            <p className="text-sm text-gray-500 mt-1">Total Courses: <span className="text-2xl font-bold text-green-600">{courses.length}</span></p>
+
+          <div className="flex items-center gap-3 self-end md:self-center">
+            <div className="bg-white border border-[#ebdcaa] px-4 py-2 text-right rounded-none shadow-sm">
+              <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block">Total Students</span>
+              <span className="text-xl font-bold text-[#002366]">{students.length}</span>
+            </div>
+            <div className="bg-white border border-[#ebdcaa] px-4 py-2 text-right rounded-none shadow-sm">
+              <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block">Total Courses</span>
+              <span className="text-xl font-bold text-[#0d9488]">{courses.length}</span>
+            </div>
           </div>
         </div>
 
-        {/* Enhanced Quick Actions Grid */}
-        <div data-tour="classroom-quick-actions" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        {/* Quick Actions Grid - Sharp Square & Uniform Golden Theme */}
+        <div data-tour="classroom-quick-actions" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8">
           {/* Create Course */}
           <button
             onClick={() => setShowCreateCourseModal(true)}
-            className="bg-white border-l-4 border-blue-500 p-6 rounded-lg shadow-sm hover:shadow-md transition transform hover:scale-105 group"
+            className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] p-5 rounded-none shadow-sm hover:shadow-md hover:border-[#B99652] transition-all duration-200 group text-left"
           >
             <div className="flex items-center gap-4">
-              <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-200 transition">
-                <Plus size={28} className="text-blue-600" />
+              <div className="w-12 h-12 bg-[#B99652]/15 rounded-none border border-[#B99652]/30 flex items-center justify-center text-[#9a7837] group-hover:bg-[#B99652] group-hover:text-white transition-all shrink-0">
+                <Plus size={24} />
               </div>
-              <div className="text-left">
-                <p className="font-bold text-gray-900">Create Course</p>
-                <p className="text-xs text-gray-500">Add new course</p>
+              <div>
+                <p className="font-bold text-[#1e1b4b] text-sm group-hover:text-[#9a7837] transition">Create Course</p>
+                <p className="text-xs text-slate-500 mt-0.5">Add new course</p>
               </div>
             </div>
           </button>
@@ -318,15 +341,15 @@ const ClassroomDetail = () => {
           {/* Assign Students */}
           <button
             onClick={() => setShowAssignStudentsModal(true)}
-            className="bg-white border-l-4 border-green-500 p-6 rounded-lg shadow-sm hover:shadow-md transition transform hover:scale-105 group"
+            className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] p-5 rounded-none shadow-sm hover:shadow-md hover:border-[#B99652] transition-all duration-200 group text-left"
           >
             <div className="flex items-center gap-4">
-              <div className="bg-green-100 p-3 rounded-lg group-hover:bg-green-200 transition">
-                <Users size={28} className="text-green-600" />
+              <div className="w-12 h-12 bg-[#B99652]/15 rounded-none border border-[#B99652]/30 flex items-center justify-center text-[#9a7837] group-hover:bg-[#B99652] group-hover:text-white transition-all shrink-0">
+                <UserPlus size={22} />
               </div>
-              <div className="text-left">
-                <p className="font-bold text-gray-900">Assign Students</p>
-                <p className="text-xs text-gray-500">Manage enrollment</p>
+              <div>
+                <p className="font-bold text-[#1e1b4b] text-sm group-hover:text-[#9a7837] transition">Assign Students</p>
+                <p className="text-xs text-slate-500 mt-0.5">Manage enrollment</p>
               </div>
             </div>
           </button>
@@ -334,15 +357,15 @@ const ClassroomDetail = () => {
           {/* Attendance */}
           <button
             onClick={() => navigate(`/mentor/attendance?classroomId=${classroomId}`)}
-            className="bg-white border-l-4 border-yellow-500 p-6 rounded-lg shadow-sm hover:shadow-md transition transform hover:scale-105 group"
+            className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] p-5 rounded-none shadow-sm hover:shadow-md hover:border-[#B99652] transition-all duration-200 group text-left"
           >
             <div className="flex items-center gap-4">
-              <div className="bg-yellow-100 p-3 rounded-lg group-hover:bg-yellow-200 transition">
-                <Clock size={28} className="text-yellow-600" />
+              <div className="w-12 h-12 bg-[#B99652]/15 rounded-none border border-[#B99652]/30 flex items-center justify-center text-[#9a7837] group-hover:bg-[#B99652] group-hover:text-white transition-all shrink-0">
+                <CalendarCheck size={22} />
               </div>
-              <div className="text-left">
-                <p className="font-bold text-gray-900">Attendance</p>
-                <p className="text-xs text-gray-500">Track attendance</p>
+              <div>
+                <p className="font-bold text-[#1e1b4b] text-sm group-hover:text-[#9a7837] transition">Attendance</p>
+                <p className="text-xs text-slate-500 mt-0.5">Track attendance</p>
               </div>
             </div>
           </button>
@@ -350,93 +373,125 @@ const ClassroomDetail = () => {
           {/* Add Result */}
           <button
             onClick={() => navigate(`/mentor/results?classroomId=${classroomId}`)}
-            className="bg-white border-l-4 border-purple-500 p-6 rounded-lg shadow-sm hover:shadow-md transition transform hover:scale-105 group"
+            className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] p-5 rounded-none shadow-sm hover:shadow-md hover:border-[#B99652] transition-all duration-200 group text-left"
           >
             <div className="flex items-center gap-4">
-              <div className="bg-purple-100 p-3 rounded-lg group-hover:bg-purple-200 transition">
-                <BarChart3 size={28} className="text-purple-600" />
+              <div className="w-12 h-12 bg-[#B99652]/15 rounded-none border border-[#B99652]/30 flex items-center justify-center text-[#9a7837] group-hover:bg-[#B99652] group-hover:text-white transition-all shrink-0">
+                <BarChart3 size={22} />
               </div>
-              <div className="text-left">
-                <p className="font-bold text-gray-900">Add Result</p>
-                <p className="text-xs text-gray-500">Record grades</p>
+              <div>
+                <p className="font-bold text-[#1e1b4b] text-sm group-hover:text-[#9a7837] transition">Add Result</p>
+                <p className="text-xs text-slate-500 mt-0.5">Record grades</p>
               </div>
             </div>
           </button>
         </div>
 
-        {/* Courses Section */}
-        <div className="bg-white rounded-xl shadow-md p-8 mb-8 border-t-4 border-blue-500">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-1">📚 Courses in this Classroom</h2>
-              <p className="text-gray-600 text-sm">Total: <span className="font-bold text-blue-600">{courses.length}</span> courses</p>
+        {/* Courses Section - Sharp Square & Golden Theme */}
+        <div className="bg-white rounded-none shadow-sm border border-[#ebdcaa] p-6 sm:p-8 mb-8 border-t-4 border-t-[#B99652]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#ebdcaa]/60">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#B99652]/15 rounded-none border border-[#B99652]/30 flex items-center justify-center text-[#9a7837]">
+                <BookOpen size={22} />
+              </div>
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#1e1b4b] font-['DM_Serif_Display',serif]">
+                  Courses in this Classroom
+                </h2>
+                <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
+                  Total: <span className="font-bold text-[#9a7837]">{courses.length}</span> courses
+                </p>
+              </div>
             </div>
             <button
               data-tour="classroom-create-course-btn"
               onClick={() => setShowCreateCourseModal(true)}
-              className="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:shadow-lg transition flex items-center gap-2 font-semibold"
+              className="px-5 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none text-xs sm:text-sm font-semibold transition flex items-center gap-2 shadow-sm self-start sm:self-auto"
             >
-              <Plus size={20} /> Create Course
+              <Plus size={16} /> Create Course
             </button>
           </div>
+
           {courses.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="bg-blue-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="text-blue-500" size={40} />
+            <div className="text-center py-14 bg-[#fffdf4]/60 border border-dashed border-[#ebdcaa] rounded-none">
+              <div className="w-16 h-16 bg-[#B99652]/15 rounded-none border border-[#B99652]/30 flex items-center justify-center mx-auto mb-4 text-[#9a7837]">
+                <BookOpen size={30} />
               </div>
-              <p className="text-gray-700 text-lg font-bold">No Courses Yet</p>
-              <p className="text-gray-500 text-sm mt-2">Create your first course to get started</p>
+              <p className="text-[#1e1b4b] text-base font-bold">No Courses Yet</p>
+              <p className="text-slate-500 text-xs sm:text-sm mt-1">Create your first course for this classroom to get started</p>
               <button
                 onClick={() => setShowCreateCourseModal(true)}
-                className="mt-6 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:shadow-lg transition font-medium"
+                className="mt-5 px-5 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none text-xs sm:text-sm font-semibold shadow-sm transition"
               >
                 Create First Course
               </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course) => (
+              {courses.map((course, index) => (
                 <div
                   key={course._id}
-                  className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl overflow-hidden hover:shadow-xl transition group"
+                  className="bg-white border border-[#ebdcaa] rounded-none overflow-hidden hover:shadow-md hover:border-[#B99652]/60 transition duration-200 group flex flex-col justify-between"
                 >
-                  {/* Course Header */}
-                  <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4 text-white">
-                    <h3 className="text-xl font-bold group-hover:text-blue-100 transition">{course.title}</h3>
-                    <p className="text-blue-100 text-xs mt-1">{course.description || "No description"}</p>
+                  {/* Course Header Banner */}
+                  <div 
+                    className="relative px-5 py-5 text-white bg-cover bg-center"
+                    style={{
+                      backgroundImage: course.photo 
+                        ? `url(${API}${course.photo})`
+                        : (course.title && (course.title.toLowerCase().includes('math') || course.title.toLowerCase().includes('algebra') || course.title.toLowerCase().includes('geometry') || course.title.toLowerCase().includes('stat') || course.title.toLowerCase().includes('calc')))
+                          ? `url(${['/banners/math_blueprint.png', '/banners/math_geometry.png', '/banners/math_stats.png'][index % 3]})`
+                          : (course.title && (course.title.toLowerCase().includes('scienc') || course.title.toLowerCase().includes('physic') || course.title.toLowerCase().includes('chemist') || course.title.toLowerCase().includes('biolog') || course.title.toLowerCase().includes('experiment') || course.title.toLowerCase().includes('lab')))
+                            ? `url(${['/banners/science_general.png', '/banners/science_physics.png', '/banners/science_chemistry.png'][index % 3]})`
+                            : 'linear-gradient(to right, #B99652, #8c6d32)'
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-900/35 to-transparent"></div>
+                    <div className="relative z-10">
+                      <h3 className="text-lg font-bold text-white group-hover:text-[#ebdcaa] transition line-clamp-1">{course.title}</h3>
+                      <p className="text-slate-200 text-xs mt-1 line-clamp-2">{course.description || "No description provided"}</p>
+                    </div>
                   </div>
 
                   {/* Course Info */}
-                  <div className="px-6 py-4 space-y-3">
-                    <div className="flex items-center justify-between bg-white bg-opacity-60 p-3 rounded-lg">
-                      <span className="text-sm font-semibold text-gray-700">👨‍🏫 Teacher</span>
-                      <span className="text-sm text-gray-900 font-bold">{course.courseTeacher?.name || "Not Assigned"}</span>
+                  <div className="px-5 py-4 space-y-2.5 bg-white flex-1">
+                    <div className="flex items-center justify-between bg-[#fffdf4] p-2.5 border border-[#ebdcaa]/60 rounded-none">
+                      <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                        <UserCheck size={14} className="text-[#9a7837]" /> Teacher
+                      </span>
+                      <span className="text-xs text-[#1e1b4b] font-bold">{course.courseTeacher?.name || "Not Assigned"}</span>
                     </div>
-                    <div className="flex items-center justify-between bg-white bg-opacity-60 p-3 rounded-lg">
-                      <span className="text-sm font-semibold text-gray-700">👨‍🎓 Students</span>
-                      <span className="text-sm text-gray-900 font-bold">{course.students?.length || 0}</span>
+                    <div className="flex items-center justify-between bg-[#fffdf4] p-2.5 border border-[#ebdcaa]/60 rounded-none">
+                      <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                        <Users size={14} className="text-[#0d9488]" /> Students
+                      </span>
+                      <span className="text-xs text-[#1e1b4b] font-bold">{course.students?.length || 0}</span>
                     </div>
                     {course.category && (
-                      <div className="flex items-center justify-between bg-white bg-opacity-60 p-3 rounded-lg">
-                        <span className="text-sm font-semibold text-gray-700">📂 Category</span>
-                        <span className="text-xs bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-semibold">{course.category}</span>
+                      <div className="flex items-center justify-between bg-[#fffdf4] p-2.5 border border-[#ebdcaa]/60 rounded-none">
+                        <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                          <Tag size={14} className="text-[#B99652]" /> Category
+                        </span>
+                        <span className="text-[11px] bg-[#B99652]/15 text-[#9a7837] px-2.5 py-0.5 rounded-none font-semibold border border-[#B99652]/30">
+                          {course.category}
+                        </span>
                       </div>
                     )}
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="px-6 py-4 bg-gray-50 border-t border-blue-100 space-y-2">
+                  <div className="px-5 py-3.5 bg-[#fffdf4] border-t border-[#ebdcaa]/70 space-y-2">
                     <button
                       onClick={() => navigate(`/mentor/course/${course._id}`)}
-                      className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:shadow-md transition font-semibold text-sm"
+                      className="w-full px-4 py-2 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none transition font-semibold text-xs flex items-center justify-center gap-2 shadow-sm"
                     >
-                      📖 Course Portal
+                      <ExternalLink size={14} /> Course Portal
                     </button>
                     <button
                       onClick={() => navigate(`/mentor/course/${course._id}/manage`)}
-                      className="w-full px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:shadow-md transition font-semibold text-sm"
+                      className="w-full px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-[#ebdcaa] rounded-none transition font-semibold text-xs flex items-center justify-center gap-2"
                     >
-                      ⚙️ Manage Course
+                      <Settings size={14} className="text-slate-500" /> Manage Course
                     </button>
                   </div>
                 </div>
@@ -445,66 +500,75 @@ const ClassroomDetail = () => {
           )}
         </div>
 
-        {/* Students Section */}
-        <div className="bg-white rounded-xl shadow-md p-8 border-t-4 border-green-500">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-1">👥 Class Students</h2>
-              <p className="text-gray-600 text-sm">Total: <span className="font-bold text-green-600">{students.length}</span> students assigned</p>
+        {/* Class Students Section - Sharp Square & Golden Theme */}
+        <div className="bg-white rounded-none shadow-sm border border-[#ebdcaa] p-6 sm:p-8 border-t-4 border-t-[#B99652]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#ebdcaa]/60">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#B99652]/15 rounded-none border border-[#B99652]/30 flex items-center justify-center text-[#9a7837]">
+                <Users size={22} />
+              </div>
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#1e1b4b] font-['DM_Serif_Display',serif]">
+                  Class Students
+                </h2>
+                <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
+                  Total: <span className="font-bold text-[#9a7837]">{students.length}</span> students assigned
+                </p>
+              </div>
             </div>
             <button
               data-tour="classroom-assign-students-btn"
               onClick={() => setShowAssignStudentsModal(true)}
-              className="px-5 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:shadow-md transition flex items-center gap-2 font-semibold"
+              className="px-5 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none text-xs sm:text-sm font-semibold transition flex items-center gap-2 shadow-sm self-start sm:self-auto"
             >
-              <Plus size={20} /> Assign Students
+              <UserPlus size={16} /> Assign Students
             </button>
           </div>
           
           {students.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                <Users className="text-green-600" size={40} />
+            <div className="text-center py-14 bg-[#fffdf4]/60 border border-dashed border-[#ebdcaa] rounded-none">
+              <div className="w-16 h-16 bg-[#B99652]/15 rounded-none border border-[#B99652]/30 flex items-center justify-center mx-auto mb-4 text-[#9a7837]">
+                <Users size={30} />
               </div>
-              <p className="text-gray-700 text-lg font-bold">No Students Assigned</p>
-              <p className="text-gray-500 text-sm mt-2">Add students to this classroom to get started</p>
+              <p className="text-[#1e1b4b] text-base font-bold">No Students Assigned</p>
+              <p className="text-slate-500 text-xs sm:text-sm mt-1">Add students to this classroom to get started</p>
               <button
                 onClick={() => setShowAssignStudentsModal(true)}
-                className="mt-6 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:shadow-lg transition font-medium"
+                className="mt-5 px-5 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none text-xs sm:text-sm font-semibold shadow-sm transition"
               >
                 Assign First Student
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-x-auto border border-[#ebdcaa]">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gradient-to-r from-green-50 to-emerald-50 border-b-2 border-green-200">
-                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">No.</th>
-                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Student Name</th>
-                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Email</th>
-                    <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Roll Number</th>
-                    <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">Actions</th>
+                  <tr className="bg-[#fffdf4] border-b border-[#ebdcaa]">
+                    <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-[#1e1b4b] w-14">No.</th>
+                    <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">Student Name</th>
+                    <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">Email</th>
+                    <th className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">Roll Number</th>
+                    <th className="px-5 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-[#ebdcaa]/50 bg-white">
                   {students.map((student, index) => (
                     <tr
                       key={student._id}
-                      className="border-b border-gray-100 hover:bg-green-50 transition-colors"
+                      className="hover:bg-[#fffdf4]/80 transition-colors"
                     >
-                      <td className="px-6 py-4 text-sm font-bold text-gray-700 bg-gray-50 rounded-l">{index + 1}</td>
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">{student.name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{student.email}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600 font-medium">{student.rollNumber || "—"}</td>
-                      <td className="px-6 py-4 text-center rounded-r">
+                      <td className="px-5 py-3.5 text-xs font-bold text-slate-600 bg-slate-50/50">{index + 1}</td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-[#1e1b4b]">{student.name}</td>
+                      <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-600 font-mono">{student.email}</td>
+                      <td className="px-5 py-3.5 text-xs sm:text-sm text-slate-600 font-medium">{student.rollNumber || "—"}</td>
+                      <td className="px-5 py-3.5 text-center">
                         <div className="flex gap-2 justify-center">
                           <button
                             onClick={() => navigate(`/student/portal/${student._id}`)}
-                            className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-lg hover:bg-blue-200 transition font-semibold border border-blue-300"
+                            className="px-3 py-1.5 bg-[#002366]/10 text-[#002366] hover:bg-[#002366] hover:text-white text-xs rounded-none transition font-semibold border border-[#002366]/30 flex items-center gap-1.5"
                             title="View Student Portal"
                           >
-                            👁️ {t('portal')}
+                            <ExternalLink size={13} /> {t('portal')}
                           </button>
                           <button
                             onClick={() => {
@@ -512,10 +576,10 @@ const ClassroomDetail = () => {
                                 toast.info(t('student_removal_coming_soon'));
                               }
                             }}
-                            className="px-3 py-1 bg-red-100 text-red-700 text-xs rounded-lg hover:bg-red-200 transition font-semibold border border-red-300"
+                            className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white text-xs rounded-none transition font-semibold border border-rose-200 flex items-center gap-1.5"
                             title="Remove Student"
                           >
-                            ✕ Remove
+                            <UserMinus size={13} /> Remove
                           </button>
                         </div>
                       </td>
@@ -528,24 +592,27 @@ const ClassroomDetail = () => {
         </div>
       </div>
 
-      {/* Create Course Modal */}
+      {/* Create Course Modal - Sharp Square & Golden Theme */}
       {showCreateCourseModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div data-tour="classroom-create-course-form" className="bg-white rounded-xl max-w-lg w-full shadow-2xl overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b-2 border-blue-100 bg-gradient-to-r from-blue-500 to-indigo-600">
-              <h2 className="text-2xl font-bold text-white">📖 Create New Course</h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div data-tour="classroom-create-course-form" className="bg-white rounded-none max-w-lg w-full shadow-2xl border border-[#ebdcaa] overflow-hidden">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-[#ebdcaa] bg-[#B99652] text-white">
+              <div className="flex items-center gap-2.5">
+                <BookOpen size={20} className="text-white" />
+                <h2 className="text-xl font-bold font-['DM_Serif_Display',serif]">Create New Course</h2>
+              </div>
               <button
                 onClick={() => setShowCreateCourseModal(false)}
-                className="text-white hover:text-blue-100 hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition"
+                className="text-white/80 hover:text-white p-1 rounded-none transition"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleCreateCourse} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-bold mb-2 text-gray-700">
-                  Course Title <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1 text-[#1e1b4b]">
+                  Course Title <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -553,15 +620,15 @@ const ClassroomDetail = () => {
                   onChange={(e) =>
                     setCourseForm({ ...courseForm, title: e.target.value })
                   }
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition"
-                  placeholder="Enter course title"
+                  className="w-full border border-[#ebdcaa] rounded-none px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] bg-[#fffdf4]/40"
+                  placeholder="e.g. Advanced Mathematics"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold mb-2 text-gray-700">
-                  Description <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1 text-[#1e1b4b]">
+                  Description <span className="text-rose-500">*</span>
                 </label>
                 <textarea
                   value={courseForm.description}
@@ -571,46 +638,48 @@ const ClassroomDetail = () => {
                       description: e.target.value,
                     })
                   }
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition"
+                  className="w-full border border-[#ebdcaa] rounded-none px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] bg-[#fffdf4]/40"
                   rows="3"
-                  placeholder="Describe your course"
+                  placeholder="Brief summary of course topics and curriculum"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-bold mb-2 text-gray-700">
-                  Category
-                </label>
-                <input
-                  type="text"
-                  value={courseForm.category}
-                  onChange={(e) =>
-                    setCourseForm({ ...courseForm, category: e.target.value })
-                  }
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition"
-                  placeholder="e.g., Mathematics, Science"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider mb-1 text-[#1e1b4b]">
+                    Category
+                  </label>
+                  <input
+                    type="text"
+                    value={courseForm.category}
+                    onChange={(e) =>
+                      setCourseForm({ ...courseForm, category: e.target.value })
+                    }
+                    className="w-full border border-[#ebdcaa] rounded-none px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] bg-[#fffdf4]/40"
+                    placeholder="e.g., Mathematics"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider mb-1 text-[#1e1b4b]">
+                    Duration
+                  </label>
+                  <input
+                    type="text"
+                    value={courseForm.duration}
+                    onChange={(e) =>
+                      setCourseForm({ ...courseForm, duration: e.target.value })
+                    }
+                    className="w-full border border-[#ebdcaa] rounded-none px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] bg-[#fffdf4]/40"
+                    placeholder="e.g., 3 months"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-bold mb-2 text-gray-700">
-                  Duration
-                </label>
-                <input
-                  type="text"
-                  value={courseForm.duration}
-                  onChange={(e) =>
-                    setCourseForm({ ...courseForm, duration: e.target.value })
-                  }
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition"
-                  placeholder="e.g., 3 months"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold mb-2 text-gray-700">
-                  Course Teacher <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1 text-[#1e1b4b]">
+                  Course Teacher <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={courseForm.courseTeacherId}
@@ -620,7 +689,7 @@ const ClassroomDetail = () => {
                       courseTeacherId: e.target.value,
                     })
                   }
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-[#ebdcaa] rounded-none px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] bg-[#fffdf4]/40"
                   required
                 >
                   <option value="">Select a mentor</option>
@@ -637,13 +706,13 @@ const ClassroomDetail = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-2">
-                  Assign Students
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1 text-[#1e1b4b]">
+                  Assign Students from this Classroom
                 </label>
-                <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+                <div className="border border-[#ebdcaa] rounded-none p-3 max-h-40 overflow-y-auto bg-[#fffdf4]/40 divide-y divide-[#ebdcaa]/40">
                   {students.length > 0 ? (
                     students.map((student) => (
-                      <label key={student._id} className="flex items-center mb-2">
+                      <label key={student._id} className="flex items-center py-2 cursor-pointer hover:bg-white px-2">
                         <input
                           type="checkbox"
                           name="studentIds"
@@ -664,28 +733,29 @@ const ClassroomDetail = () => {
                               });
                             }
                           }}
-                          className="mr-2"
+                          className="mr-2.5 rounded-none text-[#B99652] focus:ring-0"
                         />
-                        <span className="text-sm">{student.name}</span>
+                        <span className="text-xs font-medium text-slate-800">{student.name}</span>
+                        <span className="text-[11px] text-slate-400 ml-auto">{student.email}</span>
                       </label>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">No students available</p>
+                    <p className="text-xs text-slate-500 py-2 text-center">No students available in this classroom</p>
                   )}
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-6 border-t border-gray-200">
+              <div className="flex gap-3 pt-4 border-t border-[#ebdcaa]">
                 <button
                   type="submit"
-                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-lg hover:shadow-lg font-bold transition"
+                  className="flex-1 bg-[#B99652] hover:bg-[#a38241] text-white py-2.5 rounded-none font-bold text-xs uppercase tracking-wider transition shadow-sm"
                 >
                   Create Course
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCreateCourseModal(false)}
-                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg hover:bg-gray-200 font-bold transition border border-gray-300"
+                  className="px-6 bg-slate-100 text-slate-700 py-2.5 rounded-none hover:bg-slate-200 font-bold text-xs uppercase tracking-wider transition border border-slate-200"
                 >
                   Cancel
                 </button>
@@ -695,60 +765,71 @@ const ClassroomDetail = () => {
         </div>
       )}
 
-      {/* Assign Students Modal */}
+      {/* Assign Students Modal - Sharp Square & Golden Theme */}
       {showAssignStudentsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div data-tour="classroom-assign-form" className="bg-white rounded-xl max-w-lg w-full shadow-2xl overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b-2 border-green-100 bg-gradient-to-r from-green-500 to-emerald-600">
-              <h2 className="text-2xl font-bold text-white">👥 Assign Students</h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div data-tour="classroom-assign-form" className="bg-white rounded-none max-w-lg w-full shadow-2xl border border-[#ebdcaa] overflow-hidden">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-[#ebdcaa] bg-[#B99652] text-white">
+              <div className="flex items-center gap-2.5">
+                <UserPlus size={20} className="text-white" />
+                <h2 className="text-xl font-bold font-['DM_Serif_Display',serif]">Assign Students to Classroom</h2>
+              </div>
               <button
                 onClick={() => setShowAssignStudentsModal(false)}
-                className="text-white hover:text-green-100 hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition"
+                className="text-white/80 hover:text-white p-1 rounded-none transition"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleAssignStudents} className="p-6 space-y-4">
-              <div className="border-2 border-gray-200 rounded-lg p-4 max-h-72 overflow-y-auto bg-gradient-to-br from-gray-50 to-gray-100">
-                {allStudents.length > 0 ? (
-                  <div className="space-y-2">
-                    {allStudents.map((student) => (
-                      <label key={student._id} className="flex items-center p-3 hover:bg-green-50 rounded-lg transition cursor-pointer border border-transparent hover:border-green-300 bg-white hover:shadow-md">
-                        <input
-                          type="checkbox"
-                          name="studentIds"
-                          value={student._id}
-                          className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-2 focus:ring-green-500 cursor-pointer"
-                        />
-                        <div className="ml-3 flex-1">
-                          <p className="text-sm font-semibold text-gray-900">{student.name}</p>
-                          <p className="text-xs text-gray-500">{student.email}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
+              {/* Search input for students */}
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-3 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search students by name or email..."
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-[#ebdcaa] rounded-none text-xs focus:outline-none focus:border-[#B99652] bg-[#fffdf4]/40"
+                />
+              </div>
+
+              <div className="border border-[#ebdcaa] rounded-none p-3 max-h-72 overflow-y-auto bg-[#fffdf4]/30 space-y-1.5">
+                {filteredAllStudents.length > 0 ? (
+                  filteredAllStudents.map((student) => (
+                    <label key={student._id} className="flex items-center p-2.5 hover:bg-white rounded-none transition cursor-pointer border border-transparent hover:border-[#ebdcaa] bg-white/70 shadow-xs">
+                      <input
+                        type="checkbox"
+                        name="studentIds"
+                        value={student._id}
+                        className="w-4 h-4 rounded-none text-[#B99652] focus:ring-0 cursor-pointer"
+                      />
+                      <div className="ml-3 flex-1">
+                        <p className="text-xs font-bold text-[#1e1b4b]">{student.name}</p>
+                        <p className="text-[11px] text-slate-500">{student.email}</p>
+                      </div>
+                    </label>
+                  ))
                 ) : (
                   <div className="text-center py-8">
-                    <div className="bg-gray-200 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
-                      <Users className="text-gray-400" size={24} />
-                    </div>
-                    <p className="text-sm text-gray-600 font-medium">No students available</p>
+                    <Users className="text-slate-300 mx-auto mb-2" size={28} />
+                    <p className="text-xs text-slate-500 font-medium">No students found matching search</p>
                   </div>
                 )}
               </div>
 
-              <div className="flex gap-3 pt-4 border-t-2 border-gray-200">
+              <div className="flex gap-3 pt-4 border-t border-[#ebdcaa]">
                 <button
                   type="submit"
-                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-lg hover:shadow-lg font-bold transition"
+                  className="flex-1 bg-[#B99652] hover:bg-[#a38241] text-white py-2.5 rounded-none font-bold text-xs uppercase tracking-wider transition shadow-sm"
                 >
                   Assign Students
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAssignStudentsModal(false)}
-                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg hover:bg-gray-200 font-bold transition border border-gray-300"
+                  className="px-6 bg-slate-100 text-slate-700 py-2.5 rounded-none hover:bg-slate-200 font-bold text-xs uppercase tracking-wider transition border border-slate-200"
                 >
                   Cancel
                 </button>
@@ -762,3 +843,4 @@ const ClassroomDetail = () => {
 };
 
 export default ClassroomDetail;
+

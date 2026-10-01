@@ -4,7 +4,7 @@ import MentorLayout from "../../components/MentorLayout";
 import { useAuth } from "../../auth/auth";
 import { useTranslation } from "../../context/TranslationContext";
 import { toast } from "react-toastify";
-import { Plus, Users, FileText, BarChart3, X, ChevronDown, Download, Lock, Video, Calendar, Clock } from "lucide-react";
+import { Plus, Users, FileText, BarChart3, X, ChevronDown, Download, Lock, Video, Calendar, Clock, BookOpen, CheckSquare, GraduationCap, Hourglass, Radio, CheckCircle } from "lucide-react";
 
 const CourseTeacherPortal = () => {
   const { courseId } = useParams();
@@ -559,35 +559,41 @@ const CourseTeacherPortal = () => {
       <div className="max-w-6xl mx-auto p-6">
         {/* Course Header */}
         <div className="mb-6">
-          <button onClick={() => navigate(-1)} className="text-blue-600 hover:text-blue-700 mb-3">
+          <button onClick={() => navigate(-1)} className="text-[#1e1b4b] hover:text-[#9a7837] mb-3 text-xs font-semibold flex items-center gap-1.5 transition-colors">
             ← Back
           </button>
-          <h1 className="text-3xl font-bold mb-2">{course?.title || "Course"}</h1>
-          <p className="text-gray-600">{course?.description}</p>
-          <div className="flex gap-6 mt-4 text-sm text-gray-600">
-            <span>👥 {students.length} students assigned</span>
-            <span>📅 {weeks.length} weeks</span>
-            <span>📝 {assessments.length} assessments</span>
+          <h1 className="text-3xl sm:text-4xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight mb-2">{course?.title || "Course"}</h1>
+          <p className="text-slate-600 text-sm leading-relaxed">{course?.description}</p>
+          <div className="flex gap-3 sm:gap-4 mt-4 text-xs font-semibold text-slate-700 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#ebdcaa] rounded-none shadow-2xs">
+              <Users className="w-3.5 h-3.5 text-[#9a7837]" /> {students.length} students assigned
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#ebdcaa] rounded-none shadow-2xs">
+              <Calendar className="w-3.5 h-3.5 text-[#9a7837]" /> {weeks.length} weeks
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#ebdcaa] rounded-none shadow-2xs">
+              <CheckSquare className="w-3.5 h-3.5 text-[#9a7837]" /> {assessments.length} assessments
+            </span>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div data-tour="course-actions" className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {/* Action Buttons (Uniform Golden Theme & Sharp Corners) */}
+        <div data-tour="course-actions" className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <button
             onClick={() => setShowAddWeekModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="bg-[#B99652] hover:bg-[#a38241] text-white px-4 py-2.5 rounded-none font-semibold text-xs sm:text-sm shadow-xs hover:shadow transition-all flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" /> Add Week
           </button>
           <button
             onClick={() => setShowAddMaterialModal(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            className="bg-[#B99652] hover:bg-[#a38241] text-white px-4 py-2.5 rounded-none font-semibold text-xs sm:text-sm shadow-xs hover:shadow transition-all flex items-center justify-center gap-2"
           >
             <FileText className="w-4 h-4" /> Add Material
           </button>
           <button
             onClick={() => setShowAddAssessmentModal(true)}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+            className="bg-[#B99652] hover:bg-[#a38241] text-white px-4 py-2.5 rounded-none font-semibold text-xs sm:text-sm shadow-xs hover:shadow transition-all flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" /> Add Assessment
           </button>
@@ -596,73 +602,73 @@ const CourseTeacherPortal = () => {
               fetchAvailableStudents();
               setShowAssignStudentsModal(true);
             }}
-            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
+            className="bg-[#B99652] hover:bg-[#a38241] text-white px-4 py-2.5 rounded-none font-semibold text-xs sm:text-sm shadow-xs hover:shadow transition-all flex items-center justify-center gap-2"
           >
             <Users className="w-4 h-4" /> Assign Students
           </button>
         </div>
 
         {/* Tabs */}
-        <div data-tour="course-info-tabs" className="flex gap-4 mb-6 border-b border-gray-200">
+        <div data-tour="course-info-tabs" className="flex gap-2 sm:gap-4 mb-6 border-b border-[#ebdcaa]/70 overflow-x-auto">
           <button
             onClick={() => setExpandedTab('materials')}
-            className={`px-4 py-2 font-medium transition-colors ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors ${
               expandedTab === 'materials'
-                ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'border-b-2 border-[#B99652] text-[#1e1b4b]'
+                : 'text-slate-600 hover:text-[#1e1b4b]'
             }`}
           >
-            📚 Weeks & Materials
+            <BookOpen className={`w-4 h-4 ${expandedTab === 'materials' ? 'text-[#9a7837]' : 'text-slate-500'}`} /> Weeks & Materials
           </button>
           <button
             onClick={() => setExpandedTab('assessments')}
-            className={`px-4 py-2 font-medium transition-colors ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors ${
               expandedTab === 'assessments'
-                ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'border-b-2 border-[#B99652] text-[#1e1b4b]'
+                : 'text-slate-600 hover:text-[#1e1b4b]'
             }`}
           >
-            📝 Assessments
+            <CheckSquare className={`w-4 h-4 ${expandedTab === 'assessments' ? 'text-[#9a7837]' : 'text-slate-500'}`} /> Assessments
           </button>
           <button
             onClick={() => setExpandedTab('live-classes')}
             data-tour="course-tab-live"
-            className={`px-4 py-2 font-medium transition-colors ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors ${
               expandedTab === 'live-classes'
-                ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'border-b-2 border-[#B99652] text-[#1e1b4b]'
+                : 'text-slate-600 hover:text-[#1e1b4b]'
             }`}
           >
-            🎥 Live Classes
+            <Video className={`w-4 h-4 ${expandedTab === 'live-classes' ? 'text-[#9a7837]' : 'text-slate-500'}`} /> Live Classes
           </button>
           <button
             onClick={() => setExpandedTab('students')}
             data-tour="course-tab-students"
-            className={`px-4 py-2 font-medium transition-colors ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors ${
               expandedTab === 'students'
-                ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'border-b-2 border-[#B99652] text-[#1e1b4b]'
+                : 'text-slate-600 hover:text-[#1e1b4b]'
             }`}
           >
-            👥 Student Progress
+            <GraduationCap className={`w-4 h-4 ${expandedTab === 'students' ? 'text-[#9a7837]' : 'text-slate-500'}`} /> Student Progress
           </button>
         </div>
 
         {/* Content */}
         {expandedTab === 'materials' && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {weeks.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No weeks added yet</p>
+              <p className="text-slate-500 text-center py-8">No weeks added yet</p>
             ) : (
               weeks.map(week => (
-                <div key={week._id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div key={week._id} className="bg-white border border-[#ebdcaa] rounded-none overflow-hidden shadow-xs">
                   <button
                     onClick={() => setExpandedWeek(expandedWeek === week._id ? null : week._id)}
-                    className="w-full p-4 flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className="w-full p-4 flex justify-between items-center bg-[#fffdf4] hover:bg-[#ebdcaa]/20 transition-colors"
                   >
                     <div className="text-left">
-                      <h3 className="font-semibold text-lg">Week {week.weekNumber}: {week.title}</h3>
-                      <p className="text-sm text-gray-600">{week.description}</p>
+                      <h3 className="font-bold text-base text-[#1e1b4b] font-['DM_Serif_Display',serif]">Week {week.weekNumber}: {week.title}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">{week.description}</p>
                     </div>
                     <ChevronDown
                       className={`w-5 h-5 transition-transform ${expandedWeek === week._id ? 'rotate-180' : ''}`}
@@ -682,11 +688,11 @@ const CourseTeacherPortal = () => {
                               .map(material => (
                                 <div
                                   key={material._id}
-                                  className="bg-gray-50 p-3 rounded border border-gray-200 flex justify-between items-start"
+                                  className="bg-white p-3.5 rounded-none border border-[#ebdcaa]/80 flex justify-between items-start"
                                 >
                                   <div className="flex-1">
-                                    <p className="font-medium text-gray-900">{material.title}</p>
-                                    <p className="text-xs text-gray-500 mt-1">
+                                    <p className="font-semibold text-slate-800 text-sm">{material.title}</p>
+                                    <p className="text-xs text-slate-500 mt-1">
                                       Type: {material.type.replace('_', ' ')} •{' '}
                                       {new Date(material.createdAt).toLocaleDateString()}
                                     </p>
@@ -696,7 +702,7 @@ const CourseTeacherPortal = () => {
                                       href={material.linkUrl}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-blue-600 hover:text-blue-700 text-sm ml-2"
+                                      className="text-[#9a7837] hover:text-[#7c5f24] font-semibold text-xs ml-2 underline"
                                     >
                                       Open
                                     </a>
@@ -704,9 +710,9 @@ const CourseTeacherPortal = () => {
                                   {material.fileUrl && (
                                     <a
                                       href={material.fileUrl}
-                                      className="text-blue-600 hover:text-blue-700 text-sm ml-2 flex items-center gap-1"
+                                      className="text-[#9a7837] hover:text-[#7c5f24] font-semibold text-xs ml-2 flex items-center gap-1"
                                     >
-                                      <Download className="w-4 h-4" /> Download
+                                      <Download className="w-3.5 h-3.5" /> Download
                                     </a>
                                   )}
                                 </div>
@@ -723,35 +729,35 @@ const CourseTeacherPortal = () => {
         )}
 
         {expandedTab === 'assessments' && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {assessments.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No assessments created yet</p>
+              <p className="text-slate-500 text-center py-8">No assessments created yet</p>
             ) : (
               assessments.map(assessment => (
-                <div key={assessment._id} className="bg-white border border-gray-200 rounded-lg p-4">
+                <div key={assessment._id} className="bg-white border border-[#ebdcaa] rounded-none p-5 shadow-xs">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-lg">{assessment.title}</h3>
+                    <h3 className="font-bold text-lg font-['DM_Serif_Display',serif] text-[#1e1b4b]">{assessment.title}</h3>
                     {!assessment.published && (
-                      <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                      <span className="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-none font-semibold border border-amber-300/50">
                         <Lock className="w-3 h-3 inline mr-1" /> Draft
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-600 text-sm mb-3">{assessment.description}</p>
-                  <div className="grid grid-cols-3 gap-4 text-sm text-gray-600 mb-3">
-                    <div>
-                      ⏰ <span className="font-medium">{new Date(assessment.startTime).toLocaleString()}</span>
+                  <p className="text-slate-600 text-xs sm:text-sm mb-3">{assessment.description}</p>
+                  <div className="grid grid-cols-3 gap-4 text-xs font-medium text-slate-600 mb-3 bg-[#fffdf4] p-2.5 border border-[#ebdcaa]/60">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-[#9a7837]" /> <span className="font-semibold text-[#1e1b4b]">{new Date(assessment.startTime).toLocaleString()}</span>
                     </div>
-                    <div>
-                      ⏱️ <span className="font-medium">{assessment.endTime ? new Date(assessment.endTime).toLocaleString() : 'No end time'}</span>
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-[#9a7837]" /> <span className="font-semibold text-[#1e1b4b]">{assessment.endTime ? new Date(assessment.endTime).toLocaleString() : 'No end time'}</span>
                     </div>
-                    <div>
-                      ⌛ <span className="font-medium">{assessment.timer || 0} min</span>
+                    <div className="flex items-center gap-1.5">
+                      <Hourglass className="w-3.5 h-3.5 text-[#9a7837]" /> <span className="font-semibold text-[#1e1b4b]">{assessment.timer || 0} min</span>
                     </div>
                   </div>
                   <button
                     onClick={() => navigate(`/mentor/assessment/${assessment._id}`)}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    className="text-[#9a7837] hover:text-[#7c5f24] text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition"
                   >
                     Manage Questions →
                   </button>
@@ -764,37 +770,37 @@ const CourseTeacherPortal = () => {
         {expandedTab === 'live-classes' && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Live Classes</h3>
+              <h3 className="text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Live Classes</h3>
               <button
                 onClick={() => setShowLiveClassModal(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                className="bg-[#B99652] hover:bg-[#a38241] text-white px-4 py-2 rounded-none font-semibold text-xs shadow-xs hover:shadow transition-all flex items-center gap-2"
               >
                 <Video className="w-4 h-4" /> Schedule Live Class
               </button>
             </div>
             
             {liveClasses.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                <Video className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 text-lg font-medium mb-2">No Live Classes Scheduled</p>
-                <p className="text-gray-400 text-sm">Schedule your first live class to interact with students in real-time</p>
+              <div className="text-center py-12 bg-white rounded-none border border-[#ebdcaa] p-8 shadow-xs">
+                <Video className="w-12 h-12 text-[#9a7837] mx-auto mb-3" />
+                <p className="text-[#1e1b4b] text-base font-bold font-['DM_Serif_Display',serif] mb-1">No Live Classes Scheduled</p>
+                <p className="text-slate-500 text-xs">Schedule your first live class to interact with students in real-time</p>
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-3">
                 {liveClasses.map((liveClass, liveIndex) => (
-                  <div key={liveClass._id} data-tour={liveIndex === 0 ? 'course-live-class-block' : undefined} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                  <div key={liveClass._id} data-tour={liveIndex === 0 ? 'course-live-class-block' : undefined} className="bg-white border border-[#ebdcaa] rounded-none p-5 shadow-xs">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex-1">
-                        <h4 className="text-lg font-semibold text-gray-900 mb-2">{liveClass.title}</h4>
-                        <p className="text-gray-600 mb-4">{liveClass.description}</p>
+                        <h4 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">{liveClass.title}</h4>
+                        <p className="text-slate-600 text-xs sm:text-sm mb-3">{liveClass.description}</p>
                         
-                        <div className="flex flex-wrap gap-4 text-sm">
-                          <div className="flex items-center gap-2 text-gray-500">
-                            <Calendar className="w-4 h-4" />
+                        <div className="flex flex-wrap gap-4 text-xs font-medium text-slate-600">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-[#9a7837]" />
                             <span>{new Date(liveClass.scheduledStartTime).toLocaleDateString()}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-gray-500">
-                            <Clock className="w-4 h-4" />
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-[#9a7837]" />
                             <span>{new Date(liveClass.scheduledStartTime).toLocaleTimeString()} - {new Date(liveClass.scheduledEndTime).toLocaleTimeString()}</span>
                           </div>
                         </div>
@@ -806,44 +812,47 @@ const CourseTeacherPortal = () => {
                             {!liveClass.actualStartTime ? (
                               <button
                                 onClick={() => handleStartLiveClass(liveClass)}
-                                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                                className="bg-[#B99652] hover:bg-[#a38241] text-white px-3.5 py-1.5 rounded-none font-semibold text-xs shadow-xs transition-all flex items-center gap-1.5"
                               >
-                                <Video className="w-4 h-4" /> Start Class
+                                <Video className="w-3.5 h-3.5" /> Start Class
                               </button>
                             ) : (
                               <button
                                 onClick={() => window.open(`${liveClass.meetingLink}#config.prejoinPageEnabled=false&userInfo={\"displayName\":\"Teacher\",\"role\":\"moderator\"}`, '_blank')}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                className="bg-[#1e1b4b] hover:bg-[#2d296a] text-white px-3.5 py-1.5 rounded-none font-semibold text-xs shadow-xs transition-all flex items-center gap-1.5"
                               >
-                                <Video className="w-4 h-4" /> Rejoin Class
+                                <Video className="w-3.5 h-3.5" /> Rejoin Class
                               </button>
                             )}
                           </>
                         )}
                         <button
                           onClick={() => handleDeleteLiveClass(liveClass._id)}
-                          className="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                          className="bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 px-2.5 py-1.5 rounded-none text-xs transition-colors"
                         >
-                          <X className="w-4 h-4" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
                     
                     {liveClass.actualStartTime && !liveClass.actualEndTime && (
-                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-green-700 text-sm font-medium">🔴 Class is now live!</p>
+                      <div className="mt-3 p-2.5 bg-emerald-50 border border-emerald-200 rounded-none flex items-center gap-2">
+                        <Radio className="w-4 h-4 text-rose-600 animate-pulse" />
+                        <p className="text-emerald-700 text-xs font-semibold">Class is now live!</p>
                       </div>
                     )}
                     
                     {!liveClass.actualStartTime && new Date(liveClass.scheduledStartTime) > new Date() && (
-                      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-blue-700 text-sm font-medium">⏰ Scheduled - Class will start soon</p>
+                      <div className="mt-3 p-2.5 bg-[#fffdf4] border border-[#ebdcaa] rounded-none flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-[#9a7837]" />
+                        <p className="text-[#9a7837] text-xs font-semibold">Scheduled - Class will start soon</p>
                       </div>
                     )}
                     
                     {liveClass.actualEndTime && (
-                      <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                        <p className="text-gray-700 text-sm font-medium">✅ Class Ended</p>
+                      <div className="mt-3 p-2.5 bg-gray-50 border border-gray-200 rounded-none flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        <p className="text-gray-700 text-xs font-medium">Class Ended</p>
                       </div>
                     )}
                   </div>
@@ -854,34 +863,34 @@ const CourseTeacherPortal = () => {
         )}
 
         {expandedTab === 'students' && (
-          <div data-tour="course-student-progress" className="space-y-4">
+          <div data-tour="course-student-progress" className="space-y-3">
             {students.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No students assigned to this course</p>
+              <p className="text-slate-500 text-center py-8">No students assigned to this course</p>
             ) : (
               students.map(student => {
                 const progress = studentProgress[student._id];
                 return (
-                  <div key={student._id} className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div key={student._id} className="bg-white border border-[#ebdcaa] rounded-none p-4 shadow-xs">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <h3 className="font-semibold">{student.name}</h3>
-                        <p className="text-sm text-gray-600">{student.email}</p>
+                        <h3 className="font-bold text-sm text-[#1e1b4b]">{student.name}</h3>
+                        <p className="text-xs text-slate-500">{student.email}</p>
                       </div>
                     </div>
                     {progress ? (
-                      <div className="text-sm text-gray-600">
-                        <p>
-                          📚 <span className="font-medium">{progress.completedChapters}/{progress.totalChapters}</span> chapters completed
+                      <div className="text-xs text-slate-600">
+                        <p className="flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-[#9a7837]" /> <span className="font-semibold text-[#1e1b4b]">{progress.completedChapters}/{progress.totalChapters}</span> chapters completed
                         </p>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div className="w-full bg-[#ebdcaa]/40 rounded-none h-2 mt-2 overflow-hidden">
                           <div
-                            className="bg-blue-600 h-2 rounded-full"
+                            className="bg-[#B99652] h-2 rounded-none"
                             style={{ width: `${Math.min(100, progress.completionPercentage || 0)}%`, maxWidth: '100%' }}
                           ></div>
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500">No progress yet</p>
+                      <p className="text-xs text-slate-400">No progress yet</p>
                     )}
                   </div>
                 );
@@ -895,52 +904,52 @@ const CourseTeacherPortal = () => {
       {/* Add Week Modal */}
       {showAddWeekModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-bold">Add Week</h3>
-              <button onClick={() => setShowAddWeekModal(false)}><X className="w-6 h-6" /></button>
+          <div className="bg-white rounded-none max-w-md w-full border border-[#ebdcaa] shadow-lg">
+            <div className="p-6 border-b border-[#ebdcaa]/60 flex justify-between items-center">
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Add Week</h3>
+              <button onClick={() => setShowAddWeekModal(false)}><X className="w-5 h-5 text-slate-500 hover:text-slate-700" /></button>
             </div>
             <form onSubmit={handleAddWeek} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Week Number *</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Week Number *</label>
                 <input
                   type="number"
                   value={weekForm.weekNumber}
                   onChange={(e) => setWeekForm({ ...weekForm, weekNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Title *</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Title *</label>
                 <input
                   type="text"
                   value={weekForm.title}
                   onChange={(e) => setWeekForm({ ...weekForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Description</label>
                 <textarea
                   value={weekForm.description}
                   onChange={(e) => setWeekForm({ ...weekForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   rows="3"
                 />
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddWeekModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                  className="flex-1 px-4 py-2 border border-[#ebdcaa] text-slate-700 rounded-none hover:bg-slate-50 text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 px-4 py-2 bg-[#B99652] text-white rounded-none hover:bg-[#a38241] text-xs font-semibold shadow-xs"
                 >
                   Add Week
                 </button>
@@ -953,18 +962,18 @@ const CourseTeacherPortal = () => {
       {/* Add Material Modal */}
       {showAddMaterialModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-bold">Add Material</h3>
-              <button onClick={() => setShowAddMaterialModal(false)}><X className="w-6 h-6" /></button>
+          <div className="bg-white rounded-none max-w-md w-full max-h-[90vh] overflow-y-auto border border-[#ebdcaa] shadow-lg">
+            <div className="p-6 border-b border-[#ebdcaa]/60 flex justify-between items-center">
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Add Material</h3>
+              <button onClick={() => setShowAddMaterialModal(false)}><X className="w-5 h-5 text-slate-500 hover:text-slate-700" /></button>
             </div>
             <form onSubmit={handleAddMaterial} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Week (optional)</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Week (optional)</label>
                 <select
                   value={materialForm.weekId}
                   onChange={(e) => setMaterialForm({ ...materialForm, weekId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                 >
                   <option value="">General (No Week)</option>
                   {weeks.map(w => (
@@ -973,21 +982,21 @@ const CourseTeacherPortal = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Title *</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Title *</label>
                 <input
                   type="text"
                   value={materialForm.title}
                   onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Type *</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Type *</label>
                 <select
                   value={materialForm.type}
                   onChange={(e) => setMaterialForm({ ...materialForm, type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   required
                 >
                   <option value="video_link">Video Link (YouTube, etc.)</option>
@@ -999,54 +1008,54 @@ const CourseTeacherPortal = () => {
               </div>
               {(materialForm.type === 'video_link' || materialForm.type === 'pdf_link') ? (
                 <div>
-                  <label className="block text-sm font-medium mb-1">Link URL *</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Link URL *</label>
                   <input
                     type="url"
                     value={materialForm.linkUrl}
                     onChange={(e) => setMaterialForm({ ...materialForm, linkUrl: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                     placeholder="https://..."
                     required
                   />
                 </div>
               ) : (
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">
                     {materialForm.type === 'file' ? 'Choose File *' : 'File *'}
                   </label>
                   <input
                     type="file"
                     onChange={(e) => setMaterialForm({ ...materialForm, file: e.target.files[0] })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm"
                     required
                     accept={materialForm.type === 'video' ? 'video/*' : materialForm.type === 'pdf' ? '.pdf' : undefined}
                   />
                   {materialForm.file && (
-                    <p className="text-xs text-gray-500 mt-2">Selected: {materialForm.file.name}</p>
+                    <p className="text-xs text-slate-500 mt-1">Selected: {materialForm.file.name}</p>
                   )}
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium mb-1">Description (optional)</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Description (optional)</label>
                 <textarea
                   value={materialForm.description}
                   onChange={(e) => setMaterialForm({ ...materialForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   rows="2"
                   placeholder="Add any notes about this material..."
                 />
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddMaterialModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                  className="flex-1 px-4 py-2 border border-[#ebdcaa] text-slate-700 rounded-none hover:bg-slate-50 text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  className="flex-1 px-4 py-2 bg-[#B99652] text-white rounded-none hover:bg-[#a38241] text-xs font-semibold shadow-xs"
                 >
                   Add Material
                 </button>
@@ -1059,18 +1068,18 @@ const CourseTeacherPortal = () => {
       {/* Add Assessment Modal */}
       {showAddAssessmentModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-bold">Create Assessment</h3>
-              <button onClick={() => setShowAddAssessmentModal(false)}><X className="w-6 h-6" /></button>
+          <div className="bg-white rounded-none max-w-md w-full max-h-[90vh] overflow-y-auto border border-[#ebdcaa] shadow-lg">
+            <div className="p-6 border-b border-[#ebdcaa]/60 flex justify-between items-center">
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Create Assessment</h3>
+              <button onClick={() => setShowAddAssessmentModal(false)}><X className="w-5 h-5 text-slate-500 hover:text-slate-700" /></button>
             </div>
             <form onSubmit={handleAddAssessment} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Week (optional)</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Week (optional)</label>
                 <select
                   value={assessmentForm.weekId}
                   onChange={(e) => setAssessmentForm({ ...assessmentForm, weekId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                 >
                   <option value="">General (No Week)</option>
                   {weeks.map(w => (
@@ -1079,65 +1088,65 @@ const CourseTeacherPortal = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Title *</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Title *</label>
                 <input
                   type="text"
                   value={assessmentForm.title}
                   onChange={(e) => setAssessmentForm({ ...assessmentForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Description</label>
                 <textarea
                   value={assessmentForm.description}
                   onChange={(e) => setAssessmentForm({ ...assessmentForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   rows="2"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Start Time *</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Start Time *</label>
                 <input
                   type="datetime-local"
                   value={assessmentForm.startTime}
                   onChange={(e) => setAssessmentForm({ ...assessmentForm, startTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">End Time *</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">End Time *</label>
                 <input
                   type="datetime-local"
                   value={assessmentForm.endTime}
                   onChange={(e) => setAssessmentForm({ ...assessmentForm, endTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Timer (minutes)</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Timer (minutes)</label>
                 <input
                   type="number"
                   value={assessmentForm.timer}
                   onChange={(e) => setAssessmentForm({ ...assessmentForm, timer: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   placeholder="0"
                 />
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddAssessmentModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                  className="flex-1 px-4 py-2 border border-[#ebdcaa] text-slate-700 rounded-none hover:bg-slate-50 text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  className="flex-1 px-4 py-2 bg-[#B99652] text-white rounded-none hover:bg-[#a38241] text-xs font-semibold shadow-xs"
                 >
                   Create Assessment
                 </button>
@@ -1150,35 +1159,35 @@ const CourseTeacherPortal = () => {
       {/* Add Questions Modal */}
       {showAddQuestionsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white">
-              <h3 className="text-lg font-bold">Add Questions to Assessment</h3>
+          <div className="bg-white rounded-none max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-[#ebdcaa] shadow-lg">
+            <div className="p-6 border-b border-[#ebdcaa]/60 flex justify-between items-center sticky top-0 bg-white">
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Add Questions to Assessment</h3>
               <button onClick={() => {
                 setShowAddQuestionsModal(false);
                 setCurrentAssessmentId(null);
                 setAssessmentQuestions([]);
-              }}><X className="w-6 h-6" /></button>
+              }}><X className="w-5 h-5 text-slate-500 hover:text-slate-700" /></button>
             </div>
             <div className="p-6 space-y-6">
               {/* Question Form */}
-              <form onSubmit={handleAddQuestion} className="border-b pb-6 space-y-4">
+              <form onSubmit={handleAddQuestion} className="border-b border-[#ebdcaa]/60 pb-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Question Text *</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Question Text *</label>
                   <textarea
                     value={questionForm.questionText}
                     onChange={(e) => setQuestionForm({ ...questionForm, questionText: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                     rows="2"
                     placeholder="Enter your question here"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Question Type</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Question Type</label>
                   <select
                     value={questionForm.questionType}
                     onChange={(e) => setQuestionForm({ ...questionForm, questionType: e.target.value, correctAnswer: "" })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   >
                     <option value="multiple_choice">Multiple Choice</option>
                     <option value="short_answer">Short Answer</option>
@@ -1189,7 +1198,7 @@ const CourseTeacherPortal = () => {
 
                 {questionForm.questionType === "multiple_choice" && (
                   <div>
-                    <label className="block text-sm font-medium mb-2">Options</label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-2">Options</label>
                     <div className="space-y-2">
                       {questionForm.options.map((opt, idx) => (
                         <input
@@ -1201,14 +1210,14 @@ const CourseTeacherPortal = () => {
                             newOpts[idx] = e.target.value;
                             setQuestionForm({ ...questionForm, options: newOpts });
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                           placeholder={`Option ${idx + 1}`}
                         />
                       ))}
                       <button
                         type="button"
                         onClick={() => setQuestionForm({ ...questionForm, options: [...questionForm.options, ""] })}
-                        className="text-sm text-blue-600 hover:text-blue-700"
+                        className="text-xs text-[#9a7837] hover:text-[#7c5f24] font-bold"
                       >
                         + Add Option
                       </button>
@@ -1217,12 +1226,12 @@ const CourseTeacherPortal = () => {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Correct Answer *</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Correct Answer *</label>
                   {questionForm.questionType === "multiple_choice" ? (
                     <select
                       value={questionForm.correctAnswer}
                       onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                       required
                     >
                       <option value="">Select correct option</option>
@@ -1237,7 +1246,7 @@ const CourseTeacherPortal = () => {
                       type="text"
                       value={questionForm.correctAnswer}
                       onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                       placeholder="Enter correct answer"
                       required
                     />
@@ -1245,12 +1254,12 @@ const CourseTeacherPortal = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Marks</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Marks</label>
                   <input
                     type="number"
                     value={questionForm.marks}
                     onChange={(e) => setQuestionForm({ ...questionForm, marks: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                     min="1"
                     placeholder="1"
                   />
@@ -1258,7 +1267,7 @@ const CourseTeacherPortal = () => {
 
                 <button
                   type="submit"
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="w-full px-4 py-2 bg-[#B99652] text-white rounded-none hover:bg-[#a38241] text-xs font-semibold shadow-xs"
                 >
                   Add Question
                 </button>
@@ -1266,15 +1275,15 @@ const CourseTeacherPortal = () => {
 
               {/* Questions List */}
               <div>
-                <h4 className="font-semibold mb-3">Questions Added ({assessmentQuestions.length})</h4>
+                <h4 className="font-bold text-sm text-[#1e1b4b] font-['DM_Serif_Display',serif] mb-3">Questions Added ({assessmentQuestions.length})</h4>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {assessmentQuestions.length === 0 ? (
-                    <p className="text-sm text-gray-500">No questions added yet</p>
+                    <p className="text-xs text-slate-400">No questions added yet</p>
                   ) : (
                     assessmentQuestions.map((q, idx) => (
-                      <div key={q._id || idx} className="bg-gray-50 p-3 rounded border border-gray-200">
-                        <p className="font-medium text-sm">{idx + 1}. {q.questionText}</p>
-                        <p className="text-xs text-gray-600 mt-1">Type: {q.questionType} • Marks: {q.marks}</p>
+                      <div key={q._id || idx} className="bg-[#fffdf4] p-3 rounded-none border border-[#ebdcaa]">
+                        <p className="font-semibold text-xs text-[#1e1b4b]">{idx + 1}. {q.questionText}</p>
+                        <p className="text-[11px] text-slate-500 mt-1">Type: {q.questionType} • Marks: {q.marks}</p>
                       </div>
                     ))
                   )}
@@ -1291,14 +1300,14 @@ const CourseTeacherPortal = () => {
                     setAssessmentQuestions([]);
                     fetchCourseData();
                   }}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-[#ebdcaa] rounded-none text-slate-700 hover:bg-slate-50 text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleFinishQuestions}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  className="flex-1 px-4 py-2 bg-[#B99652] text-white rounded-none hover:bg-[#a38241] text-xs font-semibold shadow-xs"
                 >
                   Done
                 </button>
@@ -1311,20 +1320,20 @@ const CourseTeacherPortal = () => {
       {/* Assign Students Modal */}
       {showAssignStudentsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-bold">Assign More Students</h3>
-              <button onClick={() => setShowAssignStudentsModal(false)}><X className="w-6 h-6" /></button>
+          <div className="bg-white rounded-none max-w-md w-full max-h-[90vh] overflow-y-auto border border-[#ebdcaa] shadow-lg">
+            <div className="p-6 border-b border-[#ebdcaa]/60 flex justify-between items-center">
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Assign More Students</h3>
+              <button onClick={() => setShowAssignStudentsModal(false)}><X className="w-5 h-5 text-slate-500 hover:text-slate-700" /></button>
             </div>
             <form onSubmit={handleAssignStudents} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Available Students</label>
-                <div className="border border-gray-300 rounded-lg max-h-48 overflow-y-auto p-2 space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-2">Available Students</label>
+                <div className="border border-[#ebdcaa] rounded-none max-h-48 overflow-y-auto p-2 space-y-1.5 bg-[#fffdf4]">
                   {availableStudents.length === 0 ? (
-                    <p className="text-sm text-gray-500">No available students</p>
+                    <p className="text-xs text-slate-400">No available students</p>
                   ) : (
                     availableStudents.map(student => (
-                      <label key={student._id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                      <label key={student._id} className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-none border border-transparent hover:border-[#ebdcaa]">
                         <input
                           type="checkbox"
                           checked={selectedStudentsToAdd.includes(student._id)}
@@ -1335,25 +1344,25 @@ const CourseTeacherPortal = () => {
                               setSelectedStudentsToAdd(selectedStudentsToAdd.filter(id => id !== student._id));
                             }
                           }}
-                          className="w-4 h-4 text-blue-600 rounded"
+                          className="w-4 h-4 text-[#B99652] accent-[#B99652] rounded-none"
                         />
-                        <span className="text-sm">{student.name}</span>
+                        <span className="text-xs font-medium text-slate-800">{student.name}</span>
                       </label>
                     ))
                   )}
                 </div>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAssignStudentsModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                  className="flex-1 px-4 py-2 border border-[#ebdcaa] text-slate-700 rounded-none hover:bg-slate-50 text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                  className="flex-1 px-4 py-2 bg-[#B99652] text-white rounded-none hover:bg-[#a38241] text-xs font-semibold shadow-xs"
                 >
                   Assign Students
                 </button>
@@ -1366,30 +1375,30 @@ const CourseTeacherPortal = () => {
       {/* Live Class Modal */}
       {showLiveClassModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-bold">Schedule Live Class</h3>
-              <button onClick={() => setShowLiveClassModal(false)}><X className="w-6 h-6" /></button>
+          <div className="bg-white rounded-none max-w-md w-full border border-[#ebdcaa] shadow-lg">
+            <div className="p-6 border-b border-[#ebdcaa]/60 flex justify-between items-center">
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Schedule Live Class</h3>
+              <button onClick={() => setShowLiveClassModal(false)}><X className="w-5 h-5 text-slate-500 hover:text-slate-700" /></button>
             </div>
             <form onSubmit={handleAddLiveClass} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Class Title</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Class Title</label>
                 <input
                   type="text"
                   value={liveClassForm.title}
                   onChange={(e) => setLiveClassForm({ ...liveClassForm, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   placeholder="e.g., Introduction to React"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Description</label>
                 <textarea
                   value={liveClassForm.description}
                   onChange={(e) => setLiveClassForm({ ...liveClassForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   placeholder="Brief description of the live class"
                   rows="3"
                   required
@@ -1397,41 +1406,41 @@ const CourseTeacherPortal = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Start Date & Time</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Start Date & Time</label>
                 <input
                   type="datetime-local"
                   value={liveClassForm.scheduledStartTime}
                   onChange={(e) => setLiveClassForm({ ...liveClassForm, scheduledStartTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">End Date & Time</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">End Date & Time</label>
                 <input
                   type="datetime-local"
                   value={liveClassForm.scheduledEndTime}
                   onChange={(e) => setLiveClassForm({ ...liveClassForm, scheduledEndTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2 border border-[#ebdcaa] rounded-none text-sm focus:ring-2 focus:ring-[#B99652]/30 focus:border-[#B99652]"
                   required
                 />
               </div>
 
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-blue-700 text-sm font-medium mb-1">🎥 Jitsi Meet Integration</p>
-                <p className="text-blue-600 text-xs">A secure meeting link will be automatically generated when you schedule this class.</p>
+              <div className="p-3 bg-[#fffdf4] border border-[#ebdcaa] rounded-none">
+                <p className="text-[#9a7837] text-xs font-semibold mb-0.5">🎥 Jitsi Meet Integration</p>
+                <p className="text-slate-500 text-[11px]">A secure meeting link will be automatically generated when you schedule this class.</p>
               </div>
 
               {/* Generated meeting link preview */}
               <div className="mt-3">
-                <label className="block text-sm font-medium mb-1">Meeting Link (auto-generated)</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Meeting Link (auto-generated)</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     readOnly
                     value={liveClassForm.meetingLink || ''}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                    className="flex-1 px-3 py-2 border border-[#ebdcaa] rounded-none bg-[#fffdf4] text-xs"
                   />
                   <button
                     type="button"
@@ -1439,24 +1448,24 @@ const CourseTeacherPortal = () => {
                       try { navigator.clipboard.writeText(liveClassForm.meetingLink || ''); toast.success('Meeting link copied'); }
                       catch (e) { toast.error('Copy failed'); }
                     }}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-lg"
+                    className="px-3.5 py-2 bg-[#1e1b4b] hover:bg-[#2d296a] text-white rounded-none text-xs font-semibold transition"
                   >
                     Copy
                   </button>
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowLiveClassModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                  className="flex-1 px-4 py-2 border border-[#ebdcaa] text-slate-700 rounded-none hover:bg-slate-50 text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  className="flex-1 px-4 py-2 bg-[#B99652] text-white rounded-none hover:bg-[#a38241] text-xs font-semibold shadow-xs"
                 >
                   Schedule Class
                 </button>
@@ -1469,11 +1478,11 @@ const CourseTeacherPortal = () => {
       {/* Jitsi Embed Modal */}
       {showJitsiModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-60 p-4">
-          <div className="bg-white rounded-lg w-full max-w-6xl h-[80vh] flex flex-col">
-            <div className="p-3 border-b flex justify-between items-center">
-              <h3 className="text-lg font-bold">Live Class — Jitsi</h3>
+          <div className="bg-white rounded-none w-full max-w-6xl h-[80vh] flex flex-col border border-[#ebdcaa]">
+            <div className="p-3 border-b border-[#ebdcaa] flex justify-between items-center bg-[#fffdf4]">
+              <h3 className="text-base font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Live Class — Jitsi</h3>
               <div className="flex items-center gap-2">
-                <button onClick={handleCloseJitsi} className="px-3 py-1 bg-gray-200 rounded">Close</button>
+                <button onClick={handleCloseJitsi} className="px-3 py-1 bg-white border border-[#ebdcaa] text-slate-700 text-xs font-semibold rounded-none hover:bg-slate-50">Close</button>
               </div>
             </div>
             <div className="flex-1">
@@ -1481,7 +1490,7 @@ const CourseTeacherPortal = () => {
                 title="Jitsi Meet"
                 src={jitsiUrl}
                 allow="camera; microphone; fullscreen"
-                className="w-full h-full rounded-b-lg"
+                className="w-full h-full rounded-none"
               />
             </div>
           </div>

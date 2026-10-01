@@ -63,15 +63,15 @@ const SuperAdminSubscription = () => {
   // Make refresh function available globally
   useEffect(() => {
     window.refreshSubscription = refreshSubscription
-    
+
     // Listen for subscription refresh events
     const handleSubscriptionRefresh = () => {
       console.log('🔄 Subscription refresh event received')
       refreshSubscription()
     }
-    
+
     window.addEventListener('subscription-refresh', handleSubscriptionRefresh)
-    
+
     // Also listen for storage events (for cross-tab updates)
     const handleStorageChange = (e) => {
       if (e.key === 'subscription-updated') {
@@ -79,9 +79,9 @@ const SuperAdminSubscription = () => {
         refreshSubscription()
       }
     }
-    
+
     window.addEventListener('storage', handleStorageChange)
-    
+
     return () => {
       window.removeEventListener('subscription-refresh', handleSubscriptionRefresh)
       window.removeEventListener('storage', handleStorageChange)
@@ -141,10 +141,10 @@ const SuperAdminSubscription = () => {
     }
   ]
 
-  
+
   const cancelCurrentSubscription = async () => {
     if (!confirm('Are you sure you want to cancel your subscription and downgrade to Free?')) return;
-    
+
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE}/api/subscriptions/cancel`, {
@@ -157,7 +157,7 @@ const SuperAdminSubscription = () => {
 
       const text = await response.text();
       if (!response.ok) throw new Error(`${response.status} ${response.statusText} - ${text || 'no body'}`);
-      
+
       const data = text ? JSON.parse(text) : null;
       if (data && data.success) {
         setCurrentSubscription(data.subscription || null);
@@ -222,9 +222,9 @@ const SuperAdminSubscription = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         alert('Free trial activated! You now have 10 days to use the superadmin portal.')
         // Refresh the page to update the timer
@@ -240,7 +240,7 @@ const SuperAdminSubscription = () => {
 
   const initiatePayment = async (plan) => {
     setLoading(true)
-    
+
     try {
       // Create subscription order
       const orderResponse = await fetch(`${API_BASE}/api/subscriptions/create-order`, {
@@ -301,17 +301,17 @@ const SuperAdminSubscription = () => {
       const script = document.createElement('script')
       script.src = 'https://checkout.razorpay.com/v1/checkout.js'
       script.async = true
-      
+
       script.onload = () => {
         console.log('Razorpay script loaded successfully')
         resolve()
       }
-      
+
       script.onerror = (error) => {
         console.error('Failed to load Razorpay script:', error)
         reject(new Error('Failed to load payment gateway'))
       }
-      
+
       document.body.appendChild(script)
     })
   }
@@ -349,7 +349,7 @@ const SuperAdminSubscription = () => {
           emandate: false
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             console.log('Payment modal dismissed')
             setLoading(false)
           },
@@ -361,7 +361,7 @@ const SuperAdminSubscription = () => {
       }
 
       const rzp = new window.Razorpay(options)
-      
+
       rzp.on('payment.failed', function (response) {
         console.error('Payment failed:', response)
         const errorMessage = response.error?.description || 'Payment failed'
@@ -381,7 +381,7 @@ const SuperAdminSubscription = () => {
   const activateSubscription = async (planId, planName, amount, response) => {
     try {
       setLoading(true)
-      
+
       // Verify payment on backend
       const verifyResponse = await fetch(`${API_BASE}/api/subscriptions/verify-payment`, {
         method: 'POST',
@@ -425,22 +425,22 @@ const SuperAdminSubscription = () => {
         localStorage.removeItem('superadminTimerExpired');
         localStorage.removeItem('superadminPlanName');
         localStorage.removeItem('superadminSubscriptionStatus');
-        
+
         // Store subscription info in localStorage
         localStorage.setItem('superadminPlanName', planName);
         localStorage.setItem('superadminSubscriptionStatus', 'active');
-        
+
         // Trigger subscription refresh event
         window.dispatchEvent(new CustomEvent('subscription-refresh'));
-        
+
         // Also trigger storage event for cross-tab updates
         localStorage.setItem('subscription-updated', Date.now().toString());
         setTimeout(() => {
           localStorage.removeItem('subscription-updated');
         }, 100);
-        
+
         alert(`? Congratulations! You have successfully upgraded to the ${planName} Plan!`);
-        
+
         // Refresh current subscription data immediately
         setTimeout(() => {
           console.log('Triggering subscription refresh after payment...');
@@ -449,10 +449,10 @@ const SuperAdminSubscription = () => {
           }
           // Also trigger custom event for immediate refresh
           window.dispatchEvent(new CustomEvent('subscription-refresh'));
-          
+
           // Update local state immediately
           setPlanName(planName);
-          
+
           // Redirect to dashboard after showing success
           setTimeout(() => {
             window.location.href = '/superadmin/dashboard';
@@ -471,7 +471,7 @@ const SuperAdminSubscription = () => {
 
   return (
     <SuperAdminLayout>
-      <div style={{ minHeight: '100vh', backgroundColor: '#F0F9FF', padding: '48px 16px' }}>
+      <div style={{ padding: '32px 16px' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '48px' }}>
@@ -526,24 +526,24 @@ const SuperAdminSubscription = () => {
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                   <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
                     {plan.name}
-                    {currentSubscription && currentSubscription.status === 'active' && 
-                     (currentSubscription.planType === plan.id || 
-                      currentSubscription.planName?.toLowerCase().includes(plan.name.toLowerCase())) && (
-                      <span style={{
-                        backgroundColor: '#10B981',
-                        color: 'white',
-                        padding: '4px 12px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        marginLeft: '12px'
-                      }}>
-                        CURRENT PLAN
-                      </span>
-                    )}
+                    {currentSubscription && currentSubscription.status === 'active' &&
+                      (currentSubscription.planType === plan.id ||
+                        currentSubscription.planName?.toLowerCase().includes(plan.name.toLowerCase())) && (
+                        <span style={{
+                          backgroundColor: '#10B981',
+                          color: 'white',
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          marginLeft: '12px'
+                        }}>
+                          CURRENT PLAN
+                        </span>
+                      )}
                   </h3>
                   <p style={{ color: '#6B7280', marginBottom: '24px' }}>{plan.description}</p>
-                  
+
                   {plan.price ? (
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
                       <span style={{ fontSize: '36px', fontWeight: 'bold', color: '#111827' }}>
@@ -566,11 +566,11 @@ const SuperAdminSubscription = () => {
                 </div>
 
                 {/* Show Cancel button if this is the current active paid plan */}
-                {currentSubscription && 
-                 currentSubscription.status === 'active' && 
-                 plan.id !== 'free' && 
-                 (currentSubscription.planType === plan.id || 
-                  currentSubscription.planName?.toLowerCase().includes(plan.name.toLowerCase())) ? (
+                {currentSubscription &&
+                  currentSubscription.status === 'active' &&
+                  plan.id !== 'free' &&
+                  (currentSubscription.planType === plan.id ||
+                    currentSubscription.planName?.toLowerCase().includes(plan.name.toLowerCase())) ? (
                   <button
                     onClick={cancelCurrentSubscription}
                     disabled={loading}
@@ -652,10 +652,10 @@ const SuperAdminSubscription = () => {
                       </span>
                     ) : (
                       <span style={{ display: 'flex', alignItems: 'center' }}>
-                        {currentSubscription && currentSubscription.status === 'active' && 
-                         (currentSubscription.planType === plan.id || 
-                          currentSubscription.planName?.toLowerCase().includes(plan.name.toLowerCase())) ? 
-                          'Manage Plan' : 
+                        {currentSubscription && currentSubscription.status === 'active' &&
+                          (currentSubscription.planType === plan.id ||
+                            currentSubscription.planName?.toLowerCase().includes(plan.name.toLowerCase())) ?
+                          'Manage Plan' :
                           plan.buttonText
                         }
                         {plan.id !== 'free' && <ArrowRight style={{ marginLeft: '8px' }} size={16} />}

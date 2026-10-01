@@ -88,44 +88,57 @@ const CalendarPage = ({ role }) => {
   }, [fetchEvents]);
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      <CalendarHeader />
+    <div
+      className="h-screen flex flex-col overflow-hidden bg-[#fffdf4]"
+      style={{
+        backgroundColor: '#fffdf4',
+        backgroundImage: `
+          linear-gradient(to right, rgba(200, 165, 70, 0.045) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(200, 165, 70, 0.045) 1px, transparent 1px)
+        `,
+        backgroundSize: '44px 44px'
+      }}
+    >
+      <CalendarHeader role={role} />
 
       {error && (
-        <div style={{ padding: "10px", backgroundColor: "#fee2e2", color: "#991b1b", borderBottom: "1px solid #fca5a5" }}>
+        <div className="px-4 py-2 bg-red-100 border-b border-red-200 text-red-800 text-xs font-semibold">
           ⚠️ {error}
         </div>
       )}
 
       <QuotaLimitModal isOpen={showQuotaModal} onClose={() => { setShowQuotaModal(false); navigate(role === 'admin' ? '/admin/dashboard' : '/'); }} quotaDetails={quotaDetails} />
 
-      <div style={{ flex: 1, display: "flex" }}>
+      <div className="flex-1 flex overflow-hidden">
         <CalendarSidebar role={role} onEventCreated={fetchEvents} />
 
-        <div style={{ flex: 1, padding: "12px" }}>
+        <div className="flex-1 p-4 md:p-6 overflow-hidden flex flex-col">
           {isCheckingAccess ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#374151' }}>
-              <p style={{ fontSize: 18 }}>Checking calendar access...</p>
-              <p style={{ marginTop: 8 }}>Please wait while we verify your subscription.</p>
+            <div className="flex-1 flex flex-col items-center justify-center p-10 bg-white rounded-2xl border border-[#ebdcaa]/60 shadow-sm text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#002366] mb-4"></div>
+              <p className="text-base font-bold text-gray-800">Checking calendar access...</p>
+              <p className="text-xs text-gray-500 mt-1">Please wait while we verify your subscription.</p>
             </div>
           ) : showQuotaModal ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#374151' }}>
-              <p style={{ fontSize: 18 }}>Access to the calendar is restricted on your current plan.</p>
-              <p style={{ marginTop: 8 }}>Please upgrade your plan to use this feature.</p>
+            <div className="flex-1 flex flex-col items-center justify-center p-10 bg-white rounded-2xl border border-[#ebdcaa]/60 shadow-sm text-center">
+              <p className="text-base font-bold text-gray-800">Access to the calendar is restricted on your current plan.</p>
+              <p className="text-xs text-gray-500 mt-1">Please upgrade your plan to use this feature.</p>
             </div>
           ) : (
-          <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            headerToolbar={{
-              left: "prev,next today",
-              center: "title",
-              right: "dayGridMonth,timeGridWeek,timeGridDay",
-            }}
-            events={events}
-            eventClick={(info) => setSelectedEvent(info.event)}
-            height="100%"
-          />
+            <div className="bg-white rounded-none shadow-sm border border-[#ebdcaa]/60 p-4 md:p-6 flex-1 flex flex-col overflow-hidden">
+              <FullCalendar
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                initialView="dayGridMonth"
+                headerToolbar={{
+                  left: "prev,next today",
+                  center: "title",
+                  right: "dayGridMonth,timeGridWeek,timeGridDay",
+                }}
+                events={events}
+                eventClick={(info) => setSelectedEvent(info.event)}
+                height="100%"
+              />
+            </div>
           )}
         </div>
       </div>

@@ -285,41 +285,41 @@ const AttendanceManagement = () => {
       <div className="max-w-6xl mx-auto p-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">{t('attendance_management')}</h1>
+          <h1 className="text-3xl sm:text-4xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight mb-2">{t('attendance_management')}</h1>
           <p className="text-gray-600">{t('mark_manage_student_attendance')}</p>
         </div>
 
         {/* Controls */}
-        <div data-tour="attendance-controls" className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div data-tour="attendance-controls" className="bg-white border border-[#ebdcaa]/60 rounded-none p-6 mb-6 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-2">
                 {t('date')}
               </label>
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2.5 bg-white border border-[#ebdcaa]/80 rounded-none text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#002366]/30 focus:border-[#002366] transition-all"
               />
             </div>
 
-            <div className="flex items-end gap-2 md:col-span-2">
+            <div className="flex items-end gap-3 md:col-span-2 pt-2">
               <button
                 onClick={handleSaveAttendance}
                 disabled={!selectedClassroom || saving}
-                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 flex items-center justify-center gap-2"
+                className="flex-1 bg-[#B99652] hover:bg-[#a38241] text-white px-6 py-2.5 rounded-none font-semibold text-sm shadow-sm hover:shadow transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Save className="w-4 h-4" />
-                {saving ? "Saving..." : "Save Attendance"}
+                <span>{saving ? "Saving..." : "Save Attendance"}</span>
               </button>
               <button
                 onClick={handleDownloadExcel}
                 disabled={!selectedClassroom}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 flex items-center gap-2"
+                className="bg-[#fffdf4] hover:bg-[#B99652] text-[#9a7837] hover:text-white border border-[#B99652] px-5 py-2.5 rounded-none font-semibold text-sm shadow-sm hover:shadow transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
-                Download
+                <span>Download</span>
               </button>
             </div>
           </div>
@@ -327,14 +327,14 @@ const AttendanceManagement = () => {
 
         {/* Attendance Table */}
         {selectedClassroom && students.length > 0 ? (
-          <div data-tour="attendance-table" className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div data-tour="attendance-table" className="bg-white border border-[#ebdcaa]/60 rounded-none shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">S.No</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Student Name</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Email</th>
-                  <th className="px-6 py-3 text-center text-sm font-semibold text-gray-900">Attendance</th>
+                <tr className="bg-[#fffdf4] border-b border-[#ebdcaa]/60">
+                  <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">S.No</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">Student Name</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">Email</th>
+                  <th className="px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">Attendance</th>
                 </tr>
               </thead>
               <tbody>
@@ -343,34 +343,34 @@ const AttendanceManagement = () => {
                   return (
                     <tr
                       key={studentId}
-                      className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                      className="border-b border-[#ebdcaa]/30 hover:bg-[#fffdf4]/70 transition-colors"
                     >
-                      <td className="px-6 py-3 text-sm text-gray-600">{index + 1}</td>
-                      <td className="px-6 py-3 text-sm font-medium text-gray-900">{student.name}</td>
-                      <td className="px-6 py-3 text-sm text-gray-600">{student.email}</td>
-                      <td data-tour={index === 0 ? 'attendance-present-absent' : undefined} className="px-6 py-3 text-center">
-                        <div className="flex justify-center gap-3">
-                          <label className="flex items-center gap-2 cursor-pointer">
+                      <td className="px-6 py-3.5 text-sm text-gray-600">{index + 1}</td>
+                      <td className="px-6 py-3.5 text-sm font-semibold text-gray-900">{student.name}</td>
+                      <td className="px-6 py-3.5 text-sm text-gray-600">{student.email}</td>
+                      <td data-tour={index === 0 ? 'attendance-present-absent' : undefined} className="px-6 py-3.5 text-center">
+                        <div className="flex justify-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer group">
                             <input
                               type="radio"
                               name={`attendance-${studentId}`}
                               value="present"
                               checked={attendanceData[studentId] === "present"}
                               onChange={() => handleAttendanceChange(studentId, "present")}
-                              className="w-4 h-4 text-green-600"
+                              className="w-4 h-4 accent-emerald-600 cursor-pointer"
                             />
-                            <span className="text-sm font-medium text-green-600">Present</span>
+                            <span className="text-xs font-bold text-emerald-700 group-hover:text-emerald-800">Present</span>
                           </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          <label className="flex items-center gap-2 cursor-pointer group">
                             <input
                               type="radio"
                               name={`attendance-${studentId}`}
                               value="absent"
                               checked={attendanceData[studentId] === "absent"}
                               onChange={() => handleAttendanceChange(studentId, "absent")}
-                              className="w-4 h-4 text-red-600"
+                              className="w-4 h-4 accent-rose-600 cursor-pointer"
                             />
-                            <span className="text-sm font-medium text-red-600">Absent</span>
+                            <span className="text-xs font-bold text-rose-700 group-hover:text-rose-800">Absent</span>
                           </label>
                         </div>
                       </td>
@@ -381,31 +381,31 @@ const AttendanceManagement = () => {
             </table>
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-            <p className="text-gray-500">
+          <div className="bg-white border border-[#ebdcaa]/60 rounded-none p-12 text-center shadow-sm">
+            <p className="text-gray-500 text-sm">
               {!selectedClassroom ? "Please select a classroom" : "No students in this classroom"}
             </p>
           </div>
         )}
 
-        {/* Summary */}
+        {/* Summary - Uniform Golden Theme */}
         {selectedClassroom && students.length > 0 && (
-          <div data-tour="mentor-attendance-summary" className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <p className="text-sm text-gray-600 mb-1">Present Today</p>
-              <p className="text-2xl font-bold text-green-600">
+          <div data-tour="mentor-attendance-summary" className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] rounded-none p-5 shadow-xs">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Present Today</p>
+              <p className="text-2xl font-extrabold text-[#9a7837]">
                 {Object.values(attendanceData).filter(s => s === "present").length}
               </p>
             </div>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm text-gray-600 mb-1">Absent Today</p>
-              <p className="text-2xl font-bold text-red-600">
+            <div className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] rounded-none p-5 shadow-xs">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Absent Today</p>
+              <p className="text-2xl font-extrabold text-[#9a7837]">
                 {Object.values(attendanceData).filter(s => s === "absent").length}
               </p>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-gray-600 mb-1">Total Students</p>
-              <p className="text-2xl font-bold text-blue-600">{students.length}</p>
+            <div className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] rounded-none p-5 shadow-xs">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-1">Total Students</p>
+              <p className="text-2xl font-extrabold text-[#9a7837]">{students.length}</p>
             </div>
           </div>
         )}

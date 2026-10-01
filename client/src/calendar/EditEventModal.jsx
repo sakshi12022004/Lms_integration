@@ -145,7 +145,7 @@ const apiUrl = import.meta.env.VITE_BACKEND_URL || "https://core5.io";
             <button
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 border border-gray-300 rounded-none text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-semibold"
             >
               Close
             </button>
@@ -153,7 +153,7 @@ const apiUrl = import.meta.env.VITE_BACKEND_URL || "https://core5.io";
               <button
                 onClick={handleUpdate}
                 disabled={loading}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-5 py-2 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-semibold shadow-sm"
               >
                 {loading ? "Saving..." : "Save"}
               </button>

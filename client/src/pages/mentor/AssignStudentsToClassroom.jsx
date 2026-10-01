@@ -97,60 +97,86 @@ const AssignStudentsToClassroom = () => {
 
   return (
     <MentorLayout>
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Assign Students</h1>
+      <div 
+        className="p-4 sm:p-6 md:p-8 min-h-screen text-[#1e1b4b]"
+        style={{
+          backgroundColor: "#fffdf4",
+          backgroundImage: "linear-gradient(to right, #ebdcaa20 1px, transparent 1px), linear-gradient(to bottom, #ebdcaa20 1px, transparent 1px)",
+          backgroundSize: "44px 44px"
+        }}
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold text-[#1e1b4b] font-['DM_Serif_Display',serif] tracking-tight">
+                Assign Students
+              </h1>
+              <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1">Select students to enroll in classroom</p>
+            </div>
+            <button
+              onClick={() => navigate("/mentor/classrooms")}
+              className="px-4 py-2 bg-white border border-[#ebdcaa] text-[#1e1b4b] rounded-none hover:bg-[#ebdcaa]/25 text-xs font-semibold shadow-xs"
+            >
+              Back
+            </button>
+          </div>
 
-        {loading ? (
-          <p>Loading students...</p>
-        ) : (
-          <>
-            {/* TABLE */}
-            <div className="bg-white border rounded-xl overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="px-4 py-3">Select</th>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Email</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {students.map((s) => (
-                    <tr
-                      key={s._id}
-                      className="border-t hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selected.includes(s._id)}
-                          onChange={() => toggleStudent(s._id)}
-                        />
-                      </td>
-                      <td className="px-4 py-3 font-medium">
-                        {s.name}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {s.email}
-                      </td>
+          {loading ? (
+            <div className="flex justify-center items-center h-48">
+              <div className="w-8 h-8 border-2 border-[#002366] border-t-transparent animate-spin"></div>
+            </div>
+          ) : (
+            <>
+              {/* TABLE */}
+              <div className="bg-white border border-[#ebdcaa] rounded-none shadow-sm overflow-hidden border-t-4 border-t-[#B99652]">
+                <table className="w-full text-left">
+                  <thead className="bg-[#fffdf4] border-b border-[#ebdcaa]">
+                    <tr>
+                      <th className="px-4 py-3 text-xs font-bold uppercase text-[#1e1b4b] w-14">Select</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase text-[#1e1b4b]">Name</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase text-[#1e1b4b]">Email</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
 
-            {/* ACTION BUTTON */}
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={handleAssign}
-                className="bg-primary text-white px-6 py-2 rounded-lg"
-              >
-                Assign Selected Students
-              </button>
-            </div>
-          </>
-        )}
+                  <tbody className="divide-y divide-[#ebdcaa]/40 bg-white">
+                    {students.map((s) => (
+                      <tr
+                        key={s._id}
+                        className="hover:bg-[#fffdf4]/80 transition cursor-pointer"
+                        onClick={() => toggleStudent(s._id)}
+                      >
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(s._id)}
+                            onChange={() => toggleStudent(s._id)}
+                            className="w-4 h-4 rounded-none text-[#B99652] focus:ring-0"
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-sm font-semibold text-[#1e1b4b]">
+                          {s.name}
+                        </td>
+                        <td className="px-4 py-3 text-xs sm:text-sm text-slate-600 font-mono">
+                          {s.email}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ACTION BUTTON */}
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={handleAssign}
+                  className="bg-[#B99652] hover:bg-[#a38241] text-white px-6 py-2.5 rounded-none font-bold text-xs uppercase tracking-wider shadow-sm transition"
+                >
+                  Assign Selected Students ({selected.length})
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </MentorLayout>
   );

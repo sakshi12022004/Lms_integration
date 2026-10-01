@@ -81,6 +81,8 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
         const role = user.role?.toLowerCase() || activeRole;
         switch (role) {
           case 'superadmin':
+            navigate('/superadmin/dashboard');
+            break;
           case 'admin':
             navigate('/admin/dashboard');
             break;

@@ -169,20 +169,25 @@ const Courses = () => {
           {/* Search and Filter */}
           <div data-tour="courses-search" className="mb-6">
             <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text/40 w-4 h-4" />
+              <div className="flex items-center gap-2 flex-1">
                 <input
                   type="text"
-                  placeholder={t('search_courses')}
+                  placeholder="Search my courses"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+                  className="flex-1 h-10 px-4 bg-white border border-[#d0cbef] rounded-lg text-sm text-[#141a33] outline-none placeholder-[#7a809c] focus:border-[#5b3fd9] focus:ring-1 focus:ring-[#5b3fd9]/30 transition-all shadow-sm"
                 />
+                <button
+                  type="button"
+                  className="h-10 w-10 shrink-0 bg-[#d8ceff] hover:bg-[#c9bbff] text-[#5b3fd9] rounded-xl flex items-center justify-center transition-colors shadow-sm"
+                >
+                  <Search className="w-4 h-4 stroke-[2.5]" />
+                </button>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => setFilterStatus('all')}
-                  className={`px-4 py-2.5 rounded-lg font-medium text-sm ${
+                  className={`px-4 py-2.5 rounded-none font-medium text-sm ${
                     filterStatus === 'all'
                       ? 'bg-primary text-white'
                       : 'bg-white border text-text/80 hover:bg-background'
@@ -192,7 +197,7 @@ const Courses = () => {
                 </button>
                 <button
                   onClick={() => setFilterStatus('in-progress')}
-                  className={`px-4 py-2.5 rounded-lg font-medium text-sm ${
+                  className={`px-4 py-2.5 rounded-none font-medium text-sm ${
                     filterStatus === 'in-progress'
                       ? 'bg-primary text-white'
                       : 'bg-white border text-text/80 hover:bg-background'
@@ -202,7 +207,7 @@ const Courses = () => {
                 </button>
                 <button
                   onClick={() => setFilterStatus('completed')}
-                  className={`px-4 py-2.5 rounded-lg font-medium text-sm ${
+                  className={`px-4 py-2.5 rounded-none font-medium text-sm ${
                     filterStatus === 'completed'
                       ? 'bg-primary text-white'
                       : 'bg-white border text-text/80 hover:bg-background'
@@ -216,8 +221,8 @@ const Courses = () => {
 
           {/* Courses Grid */}
           {filteredCourses.length === 0 ? (
-            <div className="bg-white rounded-lg border p-8 text-center">
-              <div className="w-16 h-16 mx-auto bg-background rounded-full flex items-center justify-center mb-4">
+            <div className="bg-white rounded-none border p-8 text-center">
+              <div className="w-16 h-16 mx-auto bg-background rounded-none flex items-center justify-center mb-4">
                 <BookOpen className="w-8 h-8 text-text/40" />
               </div>
               <h3 className="text-lg font-medium text-text mb-2">
@@ -231,7 +236,7 @@ const Courses = () => {
               {courses.length === 0 && (
                 <Link
                   to="/student/dashboard"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 text-sm"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white font-medium rounded-none hover:bg-primary/90 text-sm"
                 >
                   {t('back_to_dashboard')}
                 </Link>
@@ -240,20 +245,34 @@ const Courses = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredCourses.map((course, index) => (
-                <div key={course._id} data-tour={index === 0 ? 'courses-page-first-card' : undefined} className="bg-white rounded-lg border overflow-hidden hover:border-primary/50">
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <BookOpen className="w-5 h-5 text-primary" />
+                <div key={course._id} data-tour={index === 0 ? 'courses-page-first-card' : undefined} className="bg-white rounded-none border border-gray-200 overflow-hidden hover:shadow-lg transition">
+                  <div 
+                    className="h-28 w-full relative bg-cover bg-center p-4 flex flex-col justify-between rounded-none"
+                    style={{
+                      backgroundImage: course.photo 
+                        ? `url(${API}${course.photo})` 
+                        : (course.title && (course.title.toLowerCase().includes('math') || course.title.toLowerCase().includes('algebra') || course.title.toLowerCase().includes('geometry') || course.title.toLowerCase().includes('stat') || course.title.toLowerCase().includes('calc')))
+                          ? `url(${['/banners/math_blueprint.png', '/banners/math_geometry.png', '/banners/math_stats.png'][index % 3]})`
+                          : (course.title && (course.title.toLowerCase().includes('scienc') || course.title.toLowerCase().includes('physic') || course.title.toLowerCase().includes('chemist') || course.title.toLowerCase().includes('biolog') || course.title.toLowerCase().includes('experiment') || course.title.toLowerCase().includes('lab')))
+                            ? `url(${['/banners/science_general.png', '/banners/science_physics.png', '/banners/science_chemistry.png'][index % 3]})`
+                            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-slate-900/20 to-transparent"></div>
+                    <div className="relative z-10 flex items-start justify-between">
+                      <div className="w-8 h-8 bg-white/20 backdrop-blur-md rounded-none flex items-center justify-center text-white">
+                        <BookOpen className="w-4 h-4" />
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        course.progress === 100 ? 'bg-success/10 text-success' : 
-                        course.progress >= 50 ? 'bg-primary/10 text-primary' : 
-                        'bg-warning/10 text-warning'
+                      <span className={`text-xs px-2.5 py-1 rounded-none font-semibold backdrop-blur-md ${
+                        course.progress === 100 ? 'bg-emerald-500/80 text-white' : 
+                        course.progress >= 50 ? 'bg-blue-500/80 text-white' : 
+                        'bg-amber-500/80 text-white'
                       }`}>
                         {course.progress}%
                       </span>
                     </div>
+                  </div>
+                  <div className="p-5">
 
                     <h3 className="font-semibold text-text mb-2 line-clamp-2">
                       {course.title}

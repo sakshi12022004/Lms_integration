@@ -4,7 +4,70 @@ import MentorLayout from "../../components/MentorLayout";
 import { useAuth } from "../../auth/auth";
 import { useTranslation } from "../../context/TranslationContext";
 import { toast } from "react-toastify";
-import { Plus, BookOpen, Users, X, ChevronDown, ArrowRight, GraduationCap } from "lucide-react";
+import { Plus, BookOpen, Users, X, ChevronDown, ArrowRight, GraduationCap, MoreVertical, Calendar, BarChart2, Clock } from "lucide-react";
+
+const CLASSROOM_TEXTURES = [
+  // 0: Deep Indigo / Violet with Concentric Ripple Circles
+  {
+    gradient: "bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4338ca]",
+    avatarGradient: "from-amber-400 to-amber-500 text-amber-950",
+    pattern: (
+      <svg className="absolute right-0 top-0 h-full w-44 opacity-25 pointer-events-none" viewBox="0 0 160 120" fill="none">
+        <circle cx="130" cy="55" r="20" stroke="white" strokeWidth="1.5" />
+        <circle cx="130" cy="55" r="38" stroke="white" strokeWidth="1.5" />
+        <circle cx="130" cy="55" r="56" stroke="white" strokeWidth="1.5" />
+        <circle cx="130" cy="55" r="74" stroke="white" strokeWidth="1.5" />
+        <circle cx="130" cy="55" r="92" stroke="white" strokeWidth="1.5" />
+      </svg>
+    )
+  },
+  // 1: Cobalt / Sapphire Blue with Dot Matrix Grid
+  {
+    gradient: "bg-gradient-to-br from-[#172554] via-[#1e40af] to-[#3b82f6]",
+    avatarGradient: "from-indigo-600 to-purple-600 text-white",
+    pattern: (
+      <svg className="absolute right-3 top-3 h-full w-36 opacity-35 pointer-events-none" viewBox="0 0 120 100" fill="white">
+        <pattern id="dot-matrix-grid" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse">
+          <circle cx="3" cy="3" r="1.5" />
+        </pattern>
+        <rect width="120" height="100" fill="url(#dot-matrix-grid)" />
+      </svg>
+    )
+  },
+  // 2: Dark Midnight Slate with Diagonal Stripe Lines
+  {
+    gradient: "bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#334155]",
+    avatarGradient: "from-slate-800 to-slate-950 text-white",
+    pattern: (
+      <svg className="absolute right-0 top-0 h-full w-44 opacity-30 pointer-events-none" viewBox="0 0 160 120" fill="none">
+        <line x1="60" y1="0" x2="160" y2="100" stroke="white" strokeWidth="2.5" />
+        <line x1="85" y1="0" x2="185" y2="100" stroke="white" strokeWidth="2.5" />
+        <line x1="110" y1="0" x2="210" y2="100" stroke="white" strokeWidth="2.5" />
+        <line x1="135" y1="0" x2="235" y2="100" stroke="white" strokeWidth="2.5" />
+        <line x1="35" y1="0" x2="135" y2="100" stroke="white" strokeWidth="2.5" />
+      </svg>
+    )
+  },
+  // 3: Deep Navy with Wave Curvature
+  {
+    gradient: "bg-gradient-to-br from-[#001c52] via-[#002366] to-[#1e3a8a]",
+    avatarGradient: "from-emerald-500 to-teal-700 text-white",
+    pattern: (
+      <svg className="absolute right-0 top-0 h-full w-40 opacity-25 pointer-events-none" viewBox="0 0 160 120" fill="none">
+        <circle cx="140" cy="30" r="30" stroke="white" strokeWidth="1.5" />
+        <circle cx="140" cy="30" r="60" stroke="white" strokeWidth="1.5" />
+        <circle cx="140" cy="30" r="90" stroke="white" strokeWidth="1.5" />
+      </svg>
+    )
+  }
+];
+
+const getTeacherInitials = (name) => {
+  if (!name) return "TR";
+  const parts = name.trim().split(" ");
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+};
 
 const MentorClassrooms = () => {
   const { API, token, user } = useAuth();
@@ -116,111 +179,150 @@ const MentorClassrooms = () => {
   
   return (
     <MentorLayout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
+      <div 
+        className="p-4 sm:p-6 md:p-8 min-h-screen text-[#1e1b4b]"
+        style={{
+          backgroundColor: "#fffdf4",
+          backgroundImage: "linear-gradient(to right, #ebdcaa20 1px, transparent 1px), linear-gradient(to bottom, #ebdcaa20 1px, transparent 1px)",
+          backgroundSize: "44px 44px"
+        }}
+      >
         <div className="max-w-7xl mx-auto">
           {/* ENHANCED HEADER */}
-          <div data-tour="classrooms-header" data-tour-classrooms-state={loading ? 'loading' : 'ready'} className="mb-10">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-lg">
-                <GraduationCap className="w-8 h-8 text-white" />
+          <div data-tour="classrooms-header" data-tour-classrooms-state={loading ? 'loading' : 'ready'} className="mb-8">
+            <div className="flex items-center gap-3.5 mb-2">
+              <div className="w-12 h-12 bg-[#002366] text-white flex items-center justify-center rounded-none shadow-sm">
+                <GraduationCap className="w-6 h-6 text-[#59cfbd]" />
               </div>
-              <h1 className="text-5xl font-bold text-gray-900">{t('my_classrooms')}</h1>
+              <div>
+                <h1 className="text-3xl sm:text-4xl font-bold text-[#1e1b4b] font-['DM_Serif_Display',serif] tracking-tight">
+                  {t('my_classrooms')}
+                </h1>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium">{t('manage_classrooms_courses_students')}</p>
+              </div>
             </div>
-            <p className="text-gray-600 text-lg ml-14">{t('manage_classrooms_courses_students')}</p>
           </div>
 
           {/* CONTENT */}
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <div className="w-10 h-10 border-3 border-[#002366] border-t-transparent animate-spin"></div>
             </div>
           ) : classrooms.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-2xl shadow-md border-2 border-dashed border-gray-300">
-              <div className="bg-gray-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
-                <GraduationCap className="w-10 h-10 text-gray-400" />
+            <div className="text-center py-16 bg-white rounded-none shadow-sm border border-dashed border-[#ebdcaa]">
+              <div className="w-16 h-16 bg-[#002366]/10 rounded-none border border-[#002366]/20 flex items-center justify-center mx-auto mb-4 text-[#002366]">
+                <GraduationCap className="w-8 h-8" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('no_classrooms_assigned')}</h3>
-              <p className="text-gray-600 mb-6">{t('not_assigned_to_classrooms')}</p>
+              <h3 className="text-xl font-bold text-[#1e1b4b] mb-1 font-['DM_Serif_Display',serif]">{t('no_classrooms_assigned')}</h3>
+              <p className="text-slate-500 text-xs sm:text-sm mb-6">{t('not_assigned_to_classrooms')}</p>
               <button
                 onClick={() => navigate("/mentor")}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:shadow-lg transition"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#002366] hover:bg-[#001c52] text-white rounded-none text-xs sm:text-sm font-semibold shadow-sm transition"
               >
                 {t('go_to_dashboard')}
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
-              {classrooms.map((classroom, classroomIndex) => (
-                <div
-                  key={classroom._id || classroom.id}
-                  data-tour={classroomIndex === 0 ? 'my-classroom-first-card' : undefined}
-                  onClick={() => navigate(`/mentor/classroom/${classroom._id || classroom.id}`)}
-                  className="bg-white rounded-xl shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer transform hover:scale-105 border-t-4 border-blue-500 group"
-                >
-                  {/* Card Header */}
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 border-b-2 border-blue-100 group-hover:from-blue-100 transition">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-1">{classroom.name}</h3>
-                        <p className="text-sm text-gray-600">📚 Grade {classroom.grade} • Section {classroom.section}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {classrooms.map((classroom, classroomIndex) => {
+                const tex = CLASSROOM_TEXTURES[classroomIndex % CLASSROOM_TEXTURES.length];
+                return (
+                  <div
+                    key={classroom._id || classroom.id}
+                    data-tour={classroomIndex === 0 ? 'my-classroom-first-card' : undefined}
+                    onClick={() => navigate(`/mentor/classroom/${classroom._id || classroom.id}`)}
+                    className="bg-white rounded-none shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-[#ebdcaa] cursor-pointer flex flex-col justify-between group"
+                  >
+                    {/* Textured Background Header */}
+                    <div className={`relative ${tex.gradient} p-5 pb-8 text-white overflow-hidden rounded-none`}>
+                      {tex.pattern}
+                      <div className="relative z-10 flex items-start justify-between">
+                        <div>
+                          <h3 className="text-lg font-bold text-white tracking-tight">
+                            {classroom.name}
+                          </h3>
+                          <p className="text-xs text-white/80 font-medium mt-0.5">
+                            {classroom.section ? `Section ${classroom.section}` : `Grade ${classroom.grade || ''}`} {classroom.academicYear ? `• ${classroom.academicYear}` : '• 2026-27'}
+                          </p>
+                        </div>
+                        <div className="text-white/70 hover:text-white p-1 rounded-none">
+                          <MoreVertical className="w-4 h-4" />
+                        </div>
                       </div>
-                      <div className="bg-blue-500 p-3 rounded-lg">
-                        <GraduationCap size={24} className="text-white" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card Body */}
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-5 h-5 text-blue-600" />
-                        <span className="text-gray-700 font-medium">{t('students')}</span>
-                      </div>
-                      <span className="font-bold text-xl text-blue-600">{classroom.studentCount || 0}</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-3">
-                      <span className="text-gray-700 font-medium">👨‍🏫 {t('class_teacher')}</span>
-                      <span className="text-gray-900 font-semibold">
-                        {classroom.classTeacher?.name || "Not Assigned"}
-                      </span>
-                    </div>
-
-                    {classroom.academicYear && (
-                      <div className="flex items-center justify-between p-3 border-t border-gray-200 pt-4">
-                        <span className="text-gray-700 font-medium">{t('academic_year')}</span>
-                        <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold">
-                          {classroom.academicYear}
+                      
+                      <div className="relative z-10 mt-3">
+                        <span className="inline-block text-[10px] uppercase tracking-wider font-bold bg-[#59cfbd] text-[#002366] px-2.5 py-0.5 rounded-none shadow-xs">
+                          Class teacher
                         </span>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Card Footer */}
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-t-2 border-gray-200 flex items-center justify-between group-hover:bg-blue-50 transition">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCreateCourse(classroom);
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm"
-                    >
-                      <Plus size={16} />
-                      {t('create_course')}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/mentor/classroom/${classroom._id || classroom.id}`);
-                      }}
-                      className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition text-sm font-medium"
-                    >
-                      {t('view_details')} →
-                    </button>
+                      {/* Overlapping Teacher Avatar Pill Badge */}
+                      <div className={`absolute right-5 -bottom-4 w-10 h-10 rounded-none bg-gradient-to-br ${tex.avatarGradient} font-bold text-xs flex items-center justify-center border-2 border-white shadow-sm z-20`}>
+                        {getTeacherInitials(classroom.classTeacher?.name)}
+                      </div>
+                    </div>
+
+                    {/* Card Body */}
+                    <div className="p-5 pt-6 space-y-3 flex-1 flex flex-col justify-between bg-white">
+                      <div>
+                        <h4 className="text-sm font-bold text-[#1e1b4b] line-clamp-1">
+                          {classroom.classTeacher?.name || "Not Assigned"}
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Class teacher {classroom.academicYear ? `• ${classroom.academicYear}` : ''}
+                        </p>
+                      </div>
+
+                      {/* Student Avatars Stack & Count */}
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex -space-x-1 overflow-hidden">
+                          <div className="w-6 h-6 rounded-none bg-[#002366] text-white text-[9px] font-bold flex items-center justify-center border border-white">AK</div>
+                          <div className="w-6 h-6 rounded-none bg-[#B99652] text-white text-[9px] font-bold flex items-center justify-center border border-white">PR</div>
+                          <div className="w-6 h-6 rounded-none bg-[#59cfbd] text-[#002366] text-[9px] font-bold flex items-center justify-center border border-white">NS</div>
+                          {(classroom.studentCount || 0) > 3 && (
+                            <div className="w-6 h-6 rounded-none bg-slate-700 text-white text-[9px] font-bold flex items-center justify-center border border-white">
+                              +{(classroom.studentCount || 0) - 3}
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-xs text-slate-600 font-medium">
+                          {classroom.studentCount || 0} students
+                        </span>
+                      </div>
+
+                      {/* Next class schedule note */}
+                      <div className="bg-[#fffdf4] rounded-none p-2.5 flex items-center gap-2 text-xs text-slate-600 border border-[#ebdcaa]/60">
+                        <Clock className="w-3.5 h-3.5 text-[#002366] shrink-0" />
+                        <span className="truncate">Next: <strong>Classroom Session</strong> • Scheduled</span>
+                      </div>
+
+                      {/* Action Footer */}
+                      <div className="pt-3 border-t border-[#ebdcaa]/60 flex items-center justify-between gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCreateCourse(classroom);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-[#fffdf4] hover:bg-[#002366] text-slate-700 hover:text-white rounded-none text-xs font-semibold transition-all border border-[#ebdcaa] hover:border-[#002366]"
+                        >
+                          <Plus size={14} />
+                          {t('create_course')}
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/mentor/classroom/${classroom._id || classroom.id}`);
+                          }}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-[#002366] hover:bg-[#001c52] text-white rounded-none text-xs font-semibold shadow-xs hover:shadow transition-all"
+                        >
+                          Open
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
