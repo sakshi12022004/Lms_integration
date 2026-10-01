@@ -185,7 +185,7 @@ const Courses = () => {
 
           {/* Search and Filter */}
           <div data-tour="courses-search" className="mb-6">
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch">
               <div className="flex items-center gap-2 flex-1">
                 <div className="relative flex-1">
                   <input
@@ -193,17 +193,17 @@ const Courses = () => {
                     placeholder="Search my courses..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full h-10 pl-4 pr-10 bg-white border border-[#ebdcaa] rounded-none text-sm text-[#1e1b4b] outline-none placeholder-slate-400 focus:border-[#B99652] transition-all shadow-xs"
+                    className="w-full h-12 sm:h-13 pl-5 pr-12 bg-white border border-[#ebdcaa] rounded-none text-base text-[#1e1b4b] outline-none placeholder-slate-400 focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]/30 transition-all shadow-xs"
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <Search className="w-4 h-4" />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <Search className="w-5 h-5 text-[#B99652]" />
                   </div>
                 </div>
               </div>
-              <div className="flex gap-1 bg-white p-1 border border-[#ebdcaa] rounded-none">
+              <div className="flex gap-1.5 bg-white p-1.5 border border-[#ebdcaa] rounded-none items-center">
                 <button
                   onClick={() => setFilterStatus('all')}
-                  className={`px-3.5 py-1.5 rounded-none font-semibold text-xs uppercase tracking-wider transition-all ${
+                  className={`h-full px-5 py-2.5 rounded-none font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all ${
                     filterStatus === 'all'
                       ? 'bg-[#B99652] text-white shadow-xs'
                       : 'text-slate-600 hover:bg-[#fffdf4]'
@@ -213,7 +213,7 @@ const Courses = () => {
                 </button>
                 <button
                   onClick={() => setFilterStatus('in-progress')}
-                  className={`px-3.5 py-1.5 rounded-none font-semibold text-xs uppercase tracking-wider transition-all ${
+                  className={`h-full px-5 py-2.5 rounded-none font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all ${
                     filterStatus === 'in-progress'
                       ? 'bg-[#B99652] text-white shadow-xs'
                       : 'text-slate-600 hover:bg-[#fffdf4]'
@@ -223,7 +223,7 @@ const Courses = () => {
                 </button>
                 <button
                   onClick={() => setFilterStatus('completed')}
-                  className={`px-3.5 py-1.5 rounded-none font-semibold text-xs uppercase tracking-wider transition-all ${
+                  className={`h-full px-5 py-2.5 rounded-none font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all ${
                     filterStatus === 'completed'
                       ? 'bg-[#B99652] text-white shadow-xs'
                       : 'text-slate-600 hover:bg-[#fffdf4]'
