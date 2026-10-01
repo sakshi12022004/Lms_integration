@@ -127,39 +127,56 @@ const Courses = () => {
       <div className="min-min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="mb-6 pb-6 border-b border-[#ebdcaa]/60">
+            <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-text mb-2">{t('my_courses')}</h1>
-                <p className="text-text/60">
+                <h1 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight mb-1">{t('my_courses')}</h1>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium">
                   {stats.totalCourses > 0
                     ? t('courses_enrolled').replace('{count}', stats.totalCourses).replace('{plural}', stats.totalCourses > 1 ? 's' : '')
                     : t('no_courses_yet')}
                 </p>
               </div>
 
-              {/* Stats */}
-              <div data-tour="courses-overview" className="bg-white rounded-lg border p-5 min-w-[280px]">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-medium text-text">{t('overview')}</h3>
-                  <TrendingUp className="w-5 h-5 text-primary" />
+              {/* Horizontal Overview Strip */}
+              <div data-tour="courses-overview" className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+                <div className="bg-white border border-[#ebdcaa] px-3.5 py-2 rounded-none flex items-center gap-2.5 shadow-xs">
+                  <div className="w-8 h-8 bg-[#fffdf4] border border-[#ebdcaa]/60 flex items-center justify-center text-[#B99652]">
+                    <BookOpen className="w-4 h-4 text-[#B99652]" />
+                  </div>
+                  <div>
+                    <div className="text-base font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] leading-none">{stats.totalCourses}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">{t('total')}</div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-text">{stats.totalCourses}</div>
-                    <div className="text-sm text-text/60">{t('total')}</div>
+
+                <div className="bg-white border border-[#ebdcaa] px-3.5 py-2 rounded-none flex items-center gap-2.5 shadow-xs">
+                  <div className="w-8 h-8 bg-[#fffdf4] border border-[#ebdcaa]/60 flex items-center justify-center text-[#B99652]">
+                    <Clock className="w-4 h-4 text-[#B99652]" />
                   </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-success">{stats.completedCourses}</div>
-                    <div className="text-sm text-text/60">{t('completed')}</div>
+                  <div>
+                    <div className="text-base font-bold font-['DM_Serif_Display',serif] text-[#B99652] leading-none">{stats.inProgressCourses}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">{t('in_progress')}</div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-primary">{stats.inProgressCourses}</div>
-                    <div className="text-sm text-text/60">{t('in_progress')}</div>
+                </div>
+
+                <div className="bg-white border border-[#ebdcaa] px-3.5 py-2 rounded-none flex items-center gap-2.5 shadow-xs">
+                  <div className="w-8 h-8 bg-[#fffdf4] border border-[#ebdcaa]/60 flex items-center justify-center text-emerald-600">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
                   </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-text">{stats.totalProgress}%</div>
-                    <div className="text-sm text-text/60">{t('avg_progress')}</div>
+                  <div>
+                    <div className="text-base font-bold font-['DM_Serif_Display',serif] text-emerald-600 leading-none">{stats.completedCourses}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">{t('completed')}</div>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#ebdcaa] px-3.5 py-2 rounded-none flex items-center gap-2.5 shadow-xs">
+                  <div className="w-8 h-8 bg-[#fffdf4] border border-[#ebdcaa]/60 flex items-center justify-center text-indigo-600">
+                    <TrendingUp className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <div>
+                    <div className="text-base font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] leading-none">{stats.totalProgress}%</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">{t('avg_progress')}</div>
                   </div>
                 </div>
               </div>
@@ -168,49 +185,48 @@ const Courses = () => {
 
           {/* Search and Filter */}
           <div data-tour="courses-search" className="mb-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex items-center gap-2 flex-1">
-                <input
-                  type="text"
-                  placeholder="Search my courses"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="flex-1 h-10 px-4 bg-white border border-[#d0cbef] rounded-lg text-sm text-[#141a33] outline-none placeholder-[#7a809c] focus:border-[#5b3fd9] focus:ring-1 focus:ring-[#5b3fd9]/30 transition-all shadow-sm"
-                />
-                <button
-                  type="button"
-                  className="h-10 w-10 shrink-0 bg-[#d8ceff] hover:bg-[#c9bbff] text-[#5b3fd9] rounded-xl flex items-center justify-center transition-colors shadow-sm"
-                >
-                  <Search className="w-4 h-4 stroke-[2.5]" />
-                </button>
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search my courses..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full h-10 pl-4 pr-10 bg-white border border-[#ebdcaa] rounded-none text-sm text-[#1e1b4b] outline-none placeholder-slate-400 focus:border-[#B99652] transition-all shadow-xs"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <Search className="w-4 h-4" />
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1 bg-white p-1 border border-[#ebdcaa] rounded-none">
                 <button
                   onClick={() => setFilterStatus('all')}
-                  className={`px-4 py-2.5 rounded-none font-medium text-sm ${
+                  className={`px-3.5 py-1.5 rounded-none font-semibold text-xs uppercase tracking-wider transition-all ${
                     filterStatus === 'all'
-                      ? 'bg-primary text-white'
-                      : 'bg-white border text-text/80 hover:bg-background'
+                      ? 'bg-[#B99652] text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-[#fffdf4]'
                   }`}
                 >
                   {t('all')}
                 </button>
                 <button
                   onClick={() => setFilterStatus('in-progress')}
-                  className={`px-4 py-2.5 rounded-none font-medium text-sm ${
+                  className={`px-3.5 py-1.5 rounded-none font-semibold text-xs uppercase tracking-wider transition-all ${
                     filterStatus === 'in-progress'
-                      ? 'bg-primary text-white'
-                      : 'bg-white border text-text/80 hover:bg-background'
+                      ? 'bg-[#B99652] text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-[#fffdf4]'
                   }`}
                 >
                   In Progress
                 </button>
                 <button
                   onClick={() => setFilterStatus('completed')}
-                  className={`px-4 py-2.5 rounded-none font-medium text-sm ${
+                  className={`px-3.5 py-1.5 rounded-none font-semibold text-xs uppercase tracking-wider transition-all ${
                     filterStatus === 'completed'
-                      ? 'bg-primary text-white'
-                      : 'bg-white border text-text/80 hover:bg-background'
+                      ? 'bg-[#B99652] text-white shadow-xs'
+                      : 'text-slate-600 hover:bg-[#fffdf4]'
                   }`}
                 >
                   Completed
