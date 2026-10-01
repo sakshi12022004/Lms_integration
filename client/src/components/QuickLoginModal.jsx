@@ -121,20 +121,20 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
       onClick={onClose}
     >
       <div 
-        className="relative w-full max-w-4xl bg-[#fffdf4] rounded-none shadow-2xl overflow-hidden border-2 border-[#ebdcaa] flex flex-col md:flex-row my-auto"
+        className="relative w-full max-w-4xl bg-white rounded-none shadow-2xl overflow-hidden border border-[#ebdcaa] flex flex-col md:flex-row my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 p-2 rounded-none bg-[#fffdf4] text-slate-500 hover:text-[#1e1b4b] hover:bg-white border border-[#ebdcaa] transition-colors"
+          className="absolute top-4 right-4 z-20 p-2 rounded-none bg-white border border-[#ebdcaa] text-slate-600 hover:text-slate-900 hover:bg-[#fffdf4] transition-colors shadow-xs"
           aria-label="Close Modal"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* ================= LEFT COLUMN: UNIFIED WARM IVORY & GOLD LUXURY ================= */}
-        <div className="hidden md:flex md:w-5/12 bg-gradient-to-b from-[#fffbf0] via-[#f7f0d8] to-[#f0e7cb] text-slate-800 p-8 flex-col justify-between relative overflow-hidden border-r border-[#ebdcaa]">
+        {/* ================= LEFT COLUMN: HARMONIOUS WARM IVORY WITH LUXURY DARK LOGO BADGE ================= */}
+        <div className="hidden md:flex md:w-5/12 bg-gradient-to-b from-[#fffdf4] via-[#faf4df] to-[#f4ebd0] text-slate-800 p-8 flex-col justify-between relative overflow-hidden border-r border-[#ebdcaa]">
           {/* Abstract Arc Background SVG graphics with warm golden tint */}
           <div className="absolute inset-0 pointer-events-none opacity-25">
             <svg className="w-full h-full" viewBox="0 0 400 600" fill="none">
@@ -144,46 +144,46 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
             </svg>
           </div>
 
-          {/* Top Brand Header */}
+          {/* Top Brand Header: Sleek Dark Floating Badge for 100% Logo Clarity */}
           <div className="relative z-10 flex items-center">
-            <img 
-              src={core5Logo} 
-              alt="Core5 Academy Logo" 
-              className="h-12 sm:h-14 w-auto object-contain drop-shadow-sm"
-            />
+            <div className="inline-flex items-center px-4 py-2 bg-[#0B1528] rounded-none border border-[#B99652] shadow-md">
+              <img 
+                src={core5Logo} 
+                alt="Core5 Academy" 
+                className="h-9 sm:h-10 w-auto object-contain"
+              />
+            </div>
           </div>
 
           {/* Center Image Container */}
           <div className="relative z-10 my-4 flex items-center justify-center">
-            <div className="relative w-full max-w-[260px] aspect-square rounded-none overflow-hidden shadow-xl border-2 border-[#ebdcaa] bg-white p-1.5 group">
-              <div className="relative w-full h-full overflow-hidden">
-                <img 
-                  src={studentReadingImg} 
-                  alt="Student sitting cross-legged reading book"
-                  className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1e1b4b]/40 via-transparent to-transparent"></div>
-              </div>
+            <div className="relative w-full max-w-[260px] aspect-square rounded-none overflow-hidden shadow-xl border-2 border-[#B99652] group bg-white">
+              <img 
+                src={studentReadingImg} 
+                alt="Student sitting cross-legged reading book"
+                className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
               
-              <div className="absolute bottom-3.5 left-3.5 right-3.5 text-center bg-[#fffdf4]/95 backdrop-blur-md py-2.5 px-3 rounded-none shadow-md border border-[#ebdcaa]">
-                <p className="text-xs font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-wide">Empowering Modern Learners</p>
+              <div className="absolute bottom-3 left-3 right-3 text-center bg-white/95 backdrop-blur-md py-2.5 px-3 rounded-none shadow-md border border-[#ebdcaa]">
+                <p className="text-xs font-bold text-[#1e1b4b]">Empowering Modern Learners</p>
                 <p className="text-[10px] text-slate-600 font-medium">Access assigned courses anytime</p>
               </div>
             </div>
           </div>
 
           {/* Bottom Footer Quote */}
-          <div className="relative z-10 text-xs text-slate-700 font-medium leading-relaxed border-t border-[#ebdcaa]/70 pt-3">
+          <div className="relative z-10 text-xs text-slate-600 font-medium leading-relaxed border-t border-[#ebdcaa] pt-3">
             <span>Transforming learning experiences across universities.</span>
           </div>
         </div>
 
-        {/* ================= RIGHT COLUMN: SEAMLESS WARM IVORY LOGIN FORM ================= */}
+        {/* ================= RIGHT COLUMN: MATCHING WARM IVORY LOGIN FORM & ROLE TABS ================= */}
         <div className="w-full md:w-7/12 p-6 md:p-10 bg-[#fffdf4] text-slate-900 flex flex-col justify-center">
           
           {/* Form Header */}
           <div className="mb-6">
-            <h2 className="text-2xl md:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">
+            <h2 className="text-2xl md:text-3xl font-['DM_Serif_Display',serif] font-normal text-[#1e1b4b] tracking-tight">
               Log In to Your Account
             </h2>
             <p className="text-slate-500 text-xs md:text-sm mt-1">
@@ -215,7 +215,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder={`${activeRole}@core5.edu`}
-                  className="w-full pl-10 pr-4 py-3 rounded-none border border-[#ebdcaa] bg-white text-slate-900 text-sm focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all shadow-2xs"
+                  className="w-full pl-10 pr-4 py-3 rounded-none border border-[#ebdcaa] bg-white text-slate-900 text-sm focus:outline-none focus:border-[#B99652] transition-all shadow-xs"
                 />
               </div>
             </div>
@@ -240,7 +240,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-3 rounded-none border border-[#ebdcaa] bg-white text-slate-900 text-sm focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all shadow-2xs"
+                  className="w-full pl-10 pr-10 py-3 rounded-none border border-[#ebdcaa] bg-white text-slate-900 text-sm focus:outline-none focus:border-[#B99652] transition-all shadow-xs"
                 />
                 <button
                   type="button"
@@ -259,18 +259,18 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
                 id="remember"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded-none border-[#ebdcaa] accent-[#B99652]"
+                className="w-4 h-4 rounded-none border-[#ebdcaa] text-[#B99652] accent-[#B99652]"
               />
               <label htmlFor="remember" className="text-xs text-slate-600 font-medium select-none">
                 Remember me
               </label>
             </div>
 
-            {/* Sign In Primary Button */}
+            {/* Sign In Primary Button (Header-Button Specification) */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 px-4 bg-[#B99652] hover:bg-[#a38241] text-white font-semibold text-[13px] uppercase tracking-wider rounded-none shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-70"
+              className="w-full py-3.5 px-4 bg-[#B99652] hover:bg-[#a68443] text-white font-semibold text-xs uppercase tracking-wider border-none rounded-none shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-70"
             >
               {isLoading ? (
                 <>
@@ -282,11 +282,11 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
               )}
             </button>
 
-            {/* Google SSO Secondary Button */}
+            {/* Google SSO Secondary Button (Exact Sharp Square) */}
             <button
               type="button"
               onClick={() => toast.info('Google SSO integration enabled.')}
-              className="w-full py-3 px-4 rounded-none bg-white border border-[#ebdcaa] text-slate-700 hover:bg-[#fffbf0] font-semibold text-xs transition-colors flex items-center justify-center space-x-2 shadow-2xs"
+              className="w-full py-3 px-4 rounded-none bg-white border border-[#ebdcaa] text-slate-800 font-semibold text-xs hover:bg-[#fffdf4] transition-colors flex items-center justify-center space-x-2 shadow-xs"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
