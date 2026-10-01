@@ -139,44 +139,44 @@ const Courses = () => {
               </div>
 
               {/* Horizontal Overview Strip */}
-              <div data-tour="courses-overview" className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-                <div className="bg-white border border-[#ebdcaa] px-3.5 py-2 rounded-none flex items-center gap-2.5 shadow-xs">
-                  <div className="w-8 h-8 bg-[#fffdf4] border border-[#ebdcaa]/60 flex items-center justify-center text-[#B99652]">
-                    <BookOpen className="w-4 h-4 text-[#B99652]" />
+              <div data-tour="courses-overview" className="flex items-center gap-3 sm:gap-4 flex-wrap">
+                <div className="bg-white border border-[#ebdcaa] px-5 py-3 min-w-[145px] sm:min-w-[155px] rounded-none flex items-center gap-3.5 shadow-xs hover:border-[#B99652] transition-colors">
+                  <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-[#B99652] shrink-0">
+                    <BookOpen className="w-5 h-5 text-[#B99652]" />
                   </div>
                   <div>
-                    <div className="text-base font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] leading-none">{stats.totalCourses}</div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">{t('total')}</div>
+                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] leading-none">{stats.totalCourses}</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1">{t('total')}</div>
                   </div>
                 </div>
 
-                <div className="bg-white border border-[#ebdcaa] px-3.5 py-2 rounded-none flex items-center gap-2.5 shadow-xs">
-                  <div className="w-8 h-8 bg-[#fffdf4] border border-[#ebdcaa]/60 flex items-center justify-center text-[#B99652]">
-                    <Clock className="w-4 h-4 text-[#B99652]" />
+                <div className="bg-white border border-[#ebdcaa] px-5 py-3 min-w-[145px] sm:min-w-[155px] rounded-none flex items-center gap-3.5 shadow-xs hover:border-[#B99652] transition-colors">
+                  <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-[#B99652] shrink-0">
+                    <Clock className="w-5 h-5 text-[#B99652]" />
                   </div>
                   <div>
-                    <div className="text-base font-bold font-['DM_Serif_Display',serif] text-[#B99652] leading-none">{stats.inProgressCourses}</div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">{t('in_progress')}</div>
+                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-[#B99652] leading-none">{stats.inProgressCourses}</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1">{t('in_progress')}</div>
                   </div>
                 </div>
 
-                <div className="bg-white border border-[#ebdcaa] px-3.5 py-2 rounded-none flex items-center gap-2.5 shadow-xs">
-                  <div className="w-8 h-8 bg-[#fffdf4] border border-[#ebdcaa]/60 flex items-center justify-center text-emerald-600">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                <div className="bg-white border border-[#ebdcaa] px-5 py-3 min-w-[145px] sm:min-w-[155px] rounded-none flex items-center gap-3.5 shadow-xs hover:border-emerald-500 transition-colors">
+                  <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-emerald-600 shrink-0">
+                    <CheckCircle className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
-                    <div className="text-base font-bold font-['DM_Serif_Display',serif] text-emerald-600 leading-none">{stats.completedCourses}</div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">{t('completed')}</div>
+                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-emerald-600 leading-none">{stats.completedCourses}</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1">{t('completed')}</div>
                   </div>
                 </div>
 
-                <div className="bg-white border border-[#ebdcaa] px-3.5 py-2 rounded-none flex items-center gap-2.5 shadow-xs">
-                  <div className="w-8 h-8 bg-[#fffdf4] border border-[#ebdcaa]/60 flex items-center justify-center text-indigo-600">
-                    <TrendingUp className="w-4 h-4 text-indigo-600" />
+                <div className="bg-white border border-[#ebdcaa] px-5 py-3 min-w-[145px] sm:min-w-[155px] rounded-none flex items-center gap-3.5 shadow-xs hover:border-indigo-500 transition-colors">
+                  <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-indigo-600 shrink-0">
+                    <TrendingUp className="w-5 h-5 text-indigo-600" />
                   </div>
                   <div>
-                    <div className="text-base font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] leading-none">{stats.totalProgress}%</div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">{t('avg_progress')}</div>
+                    <div className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] leading-none">{stats.totalProgress}%</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1">{t('avg_progress')}</div>
                   </div>
                 </div>
               </div>
