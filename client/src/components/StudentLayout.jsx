@@ -346,26 +346,16 @@ const StudentLayout = ({ children }) => {
         `}
       >
 
-        {/* ================= TOP BAR ================= */}
-        <header className="sticky top-0 z-30 bg-white shadow-sm border-b border-gray-200">
-          <div className="px-3 sm:px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="md:hidden p-2 rounded-lg hover:bg-gray-100"
-                >
-                  <ChevronRight size={20} className="text-text" />
-                </button>
-                <h1 className="text-lg sm:text-xl font-bold text-text truncate">{currentPage}</h1>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                {/* Removed duplicate announcement and logout buttons - only in sidebar now */}
-              </div>
-            </div>
-          </div>
-        </header>
+        {/* ================= MOBILE MENU TRIGGER ================= */}
+        <div className="md:hidden p-3 flex items-center justify-between bg-white border-b border-gray-100">
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 rounded-none hover:bg-gray-100 text-slate-700"
+            aria-label="Open navigation menu"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
 
         {/* ================= CONTENT AREA ================= */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden scrollable-content p-3 sm:p-4 md:p-6 h-full max-h-screen">
