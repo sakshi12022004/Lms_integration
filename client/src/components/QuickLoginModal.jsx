@@ -133,8 +133,8 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
           <X className="w-5 h-5" />
         </button>
 
-        {/* ================= LEFT COLUMN: DEEP MIDNIGHT NAVY WITH REAL STUDENT PHOTO ================= */}
-        <div className="hidden md:flex md:w-5/12 bg-gradient-to-b from-[#0B1528] via-[#0c1933] to-[#070e1c] text-white p-8 flex-col justify-between relative overflow-hidden border-r border-[#ebdcaa]/20">
+        {/* ================= LEFT COLUMN: ELEGANT ROYAL NAVY WITH REAL STUDENT PHOTO ================= */}
+        <div className="hidden md:flex md:w-5/12 bg-gradient-to-b from-[#183664] via-[#1e427b] to-[#12284c] text-white p-8 flex-col justify-between relative overflow-hidden border-r border-[#ebdcaa]/25">
           {/* Abstract Arc Background SVG graphics with warm golden tint */}
           <div className="absolute inset-0 pointer-events-none opacity-20">
             <svg className="w-full h-full" viewBox="0 0 400 600" fill="none">
