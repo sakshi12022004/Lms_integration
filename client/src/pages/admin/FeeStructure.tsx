@@ -212,33 +212,35 @@ const FeeStructure = () => {
 
   return (
     <AdminLayout>
-      <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center">
-            <DollarSign className="mr-3 text-blue-600" size={36} />
-            {t('fee_structure_management')}
-          </h1>
-          <p className="text-gray-600">{t('fee_structure_description')}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#ebdcaa]">
+          <div>
+            <h1 className="text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] flex items-center">
+              <DollarSign className="mr-2 text-[#B99652]" size={32} />
+              {t('fee_structure_management')}
+            </h1>
+            <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">{t('fee_structure_description')}</p>
+          </div>
         </div>
 
         {/* Progress Indicator */}
-        <div className="mb-8 bg-white rounded-xl p-6 shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-700">{t('setup_progress')}</h3>
-            <span className="text-sm text-gray-600">{savedStructures.length}/2 {t('structures_created')}</span>
+        <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">{t('setup_progress')}</h3>
+            <span className="text-xs uppercase tracking-wider font-semibold text-[#B99652]">{savedStructures.length}/2 {t('structures_created')}</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
+          <div className="w-full bg-[#ebdcaa]/40 rounded-none h-2">
             <div 
-              className="bg-blue-600 h-3 rounded-full transition-all duration-500" 
+              className="bg-[#B99652] h-2 rounded-none transition-all duration-500" 
               style={{ width: `${(savedStructures.length / 2) * 100}%` }}
             ></div>
           </div>
-          <div className="flex justify-between mt-2 text-sm text-gray-600">
-            <span className={savedStructures.some(s => s.category === 'Primary') ? 'text-green-600 font-medium' : 'text-gray-400'}>
+          <div className="flex justify-between mt-2 text-xs font-semibold uppercase tracking-wider">
+            <span className={savedStructures.some(s => s.category === 'Primary') ? 'text-emerald-700' : 'text-slate-400'}>
               {savedStructures.some(s => s.category === 'Primary') ? '✓' : '○'} {t('primary_structure')}
             </span>
-            <span className={savedStructures.some(s => s.category === 'Secondary') ? 'text-green-600 font-medium' : 'text-gray-400'}>
+            <span className={savedStructures.some(s => s.category === 'Secondary') ? 'text-emerald-700' : 'text-slate-400'}>
               {savedStructures.some(s => s.category === 'Secondary') ? '✓' : '○'} {t('secondary_structure')}
             </span>
           </div>
@@ -246,36 +248,36 @@ const FeeStructure = () => {
 
         {/* Fee Structure Form - Show only if not all created */}
         {showForm && nextCategory === 'Primary' && (
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold text-gray-800">
+          <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] shadow-sm p-6 sm:p-8 space-y-6">
+            <div className="flex justify-between items-center pb-4 border-b border-[#ebdcaa]">
+              <h2 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">
                 {t('create_primary_fee_structure')}
               </h2>
-              <div className="text-sm text-gray-600">
+              <span className="text-xs uppercase tracking-wider font-semibold text-[#B99652] bg-white border border-[#ebdcaa] px-2.5 py-1">
                 {t('grades_1_4')}
-              </div>
+              </span>
             </div>
 
             {/* Fee Breakdown */}
-            <div className="mb-8">
-              <h3 className="text-xl font-semibold text-gray-700 mb-6 flex items-center">
-                <DollarSign className="mr-2" size={24} />
+            <div>
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-4 flex items-center gap-2">
+                <DollarSign className="text-[#B99652]" size={20} />
                 {t('fee_breakdown')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {feeFields.map(({ key, label, icon: Icon, color }) => (
-                  <div key={key} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-center mb-3">
-                      <Icon className={`mr-3 ${color}`} size={20} />
-                      <label className="font-medium text-gray-700">{label}</label>
+                {feeFields.map(({ key, label, icon: Icon }) => (
+                  <div key={key} className="bg-white border border-[#ebdcaa] rounded-none p-4 shadow-xs">
+                    <div className="flex items-center mb-2 text-slate-700">
+                      <Icon className="mr-2 text-[#B99652]" size={18} />
+                      <label className="text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">{label}</label>
                     </div>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm font-semibold">₹</span>
                       <input
                         type="number"
                         value={feeBreakdown[key as keyof typeof feeBreakdown]}
                         onChange={(e) => setFeeBreakdown({...feeBreakdown, [key]: Number(e.target.value)})}
-                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full pl-8 pr-3 py-2 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b]"
                       />
                     </div>
                   </div>
@@ -284,27 +286,27 @@ const FeeStructure = () => {
             </div>
 
             {/* Due Date */}
-            <div className="mb-8">
-              <label className="block text-lg font-semibold text-gray-700 mb-3 flex items-center">
-                <Calendar className="mr-2" size={20} />
+            <div>
+              <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-2 flex items-center">
+                <Calendar className="mr-2 text-[#B99652]" size={16} />
                 {t('due_date')}
               </label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full md:w-auto px-4 py-2 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b]"
               />
             </div>
 
             {/* Total Fee Display */}
-            <div className="mb-8 p-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white">
+            <div className="p-6 bg-[#1e1b4b] text-white border border-white/10 rounded-none shadow-sm">
               <div className="flex justify-between items-center">
                 <div>
-                  <div className="text-lg font-medium opacity-90">{t('total_fee_amount')}</div>
-                  <div className="text-3xl font-bold">₹{totalFee.toLocaleString()}</div>
+                  <div className="text-xs uppercase tracking-wider font-semibold text-white/60">{t('total_fee_amount')}</div>
+                  <div className="text-3xl font-bold font-['DM_Serif_Display',serif] text-white mt-1">₹{totalFee.toLocaleString()}</div>
                 </div>
-                <DollarSign size={48} className="opacity-50" />
+                <DollarSign size={40} className="text-[#B99652] opacity-80" />
               </div>
             </div>
 
@@ -312,9 +314,9 @@ const FeeStructure = () => {
             <button
               onClick={() => handleSave('Primary')}
               disabled={loading}
-              className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+              className="flex items-center px-6 py-3 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none uppercase tracking-wider text-xs font-semibold transition-colors disabled:opacity-50 shadow-xs"
             >
-              <Save className="mr-2" size={20} />
+              <Save className="mr-2" size={16} />
               {loading ? t('saving') : t('save_primary_structure')}
             </button>
           </div>
@@ -322,36 +324,36 @@ const FeeStructure = () => {
 
         {/* Secondary Form - Show only if primary exists and secondary doesn't */}
         {showForm && nextCategory === 'Secondary' && (
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold text-gray-800">
+          <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] shadow-sm p-6 sm:p-8 space-y-6">
+            <div className="flex justify-between items-center pb-4 border-b border-[#ebdcaa]">
+              <h2 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">
                 {t('create_secondary_fee_structure')}
               </h2>
-              <div className="text-sm text-gray-600">
+              <span className="text-xs uppercase tracking-wider font-semibold text-[#B99652] bg-white border border-[#ebdcaa] px-2.5 py-1">
                 {t('grades_5_12')}
-              </div>
+              </span>
             </div>
 
             {/* Fee Breakdown */}
-            <div className="mb-8">
-              <h3 className="text-xl font-semibold text-gray-700 mb-6 flex items-center">
-                <DollarSign className="mr-2" size={24} />
+            <div>
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-4 flex items-center gap-2">
+                <DollarSign className="text-[#B99652]" size={20} />
                 Fee Breakdown
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {feeFields.map(({ key, label, icon: Icon, color }) => (
-                  <div key={key} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-center mb-3">
-                      <Icon className={`mr-3 ${color}`} size={20} />
-                      <label className="font-medium text-gray-700">{label}</label>
+                {feeFields.map(({ key, label, icon: Icon }) => (
+                  <div key={key} className="bg-white border border-[#ebdcaa] rounded-none p-4 shadow-xs">
+                    <div className="flex items-center mb-2 text-slate-700">
+                      <Icon className="mr-2 text-[#B99652]" size={18} />
+                      <label className="text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">{label}</label>
                     </div>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm font-semibold">₹</span>
                       <input
                         type="number"
                         value={feeBreakdown[key as keyof typeof feeBreakdown]}
                         onChange={(e) => setFeeBreakdown({...feeBreakdown, [key]: Number(e.target.value)})}
-                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full pl-8 pr-3 py-2 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b]"
                       />
                     </div>
                   </div>
@@ -360,27 +362,27 @@ const FeeStructure = () => {
             </div>
 
             {/* Due Date */}
-            <div className="mb-8">
-              <label className="block text-lg font-semibold text-gray-700 mb-3 flex items-center">
-                <Calendar className="mr-2" size={20} />
+            <div>
+              <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-2 flex items-center">
+                <Calendar className="mr-2 text-[#B99652]" size={16} />
                 Due Date
               </label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full md:w-auto px-4 py-2 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b]"
               />
             </div>
 
             {/* Total Fee Display */}
-            <div className="mb-8 p-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white">
+            <div className="p-6 bg-[#1e1b4b] text-white border border-white/10 rounded-none shadow-sm">
               <div className="flex justify-between items-center">
                 <div>
-                  <div className="text-lg font-medium opacity-90">{t('total_fee_amount')}</div>
-                  <div className="text-3xl font-bold">₹{totalFee.toLocaleString()}</div>
+                  <div className="text-xs uppercase tracking-wider font-semibold text-white/60">{t('total_fee_amount')}</div>
+                  <div className="text-3xl font-bold font-['DM_Serif_Display',serif] text-white mt-1">₹{totalFee.toLocaleString()}</div>
                 </div>
-                <DollarSign size={48} className="opacity-50" />
+                <DollarSign size={40} className="text-[#B99652] opacity-80" />
               </div>
             </div>
 
@@ -388,9 +390,9 @@ const FeeStructure = () => {
             <button
               onClick={() => handleSave('Secondary')}
               disabled={loading}
-              className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+              className="flex items-center px-6 py-3 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none uppercase tracking-wider text-xs font-semibold transition-colors disabled:opacity-50 shadow-xs"
             >
-              <Save className="mr-2" size={20} />
+              <Save className="mr-2" size={16} />
               {loading ? t('saving') : t('save_secondary_structure')}
             </button>
           </div>
@@ -398,39 +400,39 @@ const FeeStructure = () => {
 
         {/* Edit Form */}
         {editingStructure && (
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold text-gray-800">
+          <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] shadow-sm p-6 sm:p-8 space-y-6">
+            <div className="flex justify-between items-center pb-4 border-b border-[#ebdcaa]">
+              <h2 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">
                 {t('edit_fee_structure')} {editingStructure.category}
               </h2>
               <button
                 onClick={handleCancelEdit}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-slate-400 hover:text-[#1e1b4b]"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
             {/* Fee Breakdown */}
-            <div className="mb-8">
-              <h3 className="text-xl font-semibold text-gray-700 mb-6 flex items-center">
-                <DollarSign className="mr-2" size={24} />
+            <div>
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-4 flex items-center gap-2">
+                <DollarSign className="text-[#B99652]" size={20} />
                 Fee Breakdown
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {feeFields.map(({ key, label, icon: Icon, color }) => (
-                  <div key={key} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-center mb-3">
-                      <Icon className={`mr-3 ${color}`} size={20} />
-                      <label className="font-medium text-gray-700">{label}</label>
+                {feeFields.map(({ key, label, icon: Icon }) => (
+                  <div key={key} className="bg-white border border-[#ebdcaa] rounded-none p-4 shadow-xs">
+                    <div className="flex items-center mb-2 text-slate-700">
+                      <Icon className="mr-2 text-[#B99652]" size={18} />
+                      <label className="text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">{label}</label>
                     </div>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm font-semibold">₹</span>
                       <input
                         type="number"
                         value={feeBreakdown[key as keyof typeof feeBreakdown]}
                         onChange={(e) => setFeeBreakdown({...feeBreakdown, [key]: Number(e.target.value)})}
-                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full pl-8 pr-3 py-2 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b]"
                       />
                     </div>
                   </div>
@@ -439,43 +441,43 @@ const FeeStructure = () => {
             </div>
 
             {/* Due Date */}
-            <div className="mb-8">
-              <label className="block text-lg font-semibold text-gray-700 mb-3 flex items-center">
-                <Calendar className="mr-2" size={20} />
+            <div>
+              <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-2 flex items-center">
+                <Calendar className="mr-2 text-[#B99652]" size={16} />
                 Due Date
               </label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full md:w-auto px-4 py-2 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b]"
               />
             </div>
 
             {/* Total Fee Display */}
-            <div className="mb-8 p-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white">
+            <div className="p-6 bg-[#1e1b4b] text-white border border-white/10 rounded-none shadow-sm">
               <div className="flex justify-between items-center">
                 <div>
-                  <div className="text-lg font-medium opacity-90">Total Fee Amount</div>
-                  <div className="text-3xl font-bold">₹{totalFee.toLocaleString()}</div>
+                  <div className="text-xs uppercase tracking-wider font-semibold text-white/60">Total Fee Amount</div>
+                  <div className="text-3xl font-bold font-['DM_Serif_Display',serif] text-white mt-1">₹{totalFee.toLocaleString()}</div>
                 </div>
-                <DollarSign size={48} className="opacity-50" />
+                <DollarSign size={40} className="text-[#B99652] opacity-80" />
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               <button
                 onClick={handleUpdate}
                 disabled={loading}
-                className="flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+                className="flex items-center px-6 py-3 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none uppercase tracking-wider text-xs font-semibold transition-colors disabled:opacity-50 shadow-xs"
               >
-                <Save className="mr-2" size={20} />
+                <Save className="mr-2" size={16} />
                 {loading ? t('updating') : t('update_structure')}
               </button>
               <button
                 onClick={handleCancelEdit}
-                className="flex items-center px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                className="flex items-center px-5 py-3 border border-[#ebdcaa] bg-white text-[#1e1b4b] rounded-none uppercase tracking-wider text-xs font-semibold hover:bg-slate-50 transition-colors"
               >
                 {t('cancel')}
               </button>
@@ -485,34 +487,29 @@ const FeeStructure = () => {
 
         {/* Saved Structures */}
         {savedStructures.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <h3 className="text-xl font-semibold text-gray-700 mb-6 flex items-center">
-              <Save className="mr-2" size={24} />
+          <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-6 sm:p-8 shadow-xs">
+            <h3 className="text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-6 flex items-center pb-3 border-b border-[#ebdcaa]">
+              <Save className="mr-2 text-[#B99652]" size={20} />
               Created Fee Structures
             </h3>
             <div className="space-y-4">
               {savedStructures.map((structure, index) => (
-                <div key={index} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="font-semibold text-gray-800 text-lg">
-                        {structure.category} Education
-                      </div>
-                      <div className="text-sm text-gray-600">Grades: {structure.grade}</div>
-                      <div className="text-sm text-gray-600">Due Date: {structure.dueDate}</div>
+                <div key={index} className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] rounded-none p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] text-lg">
+                      {structure.category} Education
                     </div>
-                    <div className="text-right">
-                      <div className="text-xl font-bold text-blue-600">₹{structure.totalFee.toLocaleString()}</div>
-                      <div className="flex gap-2 mt-2">
-                        <button 
-                          onClick={() => handleEdit(structure)}
-                          className="text-blue-600 hover:text-blue-800 flex items-center px-3 py-1 border border-blue-300 rounded hover:bg-blue-50 transition-colors"
-                        >
-                          <Edit size={16} className="mr-1" />
-                          Edit
-                        </button>
-                      </div>
-                    </div>
+                    <div className="text-xs text-slate-500 font-semibold mt-0.5">Grades: {structure.grade} • Due Date: {structure.dueDate}</div>
+                  </div>
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2">
+                    <div className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">₹{structure.totalFee.toLocaleString()}</div>
+                    <button 
+                      onClick={() => handleEdit(structure)}
+                      className="text-[#B99652] hover:text-[#a38241] flex items-center px-3 py-1 border border-[#ebdcaa] bg-white hover:bg-slate-50 text-xs uppercase tracking-wider font-semibold rounded-none transition-colors"
+                    >
+                      <Edit size={14} className="mr-1" />
+                      Edit
+                    </button>
                   </div>
                 </div>
               ))}
@@ -522,12 +519,12 @@ const FeeStructure = () => {
 
         {/* All Structures Created Message */}
         {savedStructures.length === 2 && !editingStructure && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-8 text-center">
-            <div className="text-green-600 mb-4">
-              <Save size={48} className="mx-auto mb-2" />
+          <div className="bg-[#fffdf4] border border-[#ebdcaa] rounded-none p-8 text-center shadow-xs">
+            <div className="text-[#B99652] mb-3">
+              <Save size={40} className="mx-auto" />
             </div>
-            <h3 className="text-xl font-semibold text-green-800 mb-2">All Fee Structures Created</h3>
-            <p className="text-green-700">Both Primary (Grades 1-4) and Secondary (Grades 5-12) fee structures have been configured successfully.</p>
+            <h3 className="text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">All Fee Structures Created</h3>
+            <p className="text-xs text-slate-600">Both Primary (Grades 1-4) and Secondary (Grades 5-12) fee structures have been configured successfully.</p>
           </div>
         )}
       </div>

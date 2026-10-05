@@ -64,43 +64,41 @@ const CreateUniversityForm = ({ onSuccess }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-            <Building2 className="text-white" size={20} />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">🏛️ Create New Institute</h1>
-            <p className="text-gray-600">Build a new institution in your educational empire</p>
-          </div>
+      <div className="flex items-center gap-3 pb-4 border-b border-[#ebdcaa]">
+        <div className="w-12 h-12 bg-[#B99652]/10 border border-[#ebdcaa] rounded-none flex items-center justify-center text-[#B99652]">
+          <Building2 size={22} />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Create New Institute</h1>
+          <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">Register a new institution under your network</p>
         </div>
       </div>
 
       {/* Form Card */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+      <div className="bg-[#fffdf4] rounded-none shadow-sm border border-[#ebdcaa] overflow-hidden">
         <div className="p-8">
           <form onSubmit={handleCreate} className="space-y-6">
             {/* University Information */}
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Building2 className="text-blue-600" size={20} />
+            <div className="mb-6">
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-4 flex items-center gap-2 pb-2 border-b border-[#ebdcaa]">
+                <Building2 className="text-[#B99652]" size={18} />
                 Institute Information
               </h3>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Institute Name <span className="text-red-500">*</span>
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
+                    Institute Name <span className="text-red-600">*</span>
                   </label>
                   <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <input
                       name="name"
                       data-tour="input-institute-name"
-                      placeholder="e.g., Tech Institute"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-500"
+                      placeholder="e.g., Tech Institute of Engineering"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] placeholder-slate-400 text-sm"
                       value={form.name}
                       onChange={handleChange}
                       required
@@ -109,15 +107,15 @@ const CreateUniversityForm = ({ onSuccess }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
                     Address
                   </label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <input
                       name="address"
-                      placeholder="e.g., 123 Main Street"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-500"
+                      placeholder="e.g., 123 Main Campus Avenue"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] placeholder-slate-400 text-sm"
                       value={form.address}
                       onChange={handleChange}
                     />
@@ -125,33 +123,31 @@ const CreateUniversityForm = ({ onSuccess }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
                     City
                   </label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <input
                       name="city"
-                      placeholder="e.g., New York"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-500"
+                      placeholder="e.g., New Delhi"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] placeholder-slate-400 text-sm"
                       value={form.city}
                       onChange={handleChange}
                     />
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
                     Country
                   </label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <input
                       name="country"
-                      placeholder="e.g., USA"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-500"
+                      placeholder="e.g., India"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] placeholder-slate-400 text-sm"
                       value={form.country}
                       onChange={handleChange}
                     />
@@ -159,16 +155,16 @@ const CreateUniversityForm = ({ onSuccess }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Email
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
+                    Official Email
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <input
                       name="email"
                       type="email"
                       placeholder="admin@institute.edu"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-500"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] placeholder-slate-400 text-sm"
                       value={form.email}
                       onChange={handleChange}
                     />
@@ -176,40 +172,39 @@ const CreateUniversityForm = ({ onSuccess }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Phone
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
+                    Phone Number
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <input
                       name="phone"
-                      placeholder="+1 234 567 8900"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-500"
+                      placeholder="+91 98765 43210"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] placeholder-slate-400 text-sm"
                       value={form.phone}
                       onChange={handleChange}
                     />
                   </div>
                 </div>
               </div>
-
-                          </div>
+            </div>
 
             {/* Submit Button */}
-            <div className="pt-4">
+            <div className="pt-4 border-t border-[#ebdcaa]">
               <button
                 type="submit"
                 disabled={loading}
                 data-tour="btn-submit-institute"
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 text-white font-semibold py-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg"
+                className="w-full bg-[#B99652] hover:bg-[#a38241] disabled:opacity-50 text-white font-semibold py-3.5 rounded-none uppercase tracking-wider text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
               >
                 {loading ? (
                   <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <div className="animate-spin rounded-none h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Creating Institute...
                   </>
                 ) : (
                   <>
-                    <Building2 size={20} />
+                    <Building2 size={16} />
                     Create Institute
                   </>
                 )}

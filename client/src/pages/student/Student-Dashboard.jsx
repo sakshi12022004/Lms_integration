@@ -261,8 +261,11 @@ const StudentDashboard = () => {
           </div>
         </header>
 
-        {/* ================= CONTENT CONTAINER ================= */}
-        <main className="flex flex-col gap-6 px-6 md:px-8 pt-6 pb-12 w-full">
+        {/* ================= CONTENT GRID ================= */}
+        <main className="grid grid-cols-1 lg:grid-cols-12 gap-6 px-6 md:px-8 pt-6">
+
+          {/* ================= LEFT / MAIN COLUMN (8 cols) ================= */}
+          <div className="lg:col-span-8 flex flex-col gap-6">
 
             {/* HERO BANNER */}
             <section className="relative overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[240px] rounded-none bg-gradient-to-r from-[#fbfaff] via-[#f5f1ff] to-[#efe9ff] border border-[#e6e8f1] shadow-sm">
@@ -552,6 +555,125 @@ const StudentDashboard = () => {
                 </div>
               </div>
             </div>
+
+          </div>
+
+          {/* ================= RIGHT / SIDE COLUMN (4 cols) ================= */}
+          <div className="lg:col-span-4 flex flex-col gap-6 h-full">
+
+            {/* DAILY MOTIVATION QUOTE CARD */}
+            <section className="relative overflow-hidden p-6 min-h-[180px] rounded-[18px] border border-[#e3dcff] bg-gradient-to-br from-[#f3efff] to-[#e8e1ff]">
+              <h3 className="text-lg font-bold text-[#141a33] max-w-[170px] leading-snug">
+                Small steps every day, lead to big results.
+              </h3>
+              <p className="text-xs text-[#3a4160] mt-2 max-w-[170px]">
+                You're doing great, keep going!
+              </p>
+              {/* Decorative Plant SVG */}
+              <svg className="absolute right-[-6px] bottom-[-4px] w-32 h-40" viewBox="0 0 130 160" fill="none">
+                <path d="M40 150h50l-6-34H46z" fill="#fff" opacity="0.9"/>
+                <g fill="#7f6be0" opacity="0.85">
+                  <path d="M65 118C62 90 50 70 30 58c14 20 22 38 30 60z"/>
+                  <path d="M66 118c2-34 14-58 38-74-12 24-20 46-32 74z"/>
+                  <path d="M64 118C58 84 60 50 72 20c2 34-2 64-8 98z"/>
+                </g>
+                <g fill="#a797f0" opacity="0.8">
+                  <path d="M62 118c-12-18-28-26-48-28 16 10 30 18 44 30z"/>
+                  <path d="M68 118c10-20 26-30 50-34-18 10-32 20-44 34z"/>
+                </g>
+              </svg>
+            </section>
+
+            {/* QUICK ACTIONS */}
+            <section className="bg-white border border-[#e6e8f1] rounded-none p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-[#141a33]">Quick Actions</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <Link to="/student/courses" className="flex items-center gap-2.5 p-2.5 border border-[#e6e8f1] rounded-none hover:border-[#5b3fd9] hover:bg-[#efebff]/50 transition-all group">
+                  <div className="w-8 h-8 rounded-none bg-[#efebff] text-[#5b3fd9] flex items-center justify-center flex-none">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#5b3fd9] leading-tight">View Courses</span>
+                    <span className="block text-[10px] text-[#7a809c]">My Portal</span>
+                  </div>
+                </Link>
+
+                <Link to="/student/attendance" className="flex items-center gap-2.5 p-2.5 border border-[#e6e8f1] rounded-none hover:border-[#16a34a] hover:bg-[#e8f7ee]/50 transition-all group">
+                  <div className="w-8 h-8 rounded-none bg-[#e8f7ee] text-[#16a34a] flex items-center justify-center flex-none">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#16a34a] leading-tight">Attendance</span>
+                    <span className="block text-[10px] text-[#7a809c]">Records</span>
+                  </div>
+                </Link>
+
+                <Link to="/student/results" className="flex items-center gap-2.5 p-2.5 border border-[#e6e8f1] rounded-none hover:border-[#2563eb] hover:bg-[#e8efff]/50 transition-all group">
+                  <div className="w-8 h-8 rounded-none bg-[#e8efff] text-[#2563eb] flex items-center justify-center flex-none">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#2563eb] leading-tight">Academic Results</span>
+                    <span className="block text-[10px] text-[#7a809c]">Grades</span>
+                  </div>
+                </Link>
+
+                <div
+                  onClick={() => {
+                    const bellBtn = document.querySelector('[data-tour="announcement-bell"] button');
+                    if (bellBtn) bellBtn.click();
+                  }}
+                  className="flex items-center gap-2.5 p-2.5 border border-[#e6e8f1] rounded-none hover:border-[#f07b1d] hover:bg-[#fff1e6]/50 cursor-pointer transition-all group"
+                >
+                  <div className="w-8 h-8 rounded-none bg-[#fff1e6] text-[#f07b1d] flex items-center justify-center flex-none">
+                    <Megaphone className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#f07b1d] leading-tight">Announcements</span>
+                    <span className="block text-[10px] text-[#7a809c]">Notices</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* EXPLORE COURSES / LEARNING JOURNEY CARD */}
+            <section
+              className="flex-1 min-h-[320px] flex flex-col justify-between rounded-none border border-[#e6e8f1] shadow-sm bg-[#f4f7fc] p-6 relative overflow-hidden group hover:shadow-md transition-all"
+            >
+              {/* Background Image - Seamlessly integrated illustration flush to bottom */}
+              <img
+                src="/student_journey_card_bg.png?v=2"
+                alt="Student Learning Journey"
+                className="absolute inset-0 w-full h-full object-cover object-bottom pointer-events-none select-none transition-transform duration-500 group-hover:scale-[1.02]"
+              />
+
+              {/* Floating Content merged over the illustration */}
+              <div className="relative z-10 max-w-[280px]">
+                <span className="inline-block px-2.5 py-0.5 bg-white/90 backdrop-blur-xs border border-[#d6e3f5] text-[10px] font-bold tracking-wider text-[#2563eb] uppercase mb-2 shadow-xs">
+                  Learning Journey
+                </span>
+                <h3 className="text-base font-bold text-[#141a33] leading-snug">
+                  Explore Courses & Expand Skills
+                </h3>
+                <p className="text-xs text-[#4b5563] mt-1.5 leading-relaxed font-medium">
+                  Discover new subjects, master key topics, and advance your knowledge today.
+                </p>
+
+                <div className="mt-4">
+                  <Link
+                    to="/student/courses"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold rounded-none shadow-sm transition-all group-hover:gap-3"
+                  >
+                    Explore Courses
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            </section>
+
+          </div>
 
         </main>
       </div>

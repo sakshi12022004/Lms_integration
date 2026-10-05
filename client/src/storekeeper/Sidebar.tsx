@@ -27,7 +27,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className={`sticky top-0 h-screen flex-shrink-0 text-white shadow-lg flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-64'} bg-gradient-to-b from-green-900 via-green-800 to-green-900`}>
+    <aside className={`sticky top-0 h-screen flex-shrink-0 text-white shadow-xl flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-64'} bg-[#1e1b4b]`}>
       <div className="h-24 sm:h-28 border-b border-white/10 flex items-center justify-center">
         {!sidebarCollapsed ? (
           <img src={whiteLogo} alt="Core5 Academy" className="max-h-full w-auto object-contain" />
@@ -36,7 +36,7 @@ export default function Sidebar() {
         )}
       </div>
 
-      <nav className="flex-1 p-4 overflow-y-auto space-y-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-200">
+      <nav className="flex-1 p-4 overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-200">
         {items.map((item) => {
           const Icon = item.icon;
           // Handle special cases for multi-word items
@@ -48,13 +48,13 @@ export default function Sidebar() {
             <Link
               key={item.name}
               to={path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-none transition-all ${
                 active
-                  ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
+                  ? 'bg-[#B99652]/20 text-white border-l-4 border-[#B99652] shadow-sm font-semibold'
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
               } ${sidebarCollapsed ? 'justify-center' : ''}`}>
-              <Icon size={20} />
-              {!sidebarCollapsed && <span className="font-medium">{item.name}</span>}
+              <Icon size={20} className={active ? 'text-[#B99652]' : 'text-white/70'} />
+              {!sidebarCollapsed && <span className="font-medium text-sm">{item.name}</span>}
             </Link>
           );
         })}
@@ -63,19 +63,19 @@ export default function Sidebar() {
         {!sidebarCollapsed && <RequestStatus />}
       </nav>
 
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-white/10 space-y-2">
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="w-full flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300"
+          className="w-full flex items-center justify-between p-3 rounded-none bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-semibold uppercase tracking-wider transition-colors"
         >
-          {sidebarCollapsed ? <ChevronRight /> : <>{t('nav_collapse') ?? 'Collapse'} <ChevronLeft /></>}
+          {sidebarCollapsed ? <ChevronRight size={18} /> : <>{t('nav_collapse') ?? 'Collapse'} <ChevronLeft size={18} /></>}
         </button>
 
         <button
           onClick={handleLogout}
-          className={`mt-3 w-full flex items-center p-3 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 ${sidebarCollapsed ? 'justify-center' : ''}`}
+          className={`w-full flex items-center p-3 rounded-none bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-semibold uppercase tracking-wider transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
         >
-          <LogOut size={18} />
+          <LogOut size={16} />
           {!sidebarCollapsed && <span className="ml-3">{t('nav_logout') ?? 'Logout'}</span>}
         </button>
       </div>

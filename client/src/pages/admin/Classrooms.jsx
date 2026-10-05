@@ -104,61 +104,63 @@ const Classrooms = () => {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto space-y-6">
 
         {/* HEADER */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#ebdcaa]">
           <div>
-            <h1 className="text-2xl font-bold">{t('classrooms')}</h1>
-            <p className="text-gray-500">{t('manage_classrooms')}</p>
+            <h1 className="text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{t('classrooms')}</h1>
+            <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">{t('manage_classrooms')}</p>
           </div>
 
-          {/* ✅ ONLY CREATE CLASSROOM */}
+          {/* CREATE CLASSROOM BUTTON */}
           <button
             onClick={() => setOpenModal(true)}
             data-tour="btn-create-classroom"
-            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg"
+            className="flex items-center gap-2 bg-[#B99652] hover:bg-[#a38241] text-white px-4 py-2.5 rounded-none font-semibold text-xs uppercase tracking-wider transition-colors shadow-xs self-start sm:self-auto"
           >
-            <Plus size={18} />
+            <Plus size={16} />
             {t('create_classroom_button')}
           </button>
         </div>
 
         {/* CONTENT */}
         {loading ? (
-          <p className="text-gray-500 text-center py-8">{t('loading_classrooms')}</p>
+          <div className="text-center py-16 bg-[#fffdf4] border border-[#ebdcaa]">
+            <div className="animate-spin rounded-none h-10 w-10 border-4 border-[#B99652] border-t-transparent mx-auto"></div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-3">{t('loading_classrooms')}</p>
+          </div>
         ) : classrooms && classrooms.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">{t('no_classrooms_created')}</p>
+          <div className="text-center py-16 bg-[#fffdf4] border border-[#ebdcaa]">
+            <p className="text-sm font-semibold text-[#1e1b4b]">{t('no_classrooms_created')}</p>
+            <p className="text-xs text-slate-500 mt-1">Click the button above to add your first classroom</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {classrooms && classrooms.map((c) => (
               <div
                 key={c.id}
                 onClick={() => navigate(`/admin/classrooms/${c.id}`)}
-                className="relative rounded-xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-xl group"
-                style={{
-                  backgroundImage: `url('https://media.giphy.com/media/l2Je66zG6mAAZxgqI/giphy.gif')`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  minHeight: '200px'
-                }}
+                className="bg-[#fffdf4] border border-[#ebdcaa] border-l-4 border-l-[#B99652] rounded-none p-5 shadow-xs hover:border-[#B99652] transition-colors cursor-pointer group flex flex-col justify-between min-h-[160px]"
               >
-                <div className="absolute inset-0 bg-black/50 group-hover:bg-black/60 transition-all duration-300"></div>
-                <div className="relative p-5 text-white h-full flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-bold text-xl mb-2 animate-fade-in">
-                      {c.name} {c.section && `- ${c.section}`}
-                    </h3>
-                      <p className="text-sm opacity-90">
-                      {t('class_teacher')}:
-                      <span className="font-medium ml-1">
-                        {(typeof c.classTeacher === 'object' ? c.classTeacher?.name : c.classTeacher) || t('not_assigned')}
-                      </span>
-                    </p>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-[#B99652] bg-white border border-[#ebdcaa] px-2 py-0.5">
+                      Grade {c.grade || 'General'}
+                    </span>
+                    <span className="text-xs text-slate-500 font-semibold">
+                      {c.studentCount || 0} {t('students')}
+                    </span>
                   </div>
-                  <div className="mt-4 text-sm font-medium">
-                    {t('students')}: {c.studentCount || 0}
-                  </div>
+                  <h3 className="font-bold text-xl font-['DM_Serif_Display',serif] text-[#1e1b4b] group-hover:text-[#B99652] transition-colors">
+                    {c.name} {c.section && `- Section ${c.section}`}
+                  </h3>
+                </div>
+                <div className="pt-3 mt-3 border-t border-[#ebdcaa]/60 flex items-center justify-between text-xs text-slate-600">
+                  <span>{t('class_teacher')}:</span>
+                  <span className="font-semibold text-[#1e1b4b]">
+                    {(typeof c.classTeacher === 'object' ? c.classTeacher?.name : c.classTeacher) || t('not_assigned')}
+                  </span>
                 </div>
               </div>
             ))}

@@ -133,25 +133,25 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-xl p-5 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div className="bg-[#fffdf4] w-full max-w-md border border-[#ebdcaa] rounded-none p-6 max-h-[90vh] overflow-y-auto shadow-xl">
 
         {/* HEADER */}
-        <div className="flex justify-between mb-4">
-          <h2 className="font-semibold text-lg">{t('create_classroom_button')}</h2>
-          <button onClick={onClose}>
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#ebdcaa]">
+          <h2 className="font-bold text-lg font-['DM_Serif_Display',serif] text-[#1e1b4b]">{t('create_classroom_button')}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-[#1e1b4b]">
             <X size={18} />
           </button>
         </div>
 
         {/* FORM */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-1.5">
               {t('grade_level')} <span className="text-red-500">*</span>
             </label>
-              <select
-              className="w-full border rounded px-3 py-2"
+            <select
+              className="w-full bg-white border border-[#ebdcaa] rounded-none px-3 py-2 text-sm text-[#1e1b4b] focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]"
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
               required
@@ -173,11 +173,11 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-1.5">
               {t('section')} <span className="text-red-500">*</span>
             </label>
             <input
-              className="w-full border rounded px-3 py-2"
+              className="w-full bg-white border border-[#ebdcaa] rounded-none px-3 py-2 text-sm text-[#1e1b4b] placeholder-slate-400 focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]"
               placeholder={t('section_placeholder')}
               value={section}
               onChange={(e) => setSection(e.target.value)}
@@ -185,26 +185,31 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
             />
           </div>
 
-          {/* ✅ CLASS TEACHER DROPDOWN */}
-          <select
-            className="w-full border rounded px-3 py-2"
-            value={classTeacher}
-            onChange={(e) => setClassTeacher(e.target.value)}
-            disabled={loadingMentors}
-          >
-            <option value="">{t('assign_class_teacher_optional')}</option>
-            {mentors.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name} ({m.email})
-              </option>
-            ))}
-          </select>
-
-          {/* ✅ STUDENT SELECTION */}
+          {/* CLASS TEACHER DROPDOWN */}
           <div>
-            <label className="block text-sm font-medium mb-2">{t('assign_students_optional')}</label>
+            <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-1.5">
+              {t('assign_class_teacher_optional')}
+            </label>
             <select
-              className="w-full border rounded px-3 py-2"
+              className="w-full bg-white border border-[#ebdcaa] rounded-none px-3 py-2 text-sm text-[#1e1b4b] focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]"
+              value={classTeacher}
+              onChange={(e) => setClassTeacher(e.target.value)}
+              disabled={loadingMentors}
+            >
+              <option value="">{t('assign_class_teacher_optional')}</option>
+              {mentors.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} ({m.email})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* STUDENT SELECTION */}
+          <div>
+            <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-1.5">{t('assign_students_optional')}</label>
+            <select
+              className="w-full bg-white border border-[#ebdcaa] rounded-none px-3 py-2 text-sm text-[#1e1b4b] focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]"
               multiple
               value={studentIds}
               onChange={(e) => {
@@ -212,7 +217,7 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
                 setStudentIds(selected);
               }}
               disabled={loadingStudents}
-              size={5}
+              size={4}
             >
               {students.map((s) => (
                 <option key={s._id} value={s._id}>
@@ -220,40 +225,40 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">{t('hold_ctrl_to_select_multiple')}</p>
+            <p className="text-[11px] text-slate-500 mt-1">{t('hold_ctrl_to_select_multiple')}</p>
           </div>
 
-          {/* ✅ PHOTO UPLOAD */}
+          {/* PHOTO UPLOAD */}
           <div>
-            <label className="block text-sm font-medium mb-2">{t('classroom_photo_optional')}</label>
+            <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-1.5">{t('classroom_photo_optional')}</label>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setPhoto(e.target.files[0])}
-              className="w-full border rounded px-3 py-2"
+              className="w-full bg-white border border-[#ebdcaa] rounded-none px-3 py-1.5 text-xs text-slate-600 focus:outline-none focus:border-[#B99652]"
             />
           </div>
 
-          {/* ✅ TIMETABLE UPLOAD */}
+          {/* TIMETABLE UPLOAD */}
           <div>
-            <label className="block text-sm font-medium mb-2">{t('timetable_optional')}</label>
+            <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-1.5">{t('timetable_optional')}</label>
             <input
               type="file"
               accept="image/*,.pdf"
               onChange={(e) => setTimetable(e.target.files[0])}
-              className="w-full border rounded px-3 py-2"
+              className="w-full bg-white border border-[#ebdcaa] rounded-none px-3 py-1.5 text-xs text-slate-600 focus:outline-none focus:border-[#B99652]"
             />
           </div>
         </div>
 
         {/* ACTIONS */}
-        <div className="flex justify-end gap-2 mt-5">
-          <button onClick={onClose} className="border px-4 py-2 rounded">
+        <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-[#ebdcaa]">
+          <button onClick={onClose} className="border border-[#ebdcaa] bg-white text-[#1e1b4b] px-4 py-2 rounded-none text-xs uppercase tracking-wider font-semibold hover:bg-slate-50 transition-colors">
             {t('cancel')}
           </button>
           <button
             onClick={handleCreate}
-            className="bg-primary text-white px-4 py-2 rounded"
+            className="bg-[#B99652] hover:bg-[#a38241] text-white px-5 py-2 rounded-none text-xs uppercase tracking-wider font-semibold transition-colors"
           >
             {t('create')}
           </button>

@@ -100,66 +100,66 @@ const SuperAdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-purple-900">
+    <div className="min-h-screen flex items-center justify-center bg-[#1e1b4b] p-6 relative">
       {/* Language Selector */}
       <div className="absolute top-5 right-5 z-50 pointer-events-auto">
         <div className="relative flex items-center gap-2">
-          <span className="text-white/70 text-xs font-semibold px-2 py-1 bg-black/40 rounded backdrop-blur-md border border-white/20">
+          <span className="text-white/70 text-xs font-semibold px-2 py-1 bg-white/10 rounded-none border border-white/20">
             {currentLanguage.toUpperCase()}
           </span>
           <button
             onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-            className="bg-black/40 backdrop-blur-md border border-white/20 p-2 rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-white/10 transition-all w-10 h-10 pointer-events-auto"
+            className="bg-white/10 border border-white/20 p-2 rounded-none flex items-center justify-center text-white cursor-pointer hover:bg-white/20 transition-all w-9 h-9 pointer-events-auto"
             title="Change Language"
           >
-            <Globe size={20} />
+            <Globe size={18} />
           </button>
         </div>
 
         {/* Language Dropdown */}
         {showLanguageDropdown && (
-          <div className="absolute top-16 right-0 z-40 pointer-events-auto bg-black/90 backdrop-blur-md border border-white/20 rounded-lg shadow-xl max-h-64 overflow-y-auto min-w-48">
+          <div className="absolute top-12 right-0 z-40 pointer-events-auto bg-[#1e1b4b] border border-[#ebdcaa] rounded-none shadow-xl max-h-64 overflow-y-auto min-w-48">
             {languages.map((lang) => (
               <button
                 key={lang.code}
                 onClick={() => handleLanguageChange(lang.code)}
-                className={`w-full text-left px-4 py-3 hover:bg-white/10 transition-colors flex items-center gap-3 ${
-                  currentLanguage === lang.code ? 'bg-white/20 border-l-2 border-l-blue-400' : ''
+                className={`w-full text-left px-4 py-2.5 hover:bg-white/10 transition-colors flex items-center gap-3 text-xs ${
+                  currentLanguage === lang.code ? 'bg-[#B99652]/20 border-l-2 border-l-[#B99652]' : ''
                 }`}
               >
-                <span className="text-xl">{lang.flag}</span>
+                <span className="text-base">{lang.flag}</span>
                 <span className="text-white">{lang.name}</span>
-                {currentLanguage === lang.code && <span className="ml-auto text-green-400">✓</span>}
+                {currentLanguage === lang.code && <span className="ml-auto text-[#B99652]">✓</span>}
               </button>
             ))}
           </div>
         )}
       </div>
 
-      <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 w-full max-w-md shadow-2xl">
+      <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-8 w-full max-w-md shadow-2xl">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-            <span className="text-2xl font-bold text-white">⚙️</span>
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 bg-[#B99652]/10 text-[#B99652] border border-[#ebdcaa] rounded-none mx-auto mb-3 flex items-center justify-center">
+            <span className="text-2xl font-bold font-['DM_Serif_Display',serif]">SA</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Super Admin</h1>
-          <p className="text-gray-600">Manage Universities & Users</p>
+          <h1 className="text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Super Admin</h1>
+          <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">Multi-University & Institutional Control</p>
         </div>
 
         {/* Credentials Info */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <p className="text-xs text-gray-700 mb-2 font-semibold">🔐 Default Credentials:</p>
-          <p className="text-sm text-gray-800 font-mono">Email: superadmin@lms.com</p>
-          <p className="text-sm text-gray-800 font-mono">Pass: SuperAdmin@123</p>
+        <div className="bg-white border border-[#ebdcaa] rounded-none p-3.5 mb-6 text-xs text-slate-600">
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-[#B99652] mb-1">Default Credentials:</p>
+          <p className="font-mono text-slate-800">Email: superadmin@lms.com</p>
+          <p className="font-mono text-slate-800">Pass: SuperAdmin@123</p>
         </div>
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+          <div className="space-y-1">
+            <label className="block text-xs uppercase tracking-wider font-semibold text-slate-700">Email Address</label>
             <input
               type="email"
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600 transition"
+              className="w-full px-3.5 py-2.5 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] transition text-sm text-[#1e1b4b]"
               placeholder="superadmin@lms.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -167,12 +167,12 @@ const SuperAdminLogin = () => {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+          <div className="space-y-1">
+            <label className="block text-xs uppercase tracking-wider font-semibold text-slate-700">Password</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
-                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-600 transition"
+                className="w-full px-3.5 py-2.5 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] transition text-sm text-[#1e1b4b]"
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -180,10 +180,10 @@ const SuperAdminLogin = () => {
               />
               <button
                 type="button"
-                className="absolute right-3 top-2.5 text-gray-600 hover:text-gray-900"
+                className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? "🙈" : "👁️"}
+                {showPassword ? "Hide" : "Show"}
               </button>
             </div>
           </div>
@@ -191,15 +191,15 @@ const SuperAdminLogin = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition disabled:opacity-50"
+            className="w-full bg-[#B99652] hover:bg-[#a38241] text-white text-xs font-semibold uppercase tracking-wider py-3 rounded-none transition-colors disabled:opacity-50 shadow-sm mt-2"
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Logging in..." : "Login to Super Admin"}
           </button>
         </form>
 
         {/* Footer */}
-        <div className="mt-6 text-center text-xs text-gray-600">
-          <p>🔒 Secure Super Admin Portal</p>
+        <div className="mt-6 pt-4 border-t border-[#ebdcaa] text-center text-[11px] uppercase tracking-wider text-slate-400">
+          <p>Secure Institutional Gateway</p>
         </div>
       </div>
     </div>

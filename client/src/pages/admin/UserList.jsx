@@ -198,17 +198,16 @@ const UserList = () => {
   const roleStats = {
     student: userList.filter(u => u.role === 'student').length,
     mentor: userList.filter(u => u.role === 'mentor').length,
-    admin: userList.filter(u => u.role === 'admin').length
   };
 
   if (loading) {
     return (
       <AdminLayout>
-        <div className="p-4 md:p-6">
+        <div className="p-4 md:p-6 bg-[#fffdf4] min-h-[80vh]">
           <div className="flex items-center justify-center h-96">
-              <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-4 text-text">{t('loading_users')}</p>
+            <div className="text-center">
+              <div className="animate-spin rounded-none h-12 w-12 border-4 border-[#B99652] border-t-transparent mx-auto"></div>
+              <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-slate-500">{t('loading_users')}</p>
             </div>
           </div>
         </div>
@@ -218,164 +217,169 @@ const UserList = () => {
 
   return (
     <AdminLayout>
-      <div className="p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-text">{t('user_management')}</h1>
-                <p className="text-gray-600 mt-1">{t('manage_all_user_accounts')}</p>
-              </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#ebdcaa]">
+            <div>
+              <h1 className="text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{t('user_management')}</h1>
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">{t('manage_all_user_accounts')}</p>
             </div>
+            <button
+              onClick={getUsers}
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none uppercase tracking-wider text-xs font-semibold transition-colors self-start sm:self-auto shadow-xs"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              {t('refresh') || 'Refresh'}
+            </button>
+          </div>
 
-            {/* Stats */}
-            <div data-tour="user-list-stats" className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm">{t('students')}</p>
-                    <p className="text-2xl font-bold text-text">{roleStats.student}</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-blue-50">
-                    <User className="text-primary" size={24} />
-                  </div>
+          {/* Stats Grid */}
+          <div data-tour="user-list-stats" className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] border-l-4 border-l-[#B99652] p-5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-wider font-semibold text-slate-500">{t('students')}</p>
+                  <p className="text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mt-1">{roleStats.student}</p>
                 </div>
-              </div>
-
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm">{t('mentors')}</p>
-                    <p className="text-2xl font-bold text-text">{roleStats.mentor}</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-purple-50">
-                    <UserCheck className="text-secondary" size={24} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm">{t('admins')}</p>
-                    <p className="text-2xl font-bold text-text">{roleStats.admin}</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-green-50">
-                    <Users className="text-success" size={24} />
-                  </div>
+                <div className="p-3 rounded-none bg-[#B99652]/10 text-[#B99652] border border-[#ebdcaa]">
+                  <User size={22} />
                 </div>
               </div>
             </div>
 
-            {/* Filters */}
-            <div data-tour="user-list-filters" className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] border-l-4 border-l-[#B99652] p-5 shadow-xs">
+              <div className="flex items-center justify-between">
                 <div>
-                  <label className="block text-sm font-medium text-text mb-2">{t('search')}</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3.5 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      placeholder={t('search_name_or_email')}
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
+                  <p className="text-xs uppercase tracking-wider font-semibold text-slate-500">{t('mentors')}</p>
+                  <p className="text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mt-1">{roleStats.mentor}</p>
                 </div>
+                <div className="p-3 rounded-none bg-[#B99652]/10 text-[#B99652] border border-[#ebdcaa]">
+                  <UserCheck size={22} />
+                </div>
+              </div>
+            </div>
 
+            <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] border-l-4 border-l-[#B99652] p-5 shadow-xs">
+              <div className="flex items-center justify-between">
                 <div>
-                  <label className="block text-sm font-medium text-text mb-2">{t('role')}</label>
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-3.5 text-gray-400" size={18} />
-                    <select
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 appearance-none"
-                    >
-                      <option value="all">{t('all_roles')}</option>
-                      <option value="student">{t('student')}</option>
-                      <option value="mentor">{t('mentor')}</option>
-                      <option value="admin">{t('admin')}</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-3.5 text-gray-400" size={18} />
-                  </div>
+                  <p className="text-xs uppercase tracking-wider font-semibold text-slate-500">{t('admins')}</p>
+                  <p className="text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mt-1">{roleStats.admin}</p>
                 </div>
-
-                <div className="flex items-end">
-                    <button
-                      onClick={() => {
-                        setSearch('');
-                        setRole('all');
-                        setPage(1);
-                      }}
-                      className="w-full px-4 py-2.5 border border-gray-300 text-text rounded-lg hover:bg-gray-50"
-                    >
-                      {t('clear_filters')}
-                    </button>
+                <div className="p-3 rounded-none bg-[#B99652]/10 text-[#B99652] border border-[#ebdcaa]">
+                  <Users size={22} />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Table */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {/* Filters Card */}
+          <div data-tour="user-list-filters" className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-5 shadow-xs">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-2">{t('search')}</label>
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={16} />
+                  <input
+                    type="text"
+                    placeholder={t('search_name_or_email')}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b] placeholder-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-2">{t('role')}</label>
+                <div className="relative">
+                  <Filter className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={16} />
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    className="w-full pl-10 pr-8 py-2.5 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b] appearance-none"
+                  >
+                    <option value="all">{t('all_roles')}</option>
+                    <option value="student">{t('student')}</option>
+                    <option value="mentor">{t('mentor')}</option>
+                    <option value="admin">{t('admin')}</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                </div>
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={() => {
+                    setSearch('');
+                    setRole('all');
+                    setPage(1);
+                  }}
+                  className="w-full px-4 py-2.5 border border-[#ebdcaa] bg-white text-[#1e1b4b] hover:bg-[#ebdcaa]/30 rounded-none uppercase tracking-wider text-xs font-semibold transition-colors"
+                >
+                  {t('clear_filters')}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="bg-white rounded-none border border-[#ebdcaa] shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-[#fffdf4] border-b border-[#ebdcaa]">
                   <tr>
-                        <th className="text-left p-4">
+                    <th className="text-left p-4">
                       <button
                         onClick={() => handleSort('name')}
-                        className="flex items-center space-x-1 font-medium text-sm text-gray-700 hover:text-text"
+                        className="flex items-center space-x-1 text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] hover:text-[#B99652]"
                       >
                         <span>{t('name')}</span>
                         {sortField === 'name' && (
-                          sortOrder === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />
+                          sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
                         )}
                       </button>
                     </th>
-                        <th className="text-left p-4">
+                    <th className="text-left p-4">
                       <button
                         onClick={() => handleSort('email')}
-                        className="flex items-center space-x-1 font-medium text-sm text-gray-700 hover:text-text"
+                        className="flex items-center space-x-1 text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] hover:text-[#B99652]"
                       >
                         <span>{t('email_address')}</span>
                         {sortField === 'email' && (
-                          sortOrder === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />
+                          sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
                         )}
                       </button>
                     </th>
-                        <th className="text-left p-4">
+                    <th className="text-left p-4">
                       <button
                         onClick={() => handleSort('role')}
-                        className="flex items-center space-x-1 font-medium text-sm text-gray-700 hover:text-text"
+                        className="flex items-center space-x-1 text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] hover:text-[#B99652]"
                       >
                         <span>{t('role')}</span>
                         {sortField === 'role' && (
-                          sortOrder === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />
+                          sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
                         )}
                       </button>
                     </th>
-                      <th className="text-left p-4 font-medium text-sm text-gray-700">
+                    <th className="text-left p-4 text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
                       {t('actions')}
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-[#ebdcaa]/40">
                   {usersToShow.map((user, index) => (
-                    <tr key={user.id} data-tour={index === 0 ? 'user-list-first-record' : undefined} className="border-b border-gray-100 hover:bg-gray-50">
+                    <tr key={user.id} data-tour={index === 0 ? 'user-list-first-record' : undefined} className="hover:bg-[#fffdf4] transition-colors">
                       <td className="p-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <span className="font-semibold text-primary">
+                          <div className="w-9 h-9 rounded-none bg-[#B99652]/10 border border-[#ebdcaa] flex items-center justify-center">
+                            <span className="font-bold text-xs text-[#B99652]">
                               {user.name.charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium text-text">{user.name}</p>
-                            <p className="text-xs text-gray-500">
+                            <p className="font-semibold text-sm text-[#1e1b4b]">{user.name}</p>
+                            <p className="text-xs text-slate-500">
                               {t('id_colon')} {user.id ? user.id.toString().substring(0, 8) : t('n_a')}
                               {user.role === 'student' && user.studentId && (
                                 <span className="ml-2">• {t('roll_no_colon')} {user.studentId}</span>
@@ -385,23 +389,23 @@ const UserList = () => {
                         </div>
                       </td>
                       <td className="p-4">
-                        <p className="text-text">{user.email}</p>
+                        <p className="text-sm text-slate-700">{user.email}</p>
                       </td>
                       <td className="p-4">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        <span className={`px-2.5 py-1 rounded-none text-[11px] uppercase tracking-wider font-semibold border ${
                           user.role === 'admin' 
-                            ? 'bg-purple-100 text-purple-700'
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
                             : user.role === 'mentor'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-green-100 text-green-700'
+                            ? 'bg-blue-50 text-blue-800 border-blue-200'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                         }`}>
                           {user.role}
                         </span>
                       </td>
                       <td className="p-4">
-                          <button
+                        <button
                           onClick={() => removeUser(user.id, user.name)}
-                          className="px-3 py-1.5 bg-danger text-white rounded-lg hover:bg-danger/90 text-sm"
+                          className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 rounded-none text-xs font-semibold uppercase tracking-wider transition-colors"
                         >
                           {t('delete')}
                         </button>
@@ -414,25 +418,25 @@ const UserList = () => {
 
             {/* Empty State */}
             {usersToShow.length === 0 && (
-              <div className="text-center py-12">
-                <User className="mx-auto text-gray-400" size={48} />
-                <p className="mt-4 text-text font-medium">No users found</p>
-                <p className="text-gray-600">Try different search terms</p>
+              <div className="text-center py-12 bg-white">
+                <User className="mx-auto text-[#ebdcaa]" size={48} />
+                <p className="mt-4 text-base font-semibold text-[#1e1b4b]">No users found</p>
+                <p className="text-xs text-slate-500 mt-1">Try different search terms or role filters</p>
               </div>
             )}
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="border-t border-gray-200 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
+              <div className="border-t border-[#ebdcaa] bg-[#fffdf4] p-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <p className="text-xs uppercase tracking-wider font-semibold text-slate-500">
                     Showing {startIndex + 1}-{Math.min(startIndex + perPage, sortedUsers.length)} of {sortedUsers.length}
                   </p>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1">
                     <button
                       onClick={() => setPage(page - 1)}
                       disabled={page === 1}
-                      className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 py-1.5 border border-[#ebdcaa] bg-white rounded-none text-xs font-semibold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
                     >
                       Previous
                     </button>
@@ -440,10 +444,10 @@ const UserList = () => {
                       <button
                         key={num}
                         onClick={() => setPage(num)}
-                        className={`px-3 py-1.5 rounded-lg ${
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-none ${
                           page === num
-                            ? 'bg-primary text-white'
-                            : 'border border-gray-300'
+                            ? 'bg-[#B99652] text-white border border-[#B99652]'
+                            : 'border border-[#ebdcaa] bg-white text-[#1e1b4b] hover:bg-slate-50'
                         }`}
                       >
                         {num}
@@ -452,7 +456,7 @@ const UserList = () => {
                     <button
                       onClick={() => setPage(page + 1)}
                       disabled={page === totalPages}
-                      className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 py-1.5 border border-[#ebdcaa] bg-white rounded-none text-xs font-semibold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
                     >
                       Next
                     </button>

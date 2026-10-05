@@ -95,19 +95,19 @@ const AddTeacher = () => {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto">
+      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
         {/* ===== PAGE TITLE ===== */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">{t('add_teacher_title')}</h1>
-          <p className="text-gray-500">{t('teacher_details')}</p>
+        <div className="border-b border-[#ebdcaa] pb-4">
+          <h1 className="text-2xl md:text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{t('add_teacher_title')}</h1>
+          <p className="text-gray-600 text-sm mt-1">{t('teacher_details')}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* ================= LEFT PROFILE CARD ================= */}
-          <div className="bg-white rounded-xl border p-6">
+          <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-6 shadow-sm">
             <div className="flex flex-col items-center text-center">
               <div className="relative">
-                <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                <div className="w-32 h-32 rounded-none bg-white border-2 border-[#ebdcaa] flex items-center justify-center overflow-hidden">
                   {photo ? (
                     <img
                       src={photo}
@@ -115,26 +115,26 @@ const AddTeacher = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-gray-400 text-sm">{t('no_photo')}</span>
+                    <span className="text-gray-400 text-xs">{t('no_photo')}</span>
                   )}
                 </div>
 
-                <label className="absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full cursor-pointer">
+                <label className="absolute -bottom-2 -right-2 bg-[#B99652] hover:bg-[#a38241] text-white p-2 rounded-none cursor-pointer shadow-md transition-all">
                   <Camera size={16} />
                   <input type="file" hidden onChange={handlePhotoChange} />
                 </label>
               </div>
 
-              <h2 className="mt-4 font-semibold text-lg">
+              <h2 className="mt-5 font-bold font-['DM_Serif_Display',serif] text-xl text-[#1e1b4b]">
                 {form.fullName || t('full_name')}
               </h2>
-              <p className="text-gray-500 text-sm">{t('teacher')}</p>
+              <p className="text-gray-500 text-xs uppercase tracking-wider mt-1">{t('teacher')}</p>
 
               <button
                 onClick={handleSaveTeacher}
                 disabled={loading}
                 data-tour="btn-save-teacher"
-                className="mt-4 w-full bg-primary text-white py-2 rounded-lg"
+                className="mt-6 w-full bg-[#B99652] hover:bg-[#a38241] text-white py-2.5 rounded-none font-semibold text-sm shadow-sm transition-all disabled:opacity-50"
               >
                 {loading ? t('saving') : t('save_teacher')}
               </button>
@@ -143,8 +143,8 @@ const AddTeacher = () => {
 
           {/* ================= RIGHT FORM ================= */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-xl border p-6">
-              <h3 className="font-semibold mb-4">{t('personal_information')}</h3>
+            <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-6 shadow-sm">
+              <h3 className="font-bold font-['DM_Serif_Display',serif] text-lg text-[#1e1b4b] mb-4 pb-2 border-b border-[#ebdcaa]">{t('personal_information')}</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input data-tour="input-teacher-name" label={t('full_name')} name="fullName" value={form.fullName} onChange={handleChange} />
@@ -159,8 +159,8 @@ const AddTeacher = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border p-6">
-              <h3 className="font-semibold mb-4">{t('professional_information')}</h3>
+            <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-6 shadow-sm">
+              <h3 className="font-bold font-['DM_Serif_Display',serif] text-lg text-[#1e1b4b] mb-4 pb-2 border-b border-[#ebdcaa]">{t('professional_information')}</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input label={t('qualification')} name="qualification" value={form.qualification} onChange={handleChange} />
@@ -180,10 +180,11 @@ export default AddTeacher;
 /* ================= INPUT ================= */
 const Input = ({ label, ...props }) => (
   <div>
-    <label className="block text-sm font-medium mb-1">{label}</label>
+    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">{label}</label>
     <input
       {...props}
-      className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+      className="w-full bg-white border border-[#ebdcaa] rounded-none px-3.5 py-2 text-sm focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]"
     />
   </div>
 );
+

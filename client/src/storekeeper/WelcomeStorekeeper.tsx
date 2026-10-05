@@ -40,39 +40,39 @@ export default function WelcomeStorekeeper() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 overflow-y-auto">
-      <div className="text-center p-8 max-w-4xl">
+    <div className="flex items-center justify-center min-h-screen bg-[#fffdf4] overflow-y-auto p-6">
+      <div className="text-center p-8 max-w-3xl w-full bg-white border border-[#ebdcaa] rounded-none shadow-sm">
         {/* Logo and Welcome Message */}
         <div className="mb-8">
-          <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full mb-6 shadow-2xl">
-            <span className="text-4xl font-bold text-white">SK</span>
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-[#B99652]/10 text-[#B99652] border border-[#ebdcaa] rounded-none mb-6">
+            <span className="text-3xl font-bold font-['DM_Serif_Display',serif]">SK</span>
           </div>
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-            Welcome Storekeeper
+          <h1 className="text-4xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-2">
+            Storekeeper Portal
           </h1>
-          <p className="text-xl text-gray-700 mb-2">
-            CORE5 ACADEMY - Inventory Management
+          <p className="text-xs uppercase tracking-wider text-[#B99652] font-semibold mb-3">
+            Core5 Academy — Inventory & Logistics Management
           </p>
-          <p className="text-lg text-gray-600">
-            Hello, <span className="font-semibold text-orange-600">{user.name || "Storekeeper"}</span>
+          <p className="text-sm text-slate-600">
+            Welcome back, <span className="font-semibold text-[#1e1b4b]">{user.name || "Storekeeper"}</span>
           </p>
         </div>
 
         {/* Date and Time Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-8">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl p-6 shadow-xl">
-            <div className="flex items-center justify-center gap-3 mb-3">
-              <Calendar size={24} />
-              <span className="font-semibold">Today's Date</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-xl mx-auto mb-4">
+          <div className="bg-[#fffdf4] text-[#1e1b4b] border border-[#ebdcaa] rounded-none p-5 text-left">
+            <div className="flex items-center gap-2 mb-2 text-[#B99652]">
+              <Calendar size={18} />
+              <span className="text-xs uppercase tracking-wider font-semibold">Today's Date</span>
             </div>
-            <p className="text-2xl font-bold">{formatDate(currentTime)}</p>
+            <p className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{formatDate(currentTime)}</p>
           </div>
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl p-6 shadow-xl">
-            <div className="flex items-center justify-center gap-3 mb-3">
-              <Clock size={24} />
-              <span className="font-semibold">Current Time</span>
+          <div className="bg-[#fffdf4] text-[#1e1b4b] border border-[#ebdcaa] rounded-none p-5 text-left">
+            <div className="flex items-center gap-2 mb-2 text-[#B99652]">
+              <Clock size={18} />
+              <span className="text-xs uppercase tracking-wider font-semibold">Current Time</span>
             </div>
-            <p className="text-2xl font-bold">{formatTime(currentTime)}</p>
+            <p className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{formatTime(currentTime)}</p>
           </div>
         </div>
       </div>

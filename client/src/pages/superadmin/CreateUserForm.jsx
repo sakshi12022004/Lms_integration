@@ -135,42 +135,40 @@ const CreateUserForm = ({ onSuccess }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
-            <UserPlus className="text-white" size={20} />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">👥 Create New Staff Member</h1>
-            <p className="text-gray-600">Add a new team member to your educational empire</p>
-          </div>
+      <div className="flex items-center gap-3 pb-4 border-b border-[#ebdcaa]">
+        <div className="w-12 h-12 bg-[#B99652]/10 border border-[#ebdcaa] rounded-none flex items-center justify-center text-[#B99652]">
+          <UserPlus size={22} />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Create New Staff Member</h1>
+          <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">Assign admin, accountant or storekeeper roles</p>
         </div>
       </div>
 
       {/* Form Card */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+      <div className="bg-[#fffdf4] rounded-none shadow-sm border border-[#ebdcaa] overflow-hidden">
         <div className="p-8">
           <form onSubmit={handleCreate} className="space-y-6">
             {/* User Information */}
-            <div data-tour="staff-user-info" className="mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <User className="text-purple-600" size={20} />
+            <div data-tour="staff-user-info" className="mb-6">
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-4 flex items-center gap-2 pb-2 border-b border-[#ebdcaa]">
+                <User className="text-[#B99652]" size={18} />
                 User Information
               </h3>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Full Name <span className="text-red-500">*</span>
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
+                    Full Name <span className="text-red-600">*</span>
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <input
                       name="name"
                       placeholder="e.g., John Doe"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-500"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] placeholder-slate-400 text-sm"
                       value={form.name}
                       onChange={handleChange}
                       required
@@ -179,16 +177,16 @@ const CreateUserForm = ({ onSuccess }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Email Address <span className="text-red-500">*</span>
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
+                    Email Address <span className="text-red-600">*</span>
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <input
                       name="email"
                       type="email"
                       placeholder="user@example.com"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-500"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] placeholder-slate-400 text-sm"
                       value={form.email}
                       onChange={handleChange}
                       required
@@ -200,22 +198,22 @@ const CreateUserForm = ({ onSuccess }) => {
 
             {/* Role & Assignment */}
             <div data-tour="staff-role-assignment">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Shield className="text-blue-600" size={20} />
+              <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-4 flex items-center gap-2 pb-2 border-b border-[#ebdcaa]">
+                <Shield className="text-[#B99652]" size={18} />
                 Role & Assignment
               </h3>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    User Role <span className="text-red-500">*</span>
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
+                    User Role <span className="text-red-600">*</span>
                   </label>
                   <div className="relative">
-                    <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <select
                       name="role"
                       data-tour="select-staff-role"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900 appearance-none bg-white"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] text-sm appearance-none"
                       value={form.role}
                       onChange={handleChange}
                       required
@@ -230,15 +228,15 @@ const CreateUserForm = ({ onSuccess }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    University <span className="text-red-500">*</span>
+                  <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
+                    Institute / University <span className="text-red-600">*</span>
                   </label>
                   <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                    <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <select
                       name="universityId"
                       data-tour="select-staff-university"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900 appearance-none bg-white"
+                      className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] text-sm appearance-none"
                       value={form.universityId}
                       onChange={handleChange}
                       required
@@ -254,21 +252,21 @@ const CreateUserForm = ({ onSuccess }) => {
             </div>
 
             {/* Submit Button */}
-            <div className="pt-4">
+            <div className="pt-4 border-t border-[#ebdcaa]">
               <button
                 type="submit"
                 disabled={loading}
                 data-tour="btn-submit-staff"
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 text-white font-semibold py-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg"
+                className="w-full bg-[#B99652] hover:bg-[#a38241] disabled:opacity-50 text-white font-semibold py-3.5 rounded-none uppercase tracking-wider text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
               >
                 {loading ? (
                   <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <div className="animate-spin rounded-none h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Creating Staff Member...
                   </>
                 ) : (
                   <>
-                    <UserPlus size={20} />
+                    <UserPlus size={16} />
                     Create Staff Member
                   </>
                 )}
@@ -279,17 +277,17 @@ const CreateUserForm = ({ onSuccess }) => {
       </div>
 
       {/* Info Box */}
-      <div className="mt-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
+      <div className="bg-[#fffdf4] border border-[#ebdcaa] rounded-none p-5 text-[#1e1b4b]">
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0">
-            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-              <Key className="text-white" size={18} />
+            <div className="w-9 h-9 bg-[#B99652]/10 border border-[#ebdcaa] rounded-none flex items-center justify-center text-[#B99652]">
+              <Key size={16} />
             </div>
           </div>
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">🔐 Password Information</h4>
-            <p className="text-gray-600 text-sm leading-relaxed">
-              A strong random password will be automatically generated and displayed once. The staff member will need to save this password securely for their first login. They can change it later from their profile settings.
+            <h4 className="font-bold text-sm text-[#1e1b4b] mb-1 font-['DM_Serif_Display',serif]">Password Information</h4>
+            <p className="text-slate-600 text-xs leading-relaxed">
+              A strong random password will be automatically generated and displayed once. The staff member will need to save this password securely for their first login.
             </p>
           </div>
         </div>

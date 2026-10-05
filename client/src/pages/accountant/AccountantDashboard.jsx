@@ -373,25 +373,17 @@ const AccountantDashboard = () => {
   // Enhanced loading state with better UX
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-emerald-800 to-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin h-16 w-16 border-4 border-emerald-500 border-t-transparent rounded-full mb-4"></div>
-          <div className="text-emerald-200 max-w-md">
-            <h2 className="text-xl font-semibold mb-2">Loading Accountant Dashboard</h2>
-            <p className="text-emerald-300">Please wait while we fetch your data...</p>
-            <div className="mt-4 p-4 bg-emerald-800/50 rounded-lg border border-emerald-700">
-              <p className="text-sm text-emerald-300 mb-2">🔍 Connection Status</p>
-              <p className="text-emerald-400 font-medium">
-                {!API || !token ? '⚠️ API Configuration Error' : '🔄 Connecting to server...'}
-              </p>
-              {error && (
-                <div className="mt-2 p-2 bg-red-900/50 rounded border border-red-700">
-                  <p className="text-sm text-red-300 mb-1">❌ Error Detected</p>
-                  <p className="text-red-400 text-sm">{error}</p>
-                </div>
-              )}
+      <div className="min-h-screen bg-[#fffdf4] text-[#1e1b4b] flex items-center justify-center p-6">
+        <div className="text-center bg-white p-8 border border-[#ebdcaa] rounded-none max-w-md w-full shadow-sm">
+          <div className="animate-spin h-12 w-12 border-4 border-[#B99652] border-t-transparent rounded-none mx-auto mb-4"></div>
+          <h2 className="text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">Loading Accountant Dashboard</h2>
+          <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-4">Please wait while we fetch financial data...</p>
+          {error && (
+            <div className="mt-2 p-3 bg-red-50 text-red-700 rounded-none border border-red-200 text-xs">
+              <p className="font-semibold">Error Detected</p>
+              <p className="mt-0.5">{error}</p>
             </div>
-          </div>
+          )}
         </div>
       </div>
     );
@@ -399,39 +391,34 @@ const AccountantDashboard = () => {
 
   return (
     <AccountantLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
           <div>
-            <h1 className="text-4xl font-bold mb-2">💰 Accountant Dashboard</h1>
-            <p className="text-emerald-200">
+            <h1 className="text-3xl font-bold font-['DM_Serif_Display',serif] text-white">Accountant Overview</h1>
+            <p className="text-xs uppercase tracking-wider text-[#B99652] font-semibold mt-1">
               {stats.universityName} • Welcome {user.name}
             </p>
           </div>
           <button
             onClick={loadAccountantData}
-            className="bg-emerald-600 hover:bg-emerald-700 px-6 py-2 rounded-lg font-bold transition flex items-center gap-2"
+            className="bg-[#B99652] hover:bg-[#a38241] text-white px-4 py-2.5 rounded-none text-xs font-semibold uppercase tracking-wider transition-colors flex items-center gap-2 self-start sm:self-auto shadow-sm"
           >
-            <RefreshCw size={20} />
+            <RefreshCw size={14} />
             Refresh
           </button>
         </div>
 
         {/* Error Display */}
         {error && (
-          <div className="max-w-7xl mx-auto p-4 bg-red-900/50 rounded-lg border border-red-700">
+          <div className="p-4 bg-red-500/10 rounded-none border border-red-500/30 text-red-300">
             <div className="flex items-center gap-3">
-              <div className="text-red-400">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l-4-4m0 0-4m0 0-8m0 0-12 0-12" />
-                </svg>
-              </div>
               <div>
-                <h3 className="text-lg font-semibold text-red-300 mb-1">Connection Error</h3>
-                <p className="text-red-400">{error}</p>
+                <h3 className="text-sm font-semibold mb-0.5">Connection Error</h3>
+                <p className="text-xs text-red-400">{error}</p>
                 <button
                   onClick={loadAccountantData}
-                  className="mt-3 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                  className="mt-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-none text-xs font-semibold uppercase tracking-wider transition"
                 >
                   Try Again
                 </button>
@@ -441,105 +428,113 @@ const AccountantDashboard = () => {
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Fee Collection Stats */}
-          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-6 text-white shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <DollarSign size={24} />
-              <span className="text-sm bg-white/20 px-2 py-1 rounded">Fees</span>
+          <div className="bg-[#fffdf4] rounded-none p-5 text-[#1e1b4b] border border-[#ebdcaa] shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">Fees Collected</span>
+              <div className="p-2 rounded-none bg-[#B99652]/10 text-[#B99652] border border-[#ebdcaa]">
+                <DollarSign size={18} />
+              </div>
             </div>
-            <h3 className="text-2xl font-bold mb-1">₹{stats.totalFeesCollected.toLocaleString('en-IN')}</h3>
-            <p className="text-green-100">Total Fees Collected</p>
+            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">₹{stats.totalFeesCollected.toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-slate-500">Total fees recorded</p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <Users size={24} />
-              <span className="text-sm bg-white/20 px-2 py-1 rounded">Students</span>
+          <div className="bg-[#fffdf4] rounded-none p-5 text-[#1e1b4b] border border-[#ebdcaa] shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">Students</span>
+              <div className="p-2 rounded-none bg-[#B99652]/10 text-[#B99652] border border-[#ebdcaa]">
+                <Users size={18} />
+              </div>
             </div>
-            <h3 className="text-2xl font-bold mb-1">{stats.totalStudents}</h3>
-            <p className="text-blue-100">Total Students</p>
+            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">{stats.totalStudents}</h3>
+            <p className="text-xs text-slate-500">Active student accounts</p>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-6 text-white shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <TrendingUp size={24} />
-              <span className="text-sm bg-white/20 px-2 py-1 rounded">Average</span>
+          <div className="bg-[#fffdf4] rounded-none p-5 text-[#1e1b4b] border border-[#ebdcaa] shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">Avg Fee/Student</span>
+              <div className="p-2 rounded-none bg-[#B99652]/10 text-[#B99652] border border-[#ebdcaa]">
+                <TrendingUp size={18} />
+              </div>
             </div>
-            <h3 className="text-2xl font-bold mb-1">₹{stats.averageFeesPerStudent.toLocaleString('en-IN')}</h3>
-            <p className="text-purple-100">Average Fees Per Student</p>
+            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">₹{stats.averageFeesPerStudent.toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-slate-500">Average collection</p>
           </div>
 
           {/* Vendor Invoice Stats */}
-          <div className="bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl p-6 text-white shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <FileText size={24} />
-              <span className="text-sm bg-white/20 px-2 py-1 rounded">Pending</span>
+          <div className="bg-[#fffdf4] rounded-none p-5 text-[#1e1b4b] border border-[#ebdcaa] shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">Pending Invoices</span>
+              <div className="p-2 rounded-none bg-amber-50 text-amber-700 border border-amber-200">
+                <FileText size={18} />
+              </div>
             </div>
-            <h3 className="text-2xl font-bold mb-1">{stats.pendingVendorInvoices}</h3>
-            <p className="text-orange-100">Pending Vendor Invoices</p>
+            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">{stats.pendingVendorInvoices}</h3>
+            <p className="text-xs text-slate-500">Awaiting clearance</p>
           </div>
         </div>
 
         {/* Additional Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-emerald-500/30">
-            <div className="flex items-center justify-between mb-4">
-              <FileText className="text-emerald-400" size={24} />
-              <span className="text-emerald-400 text-sm">Total</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-[#1e1b4b] rounded-none p-5 border border-white/10 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-wider font-semibold text-white/60">Total Invoices</span>
+              <FileText className="text-[#B99652]" size={20} />
             </div>
-            <h3 className="text-2xl font-bold text-white mb-1">{stats.totalVendorInvoices}</h3>
-            <p className="text-emerald-200">Total Vendor Invoices</p>
+            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-white mb-1">{stats.totalVendorInvoices}</h3>
+            <p className="text-xs text-white/50">All recorded vendor bills</p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
-            <div className="flex items-center justify-between mb-4">
-              <DollarSign className="text-blue-400" size={24} />
-              <span className="text-blue-400 text-sm">Revenue</span>
+          <div className="bg-[#1e1b4b] rounded-none p-5 border border-white/10 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-wider font-semibold text-white/60">Total Revenue</span>
+              <DollarSign className="text-emerald-400" size={20} />
             </div>
-            <h3 className="text-2xl font-bold text-white mb-1">₹{stats.totalRevenue.toLocaleString('en-IN')}</h3>
-            <p className="text-blue-200">Total Revenue</p>
+            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-white mb-1">₹{stats.totalRevenue.toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-white/50">Gross institutional income</p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-red-500/30">
-            <div className="flex items-center justify-between mb-4">
-              <TrendingUp className="text-red-400" size={24} />
-              <span className="text-red-400 text-sm">Expenses</span>
+          <div className="bg-[#1e1b4b] rounded-none p-5 border border-white/10 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-wider font-semibold text-white/60">Total Expenses</span>
+              <TrendingUp className="text-red-400" size={20} />
             </div>
-            <h3 className="text-2xl font-bold text-white mb-1">₹{stats.totalExpenses.toLocaleString('en-IN')}</h3>
-            <p className="text-red-200">Total Expenses</p>
+            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-white mb-1">₹{stats.totalExpenses.toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-white/50">Operational expenditures</p>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-emerald-500/30">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <FileText size={20} className="text-emerald-400" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-[#fffdf4] rounded-none p-6 border border-[#ebdcaa] text-[#1e1b4b] shadow-sm">
+            <h3 className="text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-2 flex items-center gap-2">
+              <FileText size={20} className="text-[#B99652]" />
               Vendor Invoices
             </h3>
-            <p className="text-emerald-200 mb-4">
-              {stats.pendingVendorInvoices} pending invoices awaiting payment
+            <p className="text-xs text-slate-600 mb-4">
+              {stats.pendingVendorInvoices} pending invoices awaiting review & payment
             </p>
             <button
               onClick={() => navigate('/accountant/vendor-invoices')}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition"
+              className="bg-[#B99652] hover:bg-[#a38241] text-white px-4 py-2.5 rounded-none text-xs font-semibold uppercase tracking-wider transition-colors"
             >
               Manage Vendor Invoices
             </button>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <DollarSign size={20} className="text-blue-400" />
+          <div className="bg-[#fffdf4] rounded-none p-6 border border-[#ebdcaa] text-[#1e1b4b] shadow-sm">
+            <h3 className="text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-2 flex items-center gap-2">
+              <DollarSign size={20} className="text-[#B99652]" />
               Fee Collection
             </h3>
-            <p className="text-blue-200 mb-4">
-              Track student fee payments and collections
+            <p className="text-xs text-slate-600 mb-4">
+              Track student fee payments, receipts and status
             </p>
             <button
               onClick={() => navigate('/accountant/fees')}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+              className="bg-[#1e1b4b] hover:bg-[#2b276b] text-white px-4 py-2.5 rounded-none text-xs font-semibold uppercase tracking-wider transition-colors border border-white/10"
             >
               View Fee Collection
             </button>
@@ -547,30 +542,30 @@ const AccountantDashboard = () => {
         </div>
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Fee Collection Chart */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-emerald-500/30">
-            <h3 className="text-xl font-bold text-white mb-4">Fee Collection by Grade</h3>
-            <ResponsiveContainer width="100%" height={300}>
+          <div className="bg-[#1e1b4b] rounded-none p-6 border border-white/10 shadow-sm">
+            <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-white mb-4">Fee Collection by Grade</h3>
+            <ResponsiveContainer width="100%" height={280}>
               <BarChart data={chartData.feeCollection}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="grade" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="grade" stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
-                  labelStyle={{ color: '#F3F4F6' }}
+                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 0 }}
+                  labelStyle={{ color: '#f8fafc' }}
                 />
                 <Legend />
-                <Bar dataKey="collected" fill="#10B981" name="Collected" />
-                <Bar dataKey="target" fill="#6B7280" name="Target" />
+                <Bar dataKey="collected" fill="#B99652" name="Collected" />
+                <Bar dataKey="target" fill="#475569" name="Target" />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           {/* Payment Status Chart */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
-            <h3 className="text-xl font-bold text-white mb-4">Payment Status</h3>
-            <ResponsiveContainer width="100%" height={300}>
+          <div className="bg-[#1e1b4b] rounded-none p-6 border border-white/10 shadow-sm">
+            <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-white mb-4">Payment Status Breakdown</h3>
+            <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
                   data={chartData.paymentStatus}
@@ -579,38 +574,40 @@ const AccountantDashboard = () => {
                   labelLine={false}
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
-                  fill="#8884d8"
+                  fill="#B99652"
                   dataKey="value"
                 >
                   {chartData.paymentStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell key={`cell-${index}`} fill={index === 0 ? '#B99652' : index === 1 ? '#f59e0b' : '#ef4444'} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 0 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Footer with Time Display */}
-        <div className="max-w-7xl mx-auto mt-8 flex justify-between items-center text-emerald-200">
+        <div className="pt-4 border-t border-white/10 flex flex-wrap justify-between items-center text-xs text-white/50 gap-4">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Calendar size={20} />
-              <span className="text-sm">{formatDate(currentTime)}</span>
+            <div className="flex items-center gap-1.5">
+              <Calendar size={14} className="text-[#B99652]" />
+              <span>{formatDate(currentTime)}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock size={20} />
-              <span className="text-sm">{formatTime(currentTime)}</span>
+            <div className="flex items-center gap-1.5">
+              <Clock size={14} className="text-[#B99652]" />
+              <span>{formatTime(currentTime)}</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <User size={20} />
-            <span className="text-sm">{user.name}</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <Building size={20} />
-            <span className="text-sm">{stats.universityName}</span>
+            <div className="flex items-center gap-1.5">
+              <User size={14} className="text-[#B99652]" />
+              <span>{user.name}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Building size={14} className="text-[#B99652]" />
+              <span>{stats.universityName}</span>
+            </div>
           </div>
         </div>
       </div>

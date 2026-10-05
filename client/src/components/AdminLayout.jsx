@@ -176,15 +176,15 @@ const AdminLayout = ({ children }) => {
                   to={item.path}
                   onClick={(e) => handleNavClick(e, item)}
                   data-tour={item.tourId}
-                  className={`flex items-center rounded-xl px-3 py-3 transition-all duration-200
+                  className={`flex items-center rounded-none px-3.5 py-3 transition-all duration-200
                     ${isActive
-                      ? "bg-gradient-to-r from-blue-600/30 to-purple-600/30 text-white shadow-lg border border-white/20 backdrop-blur-xs"
-                      : "text-white/70 hover:text-white hover:bg-white/10 hover:shadow-md"
+                      ? "bg-[#B99652]/20 text-white border-l-4 border-[#B99652] shadow-sm backdrop-blur-xs font-semibold"
+                      : "text-white/70 hover:text-white hover:bg-white/10 hover:shadow-xs"
                     }
                     ${sidebarCollapsed ? "justify-center" : ""}
                   `}
                 >
-                  <div className={`${isActive ? "text-white" : "text-white/70"} transition-colors`}>
+                  <div className={`${isActive ? "text-[#B99652]" : "text-white/70"} transition-colors`}>
                     {item.icon}
                   </div>
                   {!sidebarCollapsed && <span className="ml-3 font-medium text-sm">{t(item.nameKey)}</span>}
@@ -195,15 +195,15 @@ const AdminLayout = ({ children }) => {
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-white/15 space-y-3 relative z-10">
+          <div className="p-4 border-t border-white/15 space-y-2 relative z-10">
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 text-white/80 hover:text-white transition-all duration-200"
+              className="w-full flex items-center justify-between p-2.5 rounded-none bg-white/10 hover:bg-white/15 text-white/80 hover:text-white transition-all duration-200 border border-white/10"
             >
               <div className="flex items-center space-x-3">
                 <ChevronLeft className={`transition-transform duration-200 ${sidebarCollapsed ? "rotate-180" : ""}`} />
                 {!sidebarCollapsed && (
-                  <span className="font-medium text-sm">{t('nav_collapse') ?? 'Collapse'}</span>
+                  <span className="font-medium text-xs">{t('nav_collapse') ?? 'Collapse'}</span>
                 )}
               </div>
               {sidebarCollapsed && <ChevronRight />}
@@ -211,12 +211,12 @@ const AdminLayout = ({ children }) => {
 
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center p-3 rounded-xl bg-gradient-to-r from-red-500/10 to-pink-500/10 hover:from-red-500/20 hover:to-pink-500/20 text-red-400 hover:text-red-300 transition-all duration-200 ${
+              className={`w-full flex items-center p-2.5 rounded-none bg-red-500/15 hover:bg-red-500/25 text-red-300 hover:text-red-200 border border-red-500/20 transition-all duration-200 text-xs font-medium ${
                 sidebarCollapsed ? "justify-center" : ""
               }`}
             >
-              <LogOut size={18} />
-              {!sidebarCollapsed && <span className="ml-3 font-medium text-sm">{t('nav_logout')}</span>}
+              <LogOut size={16} />
+              {!sidebarCollapsed && <span className="ml-2.5 font-medium">{t('nav_logout')}</span>}
             </button>
           </div>
         </div>

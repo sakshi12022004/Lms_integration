@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  Loader2, 
-  UserCheck, 
-  ShieldCheck, 
-  BookOpen, 
-  Package, 
+import {
+  X,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2,
+  UserCheck,
+  ShieldCheck,
+  BookOpen,
+  Package,
   Calculator,
   GraduationCap,
   Sparkles
@@ -116,56 +116,56 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4 md:p-6 animate-fadeIn"
       onClick={onClose}
     >
-      <div 
-        className="relative w-full max-w-4xl bg-white rounded-none shadow-2xl overflow-hidden border border-[#ebdcaa] flex flex-col md:flex-row my-auto"
+      <div
+        className="relative w-full max-w-4xl bg-white rounded-none shadow-2xl overflow-hidden border border-slate-200 flex flex-col md:flex-row my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 p-2 rounded-none bg-white border border-[#ebdcaa] text-slate-600 hover:text-slate-900 hover:bg-[#fffdf4] transition-colors shadow-xs"
+          className="absolute top-4 right-4 z-20 p-2 rounded-none bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors"
           aria-label="Close Modal"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* ================= LEFT COLUMN: HARMONIOUS WARM IVORY WITH LUXURY DARK LOGO BADGE ================= */}
-        <div className="hidden md:flex md:w-5/12 bg-gradient-to-b from-[#fffdf4] via-[#faf4df] to-[#f4ebd0] text-slate-800 p-8 flex-col justify-between relative overflow-hidden border-r border-[#ebdcaa]">
-          {/* Abstract Arc Background SVG graphics with warm golden tint */}
-          <div className="absolute inset-0 pointer-events-none opacity-25">
+        {/* ================= LEFT COLUMN: DEEP NAVY CARD WITH LOGO & REAL STUDENT PHOTO ================= */}
+        <div className="hidden md:flex md:w-5/12 bg-gradient-to-br from-[#002366] via-[#08173e] to-[#040817] text-white p-8 flex-col justify-between relative overflow-hidden">
+          {/* Ambient Glows & Abstract Arc Background SVG graphics */}
+          <div className="absolute top-0 right-0 w-36 h-36 bg-[#B99652]/15 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-44 h-44 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute inset-0 pointer-events-none opacity-20">
             <svg className="w-full h-full" viewBox="0 0 400 600" fill="none">
-              <circle cx="200" cy="300" r="250" stroke="#B99652" strokeWidth="1.5" />
-              <circle cx="200" cy="300" r="180" stroke="#B99652" strokeWidth="1" />
-              <path d="M-50 450 Q 200 200 450 450" stroke="#B99652" strokeWidth="1.5" />
+              <circle cx="200" cy="300" r="250" stroke="white" strokeWidth="1.5" />
+              <circle cx="200" cy="300" r="180" stroke="white" strokeWidth="1" />
+              <path d="M-50 450 Q 200 200 450 450" stroke="white" strokeWidth="1.5" />
             </svg>
           </div>
 
-          {/* Top Brand Header: Sleek Dark Floating Badge for 100% Logo Clarity */}
+          {/* Top Brand Header */}
           <div className="relative z-10 flex items-center">
-            <div className="inline-flex items-center px-4 py-2 bg-[#0B1528] rounded-none border border-[#B99652] shadow-md">
-              <img 
-                src={core5Logo} 
-                alt="Core5 Academy" 
-                className="h-9 sm:h-10 w-auto object-contain"
-              />
-            </div>
+            <img
+              src={core5Logo}
+              alt="Core5 Academy"
+              className="h-12 w-auto object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+            />
           </div>
 
           {/* Center Image Container */}
           <div className="relative z-10 my-4 flex items-center justify-center">
-            <div className="relative w-full max-w-[260px] aspect-square rounded-none overflow-hidden shadow-xl border-2 border-[#B99652] group bg-white">
-              <img 
-                src={studentReadingImg} 
+            <div className="relative w-full max-w-[260px] aspect-square rounded-none overflow-hidden shadow-2xl border-2 border-white/20 group">
+              <img
+                src={studentReadingImg}
                 alt="Student sitting cross-legged reading book"
                 className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
-              
-              <div className="absolute bottom-3 left-3 right-3 text-center bg-white/95 backdrop-blur-md py-2.5 px-3 rounded-none shadow-md border border-[#ebdcaa]">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+
+              <div className="absolute bottom-3 left-3 right-3 text-center bg-white/95 backdrop-blur-md py-2 px-3 rounded-none shadow-lg border border-[#ebdcaa]/60">
                 <p className="text-xs font-bold text-[#1e1b4b]">Empowering Modern Learners</p>
                 <p className="text-[10px] text-slate-600 font-medium">Access assigned courses anytime</p>
               </div>
@@ -173,17 +173,17 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
           </div>
 
           {/* Bottom Footer Quote */}
-          <div className="relative z-10 text-xs text-slate-600 font-medium leading-relaxed border-t border-[#ebdcaa] pt-3">
+          <div className="relative z-10 text-xs text-white/80 font-medium leading-relaxed border-t border-white/15 pt-3">
             <span>Transforming learning experiences across universities.</span>
           </div>
         </div>
 
-        {/* ================= RIGHT COLUMN: MATCHING WARM IVORY LOGIN FORM & ROLE TABS ================= */}
-        <div className="w-full md:w-7/12 p-6 md:p-10 bg-[#fffdf4] text-slate-900 flex flex-col justify-center">
-          
+        {/* ================= RIGHT COLUMN: PURE WHITE LOGIN FORM & ROLE TABS ================= */}
+        <div className="w-full md:w-7/12 p-6 md:p-10 bg-white text-slate-900 flex flex-col justify-center">
+
           {/* Form Header */}
           <div className="mb-6">
-            <h2 className="text-2xl md:text-3xl font-['DM_Serif_Display',serif] font-normal text-[#1e1b4b] tracking-tight">
+            <h2 className="text-2xl md:text-3xl font-['DM_Serif_Display',serif] font-bold text-[#1e1b4b] tracking-tight">
               Log In to Your Account
             </h2>
             <p className="text-slate-500 text-xs md:text-sm mt-1">
@@ -215,7 +215,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder={`${activeRole}@core5.edu`}
-                  className="w-full pl-10 pr-4 py-3 rounded-none border border-[#ebdcaa] bg-white text-slate-900 text-sm focus:outline-none focus:border-[#B99652] transition-all shadow-xs"
+                  className="w-full pl-10 pr-4 py-3 rounded-none border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all shadow-xs"
                 />
               </div>
             </div>
@@ -226,7 +226,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
                   Password
                 </label>
-                <a href="/login" className="text-xs text-[#B99652] hover:underline font-semibold">
+                <a href="/login" className="text-xs text-amber-600 hover:underline font-semibold">
                   Forgot Password?
                 </a>
               </div>
@@ -240,7 +240,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-3 rounded-none border border-[#ebdcaa] bg-white text-slate-900 text-sm focus:outline-none focus:border-[#B99652] transition-all shadow-xs"
+                  className="w-full pl-10 pr-10 py-3 rounded-none border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all shadow-xs"
                 />
                 <button
                   type="button"
@@ -259,7 +259,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
                 id="remember"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded-none border-[#ebdcaa] text-[#B99652] accent-[#B99652]"
+                className="w-4 h-4 rounded-none border-slate-300 text-amber-600 focus:ring-amber-500"
               />
               <label htmlFor="remember" className="text-xs text-slate-600 font-medium select-none">
                 Remember me
@@ -270,7 +270,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 px-4 bg-[#B99652] hover:bg-[#a68443] text-white font-semibold text-xs uppercase tracking-wider border-none rounded-none shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-70"
+              className="w-full py-3.5 px-4 header-button bg-[#B99652] hover:bg-[#a68443] text-white font-['Poppins'] font-semibold text-[13px] uppercase tracking-[0.5px] border-none rounded-none shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-70"
             >
               {isLoading ? (
                 <>
@@ -286,7 +286,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
             <button
               type="button"
               onClick={() => toast.info('Google SSO integration enabled.')}
-              className="w-full py-3 px-4 rounded-none bg-white border border-[#ebdcaa] text-slate-800 font-semibold text-xs hover:bg-[#fffdf4] transition-colors flex items-center justify-center space-x-2 shadow-xs"
+              className="w-full py-3 px-4 rounded-none bg-white border border-slate-200 text-slate-800 font-semibold text-xs hover:bg-slate-50 transition-colors flex items-center justify-center space-x-2 shadow-xs"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -300,7 +300,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
             {/* Footer */}
             <div className="text-center pt-1 text-xs text-slate-500">
               Don't have an account?{' '}
-              <a href="/register" className="text-[#B99652] font-bold hover:underline">
+              <a href="/register" className="text-[#F05A36] font-bold hover:underline">
                 Sign Up
               </a>
             </div>

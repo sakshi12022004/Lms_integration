@@ -85,7 +85,7 @@ const AdminDashboard = () => {
     return (
       <AdminLayout>
         <div className="p-6 flex justify-center items-center h-96">
-          <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full" />
+          <div className="animate-spin h-10 w-10 border-4 border-[#B99652] border-t-transparent rounded-full" />
         </div>
       </AdminLayout>
     );
@@ -93,74 +93,72 @@ const AdminDashboard = () => {
 
   return (
     <AdminLayout>
-      <div className="p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6">
 
           {/* ================= HEADER ================= */}
-          <div className="mb-8 flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#ebdcaa]/60">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-text">
+              <h1 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">
                 {t('admin_dashboard_title')}
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
                 {t('welcome_control_panel')}
               </p>
             </div>
 
             {/* ✅ RIGHT CONTROLS */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <AnnouncementBell />
-
-              {/* Create Course button removed */}
 
               {/* ➕ CREATE ANNOUNCEMENT */}
               <button
                 data-tour="admin-announcement-btn"
                 onClick={() => setOpenAnnouncementModal(true)}
-                className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90"
+                className="px-4 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none text-xs font-semibold uppercase tracking-wider shadow-sm transition-all"
               >
                 {t('announcement_button')}
               </button>
 
               <button
                 onClick={getDashboardData}
-                className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg hover:bg-gray-50"
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#ebdcaa] rounded-none hover:bg-[#fffdf4] text-slate-700 text-xs font-semibold uppercase tracking-wider transition-colors shadow-xs"
               >
-                <RefreshCw size={18} />
+                <RefreshCw size={15} />
                 <span>{t('refresh')}</span>
               </button>
             </div>
           </div>
 
           {/* ================= STATS ================= */}
-          <div data-tour="admin-overview-stats" className="dashboard-grid mb-6 sm:mb-8">
-            <StatCard title={t('total_students')} value={stats.students} icon={<Users />} link="/admin/users" />
-            <StatCard title={t('total_mentors')} value={stats.mentors} icon={<UserCheck />} link="/admin/mentors" />
-            <StatCard title={t('total_courses')} value={stats.courses} icon={<BookOpen />} />
-            <StatCard title={t('certificates')} value={stats.certificates} icon={<Award />} />
+          <div data-tour="admin-overview-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard title={t('total_students')} value={stats.students} icon={<Users className="w-5 h-5" />} link="/admin/users" />
+            <StatCard title={t('total_mentors')} value={stats.mentors} icon={<UserCheck className="w-5 h-5" />} link="/admin/users" />
+            <StatCard title={t('total_courses')} value={stats.courses} icon={<BookOpen className="w-5 h-5" />} />
+            <StatCard title={t('certificates')} value={stats.certificates} icon={<Award className="w-5 h-5" />} />
           </div>
 
           {/* ================= QUICK ACTIONS ================= */}
-          <div className="mb-6 sm:mb-8">
-            <h2 className="responsive-text-lg font-bold mb-3 sm:mb-4">{t('quick_actions')}</h2>
-            <div className="responsive-grid">
-              <QuickLink to="/admin/users" icon={<Users />} title={t('manage_users')} />
+          <div>
+            <h2 className="font-['DM_Serif_Display',serif] text-xl text-[#1e1b4b] mb-3">{t('quick_actions')}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <QuickLink to="/admin/users" icon={<Users className="w-5 h-5" />} title={t('manage_users')} />
+              <QuickLink to="/admin/fee-structure" icon={<BarChart3 className="w-5 h-5" />} title={t('nav_fee_structure')} />
+              <QuickLink to="/admin/database-export" icon={<RefreshCw className="w-5 h-5" />} title={t('nav_database_export')} />
             </div>
           </div>
 
           {/* ================= RECENT ACTIVITY ================= */}
-          <div data-tour="admin-recent-activity" className="responsive-card">
-            <div className="responsive-card-content">
-              <div className="flex items-center justify-between mb-4 sm:mb-6">
-                <h2 className="responsive-text-lg font-bold">{t('recent_activity')}</h2>
-                <Clock size={20} className="text-gray-400" />
-              </div>
+          <div data-tour="admin-recent-activity" className="bg-white border border-[#ebdcaa] rounded-none p-5 sm:p-6 shadow-xs">
+            <div className="flex items-center justify-between mb-5 pb-3 border-b border-[#ebdcaa]/50">
+              <h2 className="font-['DM_Serif_Display',serif] text-xl text-[#1e1b4b]">{t('recent_activity')}</h2>
+              <Clock size={18} className="text-[#B99652]" />
+            </div>
 
-              <div className="responsive-grid">
-                <Activity label={t('new_users')} value={stats.newUsers} icon={<UserPlus />} />
-                <Activity label={t('pending_mentors')} value={stats.pendingMentors} icon={<UserCheck />} />
-                <Activity label={t('published_courses')} value={stats.publishedCourses} icon={<BookOpen />} />
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Activity label={t('new_users')} value={stats.newUsers} icon={<UserPlus className="w-4 h-4 text-[#B99652]" />} />
+              <Activity label={t('pending_mentors')} value={stats.pendingMentors} icon={<UserCheck className="w-4 h-4 text-[#B99652]" />} />
+              <Activity label={t('published_courses')} value={stats.publishedCourses} icon={<BookOpen className="w-4 h-4 text-[#B99652]" />} />
             </div>
           </div>
 
@@ -180,36 +178,34 @@ const AdminDashboard = () => {
 /* ================= HELPERS ================= */
 
 const StatCard = ({ title, value, icon, link }) => (
-  <div className="responsive-card hover:shadow-md transition-shadow">
-    <div className="responsive-card-content">
-      <div className="flex justify-between mb-3 sm:mb-4">
-        <div className="p-2 sm:p-3 bg-blue-100 rounded-lg text-blue-600">{icon}</div>
-        {link && <Link to={link} className="text-blue-600 responsive-text-sm hover:underline">View</Link>}
+  <div className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] rounded-none p-5 shadow-xs hover:shadow-sm transition-all">
+    <div className="flex justify-between items-start mb-3">
+      <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-[#B99652] rounded-none">
+        {icon}
       </div>
-      <p className="responsive-text-sm text-gray-600 font-medium">{title}</p>
-      <p className="responsive-text-xl sm:text-2xl font-bold text-gray-800">{value}</p>
+      {link && <Link to={link} className="text-xs font-bold uppercase tracking-wider text-[#B99652] hover:underline">View →</Link>}
     </div>
+    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">{title}</p>
+    <p className="text-2xl sm:text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{value}</p>
   </div>
 );
 
 const QuickLink = ({ to, icon, title }) => (
-  <Link to={to} className="responsive-card bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:shadow-lg hover:scale-105 transition-all">
-    <div className="responsive-card-content">
-      <div className="flex items-center gap-3 sm:gap-4">
-        <div className="p-2 sm:p-3 bg-white/20 rounded-lg backdrop-blur-sm">{icon}</div>
-        <h3 className="font-semibold responsive-text-base sm:text-lg">{title}</h3>
-      </div>
+  <Link to={to} className="bg-white border border-[#ebdcaa] p-4 rounded-none hover:border-[#B99652] hover:bg-[#fffdf4]/40 transition-all flex items-center gap-3.5 group shadow-xs">
+    <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-[#B99652] rounded-none group-hover:bg-[#B99652] group-hover:text-white transition-colors">
+      {icon}
     </div>
+    <h3 className="font-semibold text-sm text-slate-800 group-hover:text-[#1e1b4b]">{title}</h3>
   </Link>
 );
 
 const Activity = ({ label, value, icon }) => (
-  <div>
-    <div className="flex justify-center gap-2 mb-2">
+  <div className="bg-[#fffdf4] border border-[#ebdcaa]/60 p-4 rounded-none text-center">
+    <div className="flex items-center justify-center gap-1.5 mb-1.5">
       {icon}
-      <span>{label}</span>
+      <span className="text-xs font-medium text-slate-600">{label}</span>
     </div>
-    <p className="text-2xl font-bold">{value}</p>
+    <p className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{value}</p>
   </div>
 );
 

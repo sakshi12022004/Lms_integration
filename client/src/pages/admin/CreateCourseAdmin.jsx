@@ -22,6 +22,7 @@ const CreateCourseAdmin = () => {
   const [mentors, setMentors] = useState([]);
   const [students, setStudents] = useState([]);
   const [selectedStudents, setSelectedStudents] = useState(new Set());
+  const [searchStudent, setSearchStudent] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
@@ -81,36 +82,6 @@ const CreateCourseAdmin = () => {
     }
 
     setLoading(true);
-    try {
-      const data = new FormData();
-      data.append("title", formData.title);
-      data.append("description", formData.description);
-      data.append("category", formData.category);
-      data.append("duration", formData.duration);
-      data.append("mentorId", formData.mentorId);
-      
-      if (photo) {
-        data.append("photo", photo);
-      }
-
-      // Append selected students
-      Array.from(selectedStudents).forEach(id => {
-        data.append("studentIds[]", id); // Backend expects array, express handles duplicate keys as array
-      });
-      // NOTE: If express body parser doesn't handle array automatically, we might need to send JSON. 
-      // But uploadImage middleware implies multipart/form-data.
-      // Let's ensure backend handles `studentIds` from body. 
-      // Typically `multer` parses text fields. If we send multiple keys, it becomes an array.
-      
-    } catch (error) {
-       // ...
-    }
-
-    // Changing strategy: Send JSON if no photo, or careful FormData construction.
-    // The backend `createCourse` expects `studentIds` in body. 
-    // Multer populates `req.body` with text fields.
-    // Let's stick to FormData but check how array is sent.
-    
     const submitData = new FormData();
     Object.keys(formData).forEach(key => submitData.append(key, formData[key]));
     if (photo) submitData.append("photo", photo);
@@ -126,7 +97,6 @@ const CreateCourseAdmin = () => {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          // Content-Type is set automatically for FormData
         },
         body: submitData
       });
@@ -147,11 +117,16 @@ const CreateCourseAdmin = () => {
     }
   };
 
+  const filteredStudents = students.filter(student => 
+    student.name?.toLowerCase().includes(searchStudent.toLowerCase()) ||
+    student.email?.toLowerCase().includes(searchStudent.toLowerCase())
+  );
+
   if (fetching) {
     return (
       <AdminLayout>
         <div className="flex justify-center items-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="animate-spin h-12 w-12 border-t-2 border-b-2 border-[#B99652] rounded-none"></div>
         </div>
       </AdminLayout>
     );
@@ -159,39 +134,41 @@ const CreateCourseAdmin = () => {
 
   return (
     <AdminLayout>
-      <div className="p-6 max-w-5xl mx-auto">
+      <div className="p-6 max-w-5xl mx-auto space-y-6">
         {/* HEADER */}
-          <div className="mb-8 flex justify-between items-center">
+        <div className="flex justify-between items-center border-b border-[#ebdcaa] pb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">{t('create_course_title')}</h1>
-            <p className="text-gray-600">{t('assign_mentor_students')}</p>
+            <h1 className="text-2xl md:text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">
+              {t('create_course_title')}
+            </h1>
+            <p className="text-gray-600 text-sm mt-1">{t('assign_mentor_students')}</p>
           </div>
           <button 
             onClick={() => navigate('/admin/dashboard')} 
-            className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50"
+            className="flex items-center gap-2 px-4 py-2 border border-[#ebdcaa] bg-white text-[#1e1b4b] hover:bg-[#ebdcaa]/20 rounded-none text-sm font-medium transition-all"
           >
-            <ArrowLeft size={18} /> {t('back')}
+            <ArrowLeft size={16} /> {t('back')}
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* LEFT COLUMN: Course Details */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white p-6 rounded-xl border shadow-sm">
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <BookOpen size={20} className="text-primary" />
+            <div className="bg-[#fffdf4] p-6 rounded-none border border-[#ebdcaa] shadow-sm">
+              <h2 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-4 pb-2 border-b border-[#ebdcaa] flex items-center gap-2">
+                <BookOpen size={20} className="text-[#B99652]" />
                 {t('course_details')}
               </h2>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('course_title_label')}</label>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">{t('course_title_label')}</label>
                   <input
                     name="title"
                     value={formData.title}
                     onChange={handleInputChange}
-                    className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 outline-none"
+                    className="w-full bg-white border border-[#ebdcaa] rounded-none px-4 py-2.5 text-sm focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none"
                     placeholder={t('course_title_placeholder')}
                     required
                   />
@@ -199,42 +176,42 @@ const CreateCourseAdmin = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('category_label')}</label>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">{t('category_label')}</label>
                     <input
                       name="category"
                       value={formData.category}
                       onChange={handleInputChange}
-                      className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 outline-none"
+                      className="w-full bg-white border border-[#ebdcaa] rounded-none px-4 py-2.5 text-sm focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none"
                       placeholder={t('category_placeholder')}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('duration_label')}</label>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">{t('duration_label')}</label>
                     <input
                       name="duration"
                       value={formData.duration}
                       onChange={handleInputChange}
-                      className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 outline-none"
+                      className="w-full bg-white border border-[#ebdcaa] rounded-none px-4 py-2.5 text-sm focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none"
                       placeholder={t('duration_placeholder')}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('description_label')}</label>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">{t('description_label')}</label>
                   <textarea
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
                     rows="4"
-                    className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 outline-none resize-none"
+                    className="w-full bg-white border border-[#ebdcaa] rounded-none px-4 py-2.5 text-sm focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none resize-none"
                     placeholder={t('description_placeholder')}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('course_cover_image')}</label>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:bg-gray-50 transition cursor-pointer relative">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">{t('course_cover_image')}</label>
+                  <div className="border-2 border-dashed border-[#ebdcaa] rounded-none p-6 text-center hover:bg-[#ebdcaa]/10 transition-colors cursor-pointer relative bg-white">
                     <input
                       type="file"
                       accept="image/*"
@@ -242,14 +219,14 @@ const CreateCourseAdmin = () => {
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
                     {photo ? (
-                      <div className="flex items-center justify-center gap-2 text-green-600">
+                      <div className="flex items-center justify-center gap-2 text-emerald-700">
                         <Check size={20} />
-                        <span className="font-medium">{photo.name}</span>
+                        <span className="font-semibold text-sm">{photo.name}</span>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center text-gray-500">
-                        <Upload size={24} className="mb-2" />
-                        <span>{t('click_to_upload_image')}</span>
+                        <Upload size={24} className="mb-2 text-[#B99652]" />
+                        <span className="text-sm font-medium">{t('click_to_upload_image')}</span>
                       </div>
                     )}
                   </div>
@@ -258,9 +235,9 @@ const CreateCourseAdmin = () => {
             </div>
 
             {/* MENTOR SELECTION */}
-            <div className="bg-white p-6 rounded-xl border shadow-sm">
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <Users size={20} className="text-primary" />
+            <div className="bg-[#fffdf4] p-6 rounded-none border border-[#ebdcaa] shadow-sm">
+              <h2 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-4 pb-2 border-b border-[#ebdcaa] flex items-center gap-2">
+                <Users size={20} className="text-[#B99652]" />
                 {t('assign_mentor_label')}
               </h2>
               
@@ -268,7 +245,7 @@ const CreateCourseAdmin = () => {
                 name="mentorId"
                 value={formData.mentorId}
                 onChange={handleInputChange}
-                className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 outline-none bg-white"
+                className="w-full bg-white border border-[#ebdcaa] rounded-none px-4 py-2.5 text-sm focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none text-[#1e1b4b]"
                 required
               >
                 <option value="">{t('select_a_mentor')}</option>
@@ -280,13 +257,13 @@ const CreateCourseAdmin = () => {
           </div>
 
           {/* RIGHT COLUMN: Student Selection */}
-          <div className="bg-white p-6 rounded-xl border shadow-sm h-fit">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Users size={20} className="text-primary" />
+          <div className="bg-[#fffdf4] p-6 rounded-none border border-[#ebdcaa] shadow-sm h-fit">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-[#ebdcaa]">
+              <h2 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] flex items-center gap-2">
+                <Users size={20} className="text-[#B99652]" />
                 {t('assign_students')}
               </h2>
-              <span className="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+              <span className="text-xs bg-[#B99652]/20 text-[#1e1b4b] font-bold px-2 py-1 rounded-none border border-[#ebdcaa]">
                 {selectedStudents.size} {t('selected')}
               </span>
             </div>
@@ -295,33 +272,32 @@ const CreateCourseAdmin = () => {
               <input 
                 type="text" 
                 placeholder={t('search_students')} 
-                className="w-full border rounded-lg px-3 py-2 text-sm"
-                onChange={(e) => {
-                  // Implement local search if needed
-                }}
+                value={searchStudent}
+                onChange={(e) => setSearchStudent(e.target.value)}
+                className="w-full bg-white border border-[#ebdcaa] rounded-none px-3 py-2 text-sm focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none"
               />
             </div>
 
-            <div className="max-h-[500px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-              {students.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">{t('no_students_found')}</p>
+            <div className="max-h-[460px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              {filteredStudents.length === 0 ? (
+                <p className="text-gray-500 text-center py-6 text-sm">{t('no_students_found')}</p>
               ) : (
-                students.map(student => (
+                filteredStudents.map(student => (
                   <div 
                     key={student._id}
                     onClick={() => toggleStudent(student._id)}
-                    className={`p-3 rounded-lg border cursor-pointer transition flex items-center justify-between ${
+                    className={`p-3 rounded-none border cursor-pointer transition-all flex items-center justify-between ${
                       selectedStudents.has(student._id)
-                        ? 'bg-blue-50 border-blue-200'
-                        : 'hover:bg-gray-50 border-gray-100'
+                        ? 'bg-[#B99652]/15 border-[#B99652] text-[#1e1b4b]'
+                        : 'bg-white hover:bg-[#ebdcaa]/15 border-[#ebdcaa]'
                     }`}
                   >
                     <div>
-                      <p className="font-medium text-sm">{student.name}</p>
+                      <p className="font-semibold text-sm text-[#1e1b4b]">{student.name}</p>
                       <p className="text-xs text-gray-500">{student.email}</p>
                     </div>
                     {selectedStudents.has(student._id) && (
-                      <Check size={16} className="text-blue-600" />
+                      <Check size={16} className="text-[#B99652]" />
                     )}
                   </div>
                 ))
@@ -334,7 +310,7 @@ const CreateCourseAdmin = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary text-white py-3 rounded-xl font-semibold text-lg hover:bg-primary/90 transition disabled:opacity-50"
+              className="w-full bg-[#B99652] hover:bg-[#a38241] text-white py-3.5 rounded-none font-semibold text-base transition-all disabled:opacity-50 shadow-sm"
             >
               {loading ? t('creating_course') : t('create_course_assign_students')}
             </button>

@@ -481,16 +481,11 @@ const SuperAdminDashboard = () => {
 
             <div>
 
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-
-                🏛️ Institute Dashboard
-
+              <h1 className="text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">
+                Institute Dashboard
               </h1>
-
-              <p className="text-gray-600">
-
-                Manage and expand your educational empire across multiple cities
-
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                Manage and expand your educational network across multiple cities
               </p>
 
             </div>
@@ -558,69 +553,45 @@ const SuperAdminDashboard = () => {
         {/* Tab Content */}
 
         {activeTab === "overview" && (
-
           <div>
-
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">📊 Overview</h2>
-
-            
+            <div className="flex justify-between items-center mb-6 pb-3 border-b border-[#ebdcaa]/60">
+              <h2 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">Overview & Global Analytics</h2>
+            </div>
 
             {/* Stats Grid */}
-
-            <div data-tour="overview-stats" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 mb-8">
-
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
-
-                <div className="flex items-center justify-between mb-2">
-
-                  <Building2 size={24} />
-
-                  <span className="text-xs bg-white/20 px-2 py-1 rounded">Total</span>
-
+            <div data-tour="overview-stats" className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] rounded-none p-5 shadow-xs hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-[#B99652] rounded-none">
+                    <Building2 size={20} />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#B99652] bg-[#fffdf4] px-2 py-0.5 border border-[#ebdcaa]">Total</span>
                 </div>
-
-                <div className="text-2xl font-bold">{stats.totalUniversities}</div>
-
-                <div className="text-xs opacity-90">Universities</div>
-
+                <div className="text-2xl sm:text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{stats.totalUniversities}</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1">Institutes & Universities</div>
               </div>
 
-              
-
-              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
-
-                <div className="flex items-center justify-between mb-2">
-
-                  <GraduationCap size={24} />
-
-                  <span className="text-xs bg-white/20 px-2 py-1 rounded">Active</span>
-
+              <div className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] rounded-none p-5 shadow-xs hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-[#B99652] rounded-none">
+                    <GraduationCap size={20} />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200">Active</span>
                 </div>
-
-                <div className="text-2xl font-bold">{stats.totalStudents.toLocaleString()}</div>
-
-                <div className="text-xs opacity-90">Students</div>
-
+                <div className="text-2xl sm:text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{stats.totalStudents.toLocaleString()}</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1">Total Enrolled Students</div>
               </div>
 
-              
-
-              <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-4 text-white">
-
-                <div className="flex items-center justify-between mb-2">
-
-                  <Activity size={24} />
-
-                  <span className="text-xs bg-white/20 px-2 py-1 rounded">Online</span>
-
+              <div className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] rounded-none p-5 shadow-xs hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 bg-[#fffdf4] border border-[#ebdcaa]/80 flex items-center justify-center text-[#B99652] rounded-none">
+                    <Activity size={20} />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 border border-blue-200">Live</span>
                 </div>
-
-                <div className="text-2xl font-bold">{stats.activeUsers}</div>
-
-                <div className="text-xs opacity-90">Active Users</div>
-
+                <div className="text-2xl sm:text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{stats.activeUsers}</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mt-1">Active Online Users</div>
               </div>
-
             </div>
 
 
@@ -746,73 +717,39 @@ const SuperAdminDashboard = () => {
 
 
         {activeTab === "universities" && (
-
           <div>
-
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
-
-              <h2 className="text-2xl font-bold text-gray-900">🏛️ Your Institute Empire</h2>
-
-              <div className="flex items-center gap-4 mt-4 lg:mt-0">
-
-                <div className="relative">
-
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 pb-3 border-b border-[#ebdcaa]/60">
+              <h2 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">Your Institute Empire</h2>
+              <div className="flex items-center gap-4 mt-4 lg:mt-0 w-full sm:w-auto">
+                <div className="relative w-full sm:w-80 md:w-96">
+                  <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={16} />
                   <input
-
                     type="text"
-
-                    placeholder="Search universities..."
-
+                    placeholder="Search institutes..."
                     data-tour="search-universities"
-
                     value={searchTerm}
-
                     onChange={(e) => setSearchTerm(e.target.value)}
-
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b] placeholder-slate-400 shadow-xs"
                   />
-
                 </div>
-
               </div>
-
             </div>
-
             
-
             {loading ? (
-
               <div className="flex items-center justify-center py-12">
-
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-
+                <div className="animate-spin rounded-none h-8 w-8 border-2 border-[#B99652] border-t-transparent"></div>
               </div>
-
             ) : filteredUniversities.length === 0 ? (
-
-              <div className="text-center py-12">
-
-                <Building2 className="text-gray-400 mx-auto mb-4" size={48} />
-
-                <p className="text-gray-600 mb-4">No institutes found in your empire.</p>
-
+              <div className="text-center py-12 bg-white border border-[#ebdcaa] p-8">
+                <Building2 className="text-[#ebdcaa] mx-auto mb-4" size={48} />
+                <p className="text-sm font-semibold text-[#1e1b4b] mb-4">No institutes found in your empire.</p>
                 <button 
-
                   onClick={() => handleTabChange("createUniversity")}
-
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
-
+                  className="bg-[#B99652] hover:bg-[#a38241] text-white px-5 py-2.5 rounded-none font-semibold text-xs uppercase tracking-wider transition-colors"
                 >
-
-                  🏛️ Build Your First Institute
-
+                  Build Your First Institute
                 </button>
-
               </div>
-
             ) : (
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -963,43 +900,27 @@ const SuperAdminDashboard = () => {
 
 
         {activeTab === "users" && (
-
           <div>
-
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
-
-              <h2 className="text-2xl font-bold text-gray-900">👥 Empire Staff Directory</h2>
-
-              <div className="flex items-center gap-4 mt-4 lg:mt-0">
-
-                <div className="relative">
-
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 pb-3 border-b border-[#ebdcaa]/60">
+              <h2 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">Empire Staff Directory</h2>
+              <div className="flex flex-wrap items-center gap-3 mt-4 lg:mt-0 w-full sm:w-auto">
+                <div className="relative w-full sm:w-80 md:w-96">
+                  <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={16} />
                   <input
-
                     type="text"
-
-                    placeholder="Search staff..."
-
+                    placeholder="Search staff members..."
                     data-tour="search-staff"
-
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b] placeholder-slate-400 shadow-xs"
                   />
-
                 </div>
-
-                <button className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors">
-
-                  <UserPlus size={18} />
-
+                <button 
+                  onClick={() => handleTabChange("createUser")}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none font-semibold text-xs uppercase tracking-wider transition-colors shadow-xs"
+                >
+                  <UserPlus size={16} />
                   Add Staff
-
                 </button>
-
               </div>
-
             </div>
 
             

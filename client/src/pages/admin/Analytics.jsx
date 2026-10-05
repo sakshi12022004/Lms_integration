@@ -78,33 +78,29 @@ const Analytics = () => {
       title: 'total_users_label',
       value: stats.totalUsers,
       change: `${stats.newUsers} ${t('this_month_suffix')}`,
-      icon: <Users size={24} />,
-      color: 'primary',
-      bgColor: 'bg-blue-50'
+      icon: <Users size={22} className="text-[#B99652]" />,
+      accentBg: 'bg-[#B99652]/10 border border-[#ebdcaa]'
     },
     {
       title: 'active_users_label',
       value: stats.activeUsers,
       change: `${stats.students} ${t('students')}`,
-      icon: <UserCheck size={24} />,
-      color: 'success',
-      bgColor: 'bg-green-50'
+      icon: <UserCheck size={22} className="text-[#1e1b4b]" />,
+      accentBg: 'bg-[#1e1b4b]/10 border border-[#ebdcaa]'
     },
     {
       title: 'total_courses_label',
       value: stats.totalCourses,
       change: `${stats.publishedCourses} ${t('published')}`,
-      icon: <BookOpen size={24} />,
-      color: 'secondary',
-      bgColor: 'bg-purple-50'
+      icon: <BookOpen size={22} className="text-[#B99652]" />,
+      accentBg: 'bg-[#B99652]/10 border border-[#ebdcaa]'
     },
     {
       title: 'certificates_label',
       value: stats.totalCertificates,
       change: `${stats.newCertificates} ${t('this_month_suffix')}`,
-      icon: <Award size={24} />,
-      color: 'warning',
-      bgColor: 'bg-yellow-50'
+      icon: <Award size={22} className="text-[#1e1b4b]" />,
+      accentBg: 'bg-[#1e1b4b]/10 border border-[#ebdcaa]'
     }
   ];
 
@@ -115,9 +111,9 @@ const Analytics = () => {
   ];
 
   const recentActivity = [
-    { label: 'new_users_label', value: stats.newUsers, color: 'text-primary' },
-    { label: 'new_courses_label', value: stats.newCourses, color: 'text-secondary' },
-    { label: 'new_certificates_label', value: stats.newCertificates, color: 'text-warning' }
+    { label: 'new_users_label', value: stats.newUsers, color: 'text-[#B99652]' },
+    { label: 'new_courses_label', value: stats.newCourses, color: 'text-[#1e1b4b]' },
+    { label: 'new_certificates_label', value: stats.newCertificates, color: 'text-[#B99652]' }
   ];
 
   if (loading) {
@@ -126,8 +122,8 @@ const Analytics = () => {
         <div className="p-4 md:p-6">
           <div className="flex items-center justify-center h-96">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-4 text-text">{t('loading_analytics')}</p>
+              <div className="animate-spin h-12 w-12 border-t-2 border-b-2 border-[#B99652] mx-auto rounded-none"></div>
+              <p className="mt-4 text-[#1e1b4b] font-medium">{t('loading_analytics')}</p>
             </div>
           </div>
         </div>
@@ -138,76 +134,78 @@ const Analytics = () => {
   return (
     <AdminLayout>
       <div className="p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-text">{t('analytics_dashboard_title')}</h1>
-                <p className="text-gray-600 mt-1">{t('system_performance_overview')}</p>
-              </div>
-            </div>
+          <div className="border-b border-[#ebdcaa] pb-4">
+            <h1 className="text-2xl md:text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">
+              {t('analytics_dashboard_title')}
+            </h1>
+            <p className="text-gray-600 mt-1">{t('system_performance_overview')}</p>
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {statCards.map((card, index) => (
-              <div key={index} className="bg-white rounded-xl border border-gray-200 p-5">
+              <div key={index} className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <div className={`p-3 rounded-lg ${card.bgColor}`}>
-                    <div className={`text-${card.color}`}>
-                      {card.icon}
-                    </div>
+                  <div className={`p-2.5 rounded-none ${card.accentBg}`}>
+                    {card.icon}
                   </div>
-                  <TrendingUp className="text-gray-400" size={18} />
+                  <TrendingUp className="text-[#B99652]" size={18} />
                 </div>
                 <h3 className="text-gray-600 text-sm mb-1">{t(card.title)}</h3>
-                <p className="text-2xl font-bold text-text">{card.value}</p>
-                <p className="text-sm text-gray-500 mt-1">{card.change}</p>
+                <p className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{card.value}</p>
+                <p className="text-xs text-gray-500 mt-1">{card.change}</p>
               </div>
             ))}
           </div>
 
-          {/* User Breakdown */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-text">{t('user_breakdown')}</h2>
-                <Users className="text-gray-400" size={20} />
+          {/* User Breakdown & Completion */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-6 pb-3 border-b border-[#ebdcaa]">
+                <h2 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{t('user_breakdown')}</h2>
+                <Users className="text-[#B99652]" size={20} />
               </div>
               <div className="space-y-4">
                 {userStats.map((stat, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <span className="text-gray-600">{t(stat.label)}</span>
-                    <span className="font-semibold text-text">{stat.value}</span>
+                  <div key={index} className="flex items-center justify-between p-3 bg-white border border-[#ebdcaa] rounded-none">
+                    <span className="text-gray-700 font-medium">{t(stat.label)}</span>
+                    <span className="font-bold text-[#1e1b4b] font-['DM_Serif_Display',serif] text-lg">{stat.value}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-text">{t('course_completion')}</h2>
-                <BarChart3 className="text-gray-400" size={20} />
+            <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-6 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#ebdcaa]">
+                <h2 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{t('course_completion')}</h2>
+                <BarChart3 className="text-[#B99652]" size={20} />
               </div>
               <div className="text-center py-6">
-                <div className="text-4xl font-bold text-primary mb-2">{stats.completionRate}%</div>
-                <p className="text-gray-600">Overall completion rate</p>
+                <div className="text-5xl font-bold font-['DM_Serif_Display',serif] text-[#B99652] mb-2">{stats.completionRate}%</div>
+                <p className="text-gray-600 text-sm">Overall Course Completion Rate</p>
+                <div className="w-full bg-gray-200 h-2 mt-4 rounded-none overflow-hidden">
+                  <div className="bg-[#B99652] h-full" style={{ width: `${Math.min(stats.completionRate, 100)}%` }}></div>
+                </div>
+              </div>
+              <div className="text-xs text-center text-gray-500">
+                Calculated across all published curriculums
               </div>
             </div>
           </div>
 
           {/* Recent Activity */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-text">{t('recent_activity_30_days')}</h2>
-              <TrendingUp className="text-gray-400" size={20} />
+          <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6 pb-3 border-b border-[#ebdcaa]">
+              <h2 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">{t('recent_activity_30_days')}</h2>
+              <TrendingUp className="text-[#B99652]" size={20} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {recentActivity.map((item, index) => (
-                <div key={index} className="text-center">
-                  <div className={`text-2xl font-bold ${item.color}`}>{item.value}</div>
-                  <div className="text-gray-600">{t(item.label)}</div>
+                <div key={index} className="text-center p-4 bg-white border border-[#ebdcaa] rounded-none">
+                  <div className={`text-3xl font-bold font-['DM_Serif_Display',serif] ${item.color}`}>{item.value}</div>
+                  <div className="text-gray-600 text-sm mt-1">{t(item.label)}</div>
                 </div>
               ))}
             </div>
@@ -215,38 +213,38 @@ const Analytics = () => {
 
           {/* Additional Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="font-bold text-text mb-4">{t('course_statistics')}</h3>
+            <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-6 shadow-sm">
+              <h3 className="font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] text-lg mb-4 pb-2 border-b border-[#ebdcaa]">{t('course_statistics')}</h3>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Total Courses</span>
-                  <span className="font-semibold text-text">{stats.totalCourses}</span>
+                <div className="flex items-center justify-between py-2 border-b border-[#ebdcaa]/50">
+                  <span className="text-gray-600 text-sm">Total Courses</span>
+                  <span className="font-bold text-[#1e1b4b]">{stats.totalCourses}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Published Courses</span>
-                  <span className="font-semibold text-text">{stats.publishedCourses}</span>
+                <div className="flex items-center justify-between py-2 border-b border-[#ebdcaa]/50">
+                  <span className="text-gray-600 text-sm">Published Courses</span>
+                  <span className="font-bold text-[#1e1b4b]">{stats.publishedCourses}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">New Courses (30 days)</span>
-                  <span className="font-semibold text-text">{stats.newCourses}</span>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-gray-600 text-sm">New Courses (30 days)</span>
+                  <span className="font-bold text-[#B99652]">{stats.newCourses}</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="font-bold text-text mb-4">{t('certificate_statistics')}</h3>
+            <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-6 shadow-sm">
+              <h3 className="font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] text-lg mb-4 pb-2 border-b border-[#ebdcaa]">{t('certificate_statistics')}</h3>
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Total Certificates</span>
-                  <span className="font-semibold text-text">{stats.totalCertificates}</span>
+                <div className="flex items-center justify-between py-2 border-b border-[#ebdcaa]/50">
+                  <span className="text-gray-600 text-sm">Total Certificates</span>
+                  <span className="font-bold text-[#1e1b4b]">{stats.totalCertificates}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">New Certificates (30 days)</span>
-                  <span className="font-semibold text-text">{stats.newCertificates}</span>
+                <div className="flex items-center justify-between py-2 border-b border-[#ebdcaa]/50">
+                  <span className="text-gray-600 text-sm">New Certificates (30 days)</span>
+                  <span className="font-bold text-[#B99652]">{stats.newCertificates}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Issuance Rate</span>
-                  <span className="font-semibold text-text">
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-gray-600 text-sm">Issuance Rate</span>
+                  <span className="font-bold text-[#1e1b4b]">
                     {stats.totalUsers > 0 ? Math.round((stats.totalCertificates / stats.totalUsers) * 100) : 0}%
                   </span>
                 </div>
@@ -255,13 +253,13 @@ const Analytics = () => {
           </div>
 
           {/* Summary */}
-          <div className="mt-8 bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="font-bold text-text mb-4">{t('system_summary')}</h3>
-            <div className="text-gray-600 space-y-2">
-              <p>• {t('total_users_colon')} <span className="font-semibold text-text">{stats.totalUsers}</span></p>
-              <p>• {t('active_mentors_colon')} <span className="font-semibold text-text">{stats.approvedMentors}</span></p>
-              <p>• {t('course_completion_rate_colon')} <span className="font-semibold text-text">{stats.completionRate}%</span></p>
-              <p>• {t('new_activity_this_month')} <span className="font-semibold text-text">
+          <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-6 shadow-sm">
+            <h3 className="font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] text-lg mb-4 pb-2 border-b border-[#ebdcaa]">{t('system_summary')}</h3>
+            <div className="text-gray-700 space-y-2 text-sm">
+              <p>• {t('total_users_colon')} <span className="font-bold text-[#1e1b4b]">{stats.totalUsers}</span></p>
+              <p>• {t('active_mentors_colon')} <span className="font-bold text-[#1e1b4b]">{stats.approvedMentors}</span></p>
+              <p>• {t('course_completion_rate_colon')} <span className="font-bold text-[#1e1b4b]">{stats.completionRate}%</span></p>
+              <p>• {t('new_activity_this_month')} <span className="font-bold text-[#B99652]">
                 {stats.newUsers + stats.newCourses + stats.newCertificates} total events
               </span></p>
             </div>
