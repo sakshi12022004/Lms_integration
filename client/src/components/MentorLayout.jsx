@@ -12,7 +12,8 @@ import {
   Calendar,
   School,
   FileText,
-  Package
+  Package,
+  ClipboardCheck
 } from "lucide-react";
 import { useAuth } from "../auth/auth";
 import QuotaLimitModal from './QuotaLimitModal';
@@ -82,6 +83,12 @@ const MentorLayout = ({ children }) => {
           nameKey: "requirements",
           icon: <Package size={20} />,
           tourId: "nav-requirements",
+        },
+        {
+          path: "/teacher/assessments",
+          nameKey: "nav_ai_assessments",
+          icon: <ClipboardCheck size={20} />,
+          tourId: "nav-ai-assessments",
         },
       ]
       : []),

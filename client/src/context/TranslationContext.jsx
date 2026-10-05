@@ -27,6 +27,9 @@ export const useTranslation = () => {
 
 // English translations
 const EN_TRANSLATIONS = {
+  'nav_student_import': 'Import Students',
+  'nav_ai_assessments': 'AI Assessments',
+  'nav_my_tests': 'My Tests',
   'login_title': 'Core5 Academy',
   'email_label': 'Email Address',
   'email_placeholder': 'Email',

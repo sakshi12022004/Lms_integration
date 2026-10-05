@@ -187,6 +187,17 @@ import Announcements from "./pages/Announcements";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
+/* ================= AI MODULES ================= */
+import StudentSetupPassword from "./pages/StudentSetupPassword";
+import StudentImport from "./pages/admin/StudentImport";
+import TeacherAssessments from "./pages/assessment-agent/TeacherAssessments";
+import StudentTests from "./pages/assessment-agent/StudentTests";
+import StudentAttempt from "./pages/assessment-agent/StudentAttempt";
+import StudentPerformance from "./pages/assessment-agent/StudentPerformance";
+import TeacherAssignments from "./pages/assessment-agent/TeacherAssignments";
+import StudentAssignments from "./pages/assessment-agent/StudentAssignments";
+import StudentAssignment from "./pages/assessment-agent/StudentAssignment";
+
 
 
 // Root redirect component
@@ -357,6 +368,17 @@ function App() {
           <Route path="/login" element={<Home />} />
 
           <Route path="/register" element={<Register />} />
+
+          {/* ===== AI MODULE ROUTES ===== */}
+          <Route path="/setup-password" element={<StudentSetupPassword />} />
+          <Route path="/admin/student-import" element={<ProtectedRoute requiredRole="admin"><StudentImport /></ProtectedRoute>} />
+          <Route path="/teacher/assessments" element={<ProtectedRoute requiredRole="mentor"><TeacherAssessments /></ProtectedRoute>} />
+          <Route path="/teacher/assessments/assignments" element={<ProtectedRoute requiredRole="mentor"><TeacherAssignments /></ProtectedRoute>} />
+          <Route path="/teacher/assessments/students/:studentId" element={<ProtectedRoute requiredRole="mentor"><StudentPerformance /></ProtectedRoute>} />
+          <Route path="/student/assessment-agent/assignments" element={<ProtectedRoute requiredRole="student"><StudentAssignments /></ProtectedRoute>} />
+          <Route path="/student/assessment-agent/assignments/:id" element={<ProtectedRoute requiredRole="student"><StudentAssignment /></ProtectedRoute>} />
+          <Route path="/student/assessment-agent/tests" element={<ProtectedRoute requiredRole="student"><StudentTests /></ProtectedRoute>} />
+          <Route path="/student/assessment-agent/attempts/:attemptId" element={<ProtectedRoute requiredRole="student"><StudentAttempt /></ProtectedRoute>} />
 
           {/* Test button for terms modal */}
           <Route path="/test-terms" element={

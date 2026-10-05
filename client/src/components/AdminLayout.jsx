@@ -11,7 +11,8 @@ import {
   Calendar,
   UserPlus,
   School,
-  Database
+  Database,
+  FileSpreadsheet
 } from "lucide-react";
 import { useAuth } from "../auth/auth";
 import QuotaLimitModal from './QuotaLimitModal';
@@ -59,6 +60,7 @@ const AdminLayout = ({ children }) => {
 
     /* ===== CLASSROOMS (JUST BELOW ADD TEACHER) ===== */
     { path: "/admin/classrooms", nameKey: 'nav_classrooms', icon: <School size={20} />, tourId: 'nav-classrooms' },
+    { path: "/admin/student-import", nameKey: 'nav_student_import', icon: <FileSpreadsheet size={20} />, tourId: 'nav-student-import' },
   ];
 
   const currentPage =

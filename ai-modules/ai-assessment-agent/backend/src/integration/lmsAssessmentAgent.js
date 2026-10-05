@@ -1,0 +1,58 @@
+const path = require('path');
+const { createAssessmentRouter, assessmentErrorHandler } = require('../http/createAssessmentRouter');
+const { openSqliteAssessmentLmsAdapter } = require('../adapters/lms/SqliteAssessmentLmsAdapter');
+const { loadGenerationConfig } = require('../llm/generationConfig');
+const { createGenerationProvider } = require('../llm/createGenerationProvider');
+const { AssessmentGenerator } = require('../core/ai/AssessmentGenerator');
+const { PerformanceAnalyst } = require('../core/ai/PerformanceAnalyst');
+const { isReportPreviewEnabled } = require('../core/ai/reportPreview'); // TEMPORARY preview mode (remove later)
+const { LocalSubmissionFileStore, defaultSubmissionsDir } = require('../assignments/LocalSubmissionFileStore');
+const { AssignmentEvaluator } = require('../assignments/AssignmentEvaluator');
+
+/**
+ * Wiring for THIS LMS: the HTTP layer + the SQLite LMS adapter + (Step 2) the
+ * AI generator.
+ *
+ * The LMS mounts it behind its existing session checks:
+ *   app.use('/api/assessment-agent', requireAuth, requireTenant, router, errorHandler)
+ * (requireAuth verifies the JWT and sets req.user; requireTenant checks the school exists.)
+ * Inside, every request re-checks the user against the LMS database
+ * (role from the DB, same school) before any assessment rule runs.
+ *
+ * AI configuration comes from the LMS environment (server/.env): the shared
+ * SOA_LLM_PROVIDER / SOA_LLM_MODEL / SOA_GEMINI_API_KEY, plus the optional
+ * AIA_AI_GENERATION_ENABLED / AIA_LLM_TIMEOUT_MS. When AI is missing or off,
+ * only the AI routes answer 503. Manual test creation is unaffected.
+ * `generationProvider` lets tests inject a mock (no real LLM calls in tests).
+ */
+/**
+ * Descriptive Assignments: uploaded PDFs go to `submissionsDir` (tests), else AIA_SUBMISSIONS_DIR (absolute),
+ * else <module>/data/submissions (git-ignored). A relative/invalid env value is ignored with a warning,
+ * so a bad setting can never stop the LMS from starting.
+ */
+function submissionsDirFrom(submissionsDir, env) {
+  if (submissionsDir) return submissionsDir;
+  const configured = env.AIA_SUBMISSIONS_DIR;
+  if (configured && path.isAbsolute(configured)) return configured;
+  if (configured) console.warn('[ai-assessment-agent] AIA_SUBMISSIONS_DIR must be an absolute path; using the default submission directory.');
+  return defaultSubmissionsDir();
+}
+
+function createLmsAssessmentAgentRouter({ express, dbPath, env = process.env, generationProvider, now, submissionsDir }) {
+  if (typeof dbPath !== 'string' || !path.isAbsolute(dbPath)) {
+    throw new TypeError('createLmsAssessmentAgentRouter requires the absolute LMS database path.');
+  }
+  const config = loadGenerationConfig(env);
+  const provider = generationProvider || createGenerationProvider(config);
+  const generator = new AssessmentGenerator({ provider, timeoutMs: config.timeoutMs, enabled: config.enabled });
+  // `now` (server clock for attempt deadlines) is only overridden by tests.
+  // Student Performance Analyst: reuses the SAME generator/provider (no second provider or key).
+  // TEMPORARY: AIA_REPORT_PREVIEW_MODE=true shows not-validated Performance Reports (default off). Remove later.
+  const analyst = new PerformanceAnalyst({ generator, previewMode: isReportPreviewEnabled(env) });
+  const fileStore = new LocalSubmissionFileStore({ rootDir: submissionsDirFrom(submissionsDir, env) });
+  // Descriptive Assignments (Prompt 2): AI-assisted evaluation reuses the SAME generator/provider (explicit request only).
+  const assignmentEvaluator = new AssignmentEvaluator({ generator });
+  return createAssessmentRouter({ express, openAdapter: () => openSqliteAssessmentLmsAdapter(dbPath), generator, analyst, fileStore, assignmentEvaluator, ...(now ? { now } : {}) });
+}
+
+module.exports = { createLmsAssessmentAgentRouter, assessmentErrorHandler };

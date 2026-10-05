@@ -7,7 +7,8 @@ import {
   Clock,
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ClipboardList
 } from 'lucide-react';
 import { useAuth } from "../auth/auth";
 import QuotaLimitModal from './QuotaLimitModal';
@@ -74,6 +75,14 @@ const StudentLayout = ({ children }) => {
       label: 'Attendance',
       description: 'Attendance Records',
       tourId: 'nav-attendance'
+    },
+    {
+      path: '/student/assessment-agent/tests',
+      nameKey: 'nav_my_tests',
+      icon: <ClipboardList size={19} />,
+      label: 'My Tests',
+      description: 'Tests from your teachers',
+      tourId: 'nav-my-tests'
     },
   ];
 

@@ -27,8 +27,7 @@ console.log('📅 Checking for plan changes every 30 seconds');
 console.log('Looking for .env at:', path.join(__dirname, '.env'));
 console.log('.env file exists:', fs.existsSync(path.join(__dirname, '.env')));
 if (fs.existsSync(path.join(__dirname, '.env'))) {
-  const envContent = fs.readFileSync(path.join(__dirname, '.env'), 'utf8');
-  console.log('.env file content:', envContent);
+  console.log('Loaded .env configuration successfully');
 }
 
 const app = express();
@@ -231,6 +230,16 @@ app.use("/api/language", require("./routes/languageRoutes"));
 
 /* Admin (ADD STUDENT / TEACHER / CLASSROOM later) */
 app.use("/api/admin", require("./routes/adminRoutes"));
+
+/* Student Onboarding Agent */
+const authMiddleware = require("./middleware/authMiddleware");
+const onboarding = require("./routes/onboardingRoutes");
+app.use("/api/onboarding", authMiddleware, onboarding.router, onboarding.errorHandler);
+app.use("/api/student-setup", onboarding.setupRateLimit, onboarding.setupRouter, onboarding.errorHandler);
+
+/* AI Assessment Agent */
+const assessmentAgent = require("./routes/assessmentAgentRoutes");
+app.use("/api/assessment-agent", authMiddleware, assessmentAgent.router, assessmentAgent.errorHandler);
 
 /* ✅ CLASSROOMS (NEW – NO LOGIC CHANGE) */
 app.use("/api/classrooms", require("./routes/classroomRoutes"));
