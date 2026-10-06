@@ -241,7 +241,7 @@ Teacher creates assignment for a classroom with questions and marks → publishe
 Mentor types subject marks per student and term → stored as JSON → student and class views read it ✗ entirely manual, unrelated to any assessment above.
 
 **6.7 Attendance**
-Mentor selects classroom and date → marks each student → server deletes that day's rows for the class and inserts the new set → student sees a list ✗ per classroom per day only (no period or course); no percentage rule, alert or report.
+Mentor selects classroom and date → marks each student → server deletes that day's rows for the class and inserts the new set → student sees a list with present, absent and a percentage ✗ per classroom per day only (no period or course); no minimum-attendance rule, alert, or defaulter report for staff.
 
 **6.8 Communication**
 Admin or mentor posts an announcement (audience: role or course) → users see it on the Announcements page when they open it → "read" is stored as a JSON list on the announcement ✗ no notification, no unread badge, no email.
@@ -378,7 +378,7 @@ Full-format findings for the gaps that block real use.
 | WF-004 | P1 | No notification concept. There is no table, badge, or "due soon" list. Publishing a test, posting marks or approaching a deadline produces nothing a student will notice. | LIVE schema; LIVE student dashboard |
 | WF-005 | P2 | No student or staff lifecycle. Users can only be hard-deleted; there is no inactive, transferred, graduated or suspended state. Deleting leaves attendance, results and attempts pointing at nobody. | CODE `user-controller.js`, `adminController.js` |
 | WF-006 | P1 | Legacy assessment deadlines are decorative. `startTime` and `endTime` are used to show "locked" in a list but `submitAssessment` never checks them, nor publication, nor enrollment. | CODE `assessmentController.js` 316 to 440 |
-| WF-007 | P2 | Attendance stops at a list. No percentage, no minimum-attendance rule, no defaulter report, no per-course or per-period attendance. | LIVE page; CODE |
+| WF-007 | P2 | Attendance stops at the student's own view. The student page shows present, absent and an attendance percentage (corrected after the visible walkthrough; an earlier draft said no percentage existed). There is no minimum-attendance rule, no defaulter list for the class teacher or admin, and no per-course or per-period attendance. | LIVE page; CODE |
 | WF-009 | P2 | Contradictory account creation. Self-registration auto-approves every role, while an admin "Mentor Approval" queue also exists. | CODE `auth-controller.js`; LIVE page |
 | WF-010 | P2 | Editing after submission. Legacy assessments and questions can be edited or republished after students have attempted, with no versioning. The AI module correctly forbids edits while published. | CODE |
 | WF-011 | P2 | Certificates count chapters only and the list endpoint fails. | LIVE 500 |
