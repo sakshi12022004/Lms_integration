@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../../auth/auth";
 import { toast } from "react-toastify";
-import { Building2, MapPin, Mail } from "lucide-react";
+import { Building2, MapPin, Mail, Phone, CheckCircle, Copy, KeyRound, ArrowRight } from "lucide-react";
 
 const CreateUniversityForm = ({ onSuccess }) => {
   const { API, token } = useAuth();
@@ -15,6 +15,7 @@ const CreateUniversityForm = ({ onSuccess }) => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [createdData, setCreatedData] = useState(null);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -23,10 +24,19 @@ const CreateUniversityForm = ({ onSuccess }) => {
   const handleCreate = async (e) => {
     e.preventDefault();
 
+    if (!form.name.trim()) {
+      toast.error("Please enter the Institute Name");
+      return;
+    }
+
+    if (!form.email.trim()) {
+      toast.error("Please enter the Official Admin Email");
+      return;
+    }
+
     try {
       setLoading(true);
 
-      // Get token directly from localStorage as fallback
       const directToken = localStorage.getItem('token');
       const tokenToUse = token || directToken;
       
@@ -40,9 +50,10 @@ const CreateUniversityForm = ({ onSuccess }) => {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      if (!res.ok) throw new Error(data.message || "Failed to create institute");
 
-      toast.success("✅ University created successfully!");
+      toast.success("✅ Institute created successfully!");
+      setCreatedData(data);
 
       setForm({
         name: "",
@@ -52,15 +63,16 @@ const CreateUniversityForm = ({ onSuccess }) => {
         email: "",
         phone: "",
       });
-
-      setTimeout(() => {
-        if (onSuccess) onSuccess();
-      }, 2000);
     } catch (err) {
-      toast.error(err.message || "Failed to create university");
+      toast.error(err.message || "Failed to create institute");
     } finally {
       setLoading(false);
     }
+  };
+
+  const copyToClipboard = (text, label) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied to clipboard!`);
   };
 
   return (
@@ -75,6 +87,72 @@ const CreateUniversityForm = ({ onSuccess }) => {
           <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">Register a new institution under your network</p>
         </div>
       </div>
+
+      {/* Success Modal / Card if Created */}
+      {createdData && (
+        <div className="bg-[#fffdf4] border-2 border-emerald-600 p-6 shadow-md rounded-none space-y-4">
+          <div className="flex items-center gap-3 text-emerald-800 font-bold text-lg font-['DM_Serif_Display',serif] pb-3 border-b border-emerald-200">
+            <CheckCircle className="text-emerald-600" size={24} />
+            Institute & Admin Created Successfully!
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="p-4 bg-white border border-[#ebdcaa]">
+              <span className="text-slate-500 uppercase font-semibold">Institute Name</span>
+              <p className="text-sm font-bold text-[#1e1b4b] mt-1">{createdData.university?.name}</p>
+              <p className="text-slate-600 mt-1">ID: #{createdData.university?.id}</p>
+            </div>
+
+            <div className="p-4 bg-white border border-[#ebdcaa]">
+              <span className="text-slate-500 uppercase font-semibold">Admin Login Email</span>
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-sm font-bold text-[#1e1b4b]">{createdData.admin?.email}</p>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(createdData.admin?.email, "Email")}
+                  className="p-1 hover:bg-slate-100 text-slate-600 rounded"
+                  title="Copy email"
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50 border border-amber-300 md:col-span-2">
+              <div className="flex items-center gap-2 text-amber-900 font-bold mb-1">
+                <KeyRound size={16} />
+                Generated Admin Password (Save this now):
+              </div>
+              <div className="flex items-center justify-between bg-white px-3 py-2 border border-amber-300">
+                <span className="font-mono text-base font-bold text-[#1e1b4b] tracking-wider">
+                  {createdData.generatedPassword}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(createdData.generatedPassword, "Password")}
+                  className="px-3 py-1 bg-[#B99652] hover:bg-[#a38241] text-white text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5"
+                >
+                  <Copy size={13} />
+                  Copy Password
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedData(null);
+                if (onSuccess) onSuccess();
+              }}
+              className="px-5 py-2.5 bg-[#002366] hover:bg-[#08173e] text-white text-xs font-semibold uppercase tracking-wider flex items-center gap-2"
+            >
+              Continue to Dashboard <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Form Card */}
       <div className="bg-[#fffdf4] rounded-none shadow-sm border border-[#ebdcaa] overflow-hidden">
@@ -156,7 +234,7 @@ const CreateUniversityForm = ({ onSuccess }) => {
 
                 <div className="space-y-2">
                   <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b]">
-                    Official Email
+                    Official Email (Admin Account) <span className="text-red-600">*</span>
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
@@ -167,6 +245,7 @@ const CreateUniversityForm = ({ onSuccess }) => {
                       className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] placeholder-slate-400 text-sm"
                       value={form.email}
                       onChange={handleChange}
+                      required
                     />
                   </div>
                 </div>
@@ -176,7 +255,7 @@ const CreateUniversityForm = ({ onSuccess }) => {
                     Phone Number
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <input
                       name="phone"
                       placeholder="+91 98765 43210"

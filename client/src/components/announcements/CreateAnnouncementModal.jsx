@@ -47,7 +47,7 @@ const CreateAnnouncementModal = ({
       // 🔒 FOR MENTORS: CHECK ANNOUNCEMENT LIMIT ON FREE PLAN
       if (user.role === "mentor") {
         try {
-          const featureRes = await fetch(`${API}/api/subscriptions/check-feature-access`, {
+          const featureRes = await fetch(`${API}/subscriptions/check-feature-access`, {
             headers: { Authorization: `Bearer ${token}` }
           });
 

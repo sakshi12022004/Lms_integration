@@ -7,6 +7,8 @@ const {
   createUser,
   getAllUniversities,
   getAllUsers,
+  updateUser,
+  deleteUser,
   deleteUniversity
 } = require("../controllers/superAdminController");
 
@@ -410,6 +412,20 @@ router.get(
   "/users",
   portalAuthMiddleware,
   getAllUsers
+);
+
+// Update user
+router.put(
+  "/users/:id",
+  portalAuthMiddleware,
+  updateUser
+);
+
+// Delete user
+router.delete(
+  "/users/:id",
+  portalAuthMiddleware,
+  deleteUser
 );
 
 // Delete university
@@ -873,147 +889,8 @@ router.use("*", (req, res) => {
   console.log("Method:", req.method);
   console.log("URL:", req.originalUrl);
   console.log("Path:", req.path);
-  console.log("Headers:", Object.keys(req.headers));
   res.status(404).json({ success: false, message: "Route not found in superadmin routes" });
 });
 
-
-
-// Create user in the superadmin's tenant database
-router.post('/create-user', async (req, res) => {
-  try {
-    const { name, email, password, role, university_id } = req.body;
-    const superadmin = req.user;
-    
-    console.log('Creating user in tenant database:', {
-      superadminId: superadmin.id,
-      superadminEmail: superadmin.email,
-      newUserEmail: email,
-      role
-    });
-    
-    // Validate required fields
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Name, email, password, and role are required' 
-      });
-    }
-    
-    // Hash password
-    const bcrypt = require('bcryptjs');
-
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-    // Use tenant database (req.db is set by middleware)
-    const db = req.db;
-    
-    // Check if user already exists in this tenant database
-    getDatabaseFromRequest(req).get('SELECT id FROM users WHERE email = ?', [email], (err, existingUser) => {
-      if (err) {
-        console.error('Error checking existing user:', err);
-        return res.status(500).json({ 
-          success: false, 
-          message: 'Database error' 
-        });
-      }
-      
-      if (existingUser) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'User with this email already exists' 
-        });
-      }
-      
-      // Insert user with superadmin_id
-      getDatabaseFromRequest(req).run(`
-        INSERT INTO users (name, email, password, role, university_id, superadmin_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      `, [name, email, hashedPassword, role, university_id || 1, superadmin.id], function(err) {
-        if (err) {
-          console.error('Error creating user:', err);
-          return res.status(500).json({ 
-            success: false, 
-            message: 'Error creating user' 
-          });
-        }
-        
-        console.log('User created successfully:', {
-          userId: this.lastID,
-          email: email,
-          superadminId: superadmin.id,
-          role: role
-        });
-        
-        res.status(201).json({ 
-          success: true, 
-          message: 'User created successfully',
-          user: {
-            id: this.lastID,
-            name: name,
-            email: email,
-            role: role,
-            university_id: university_id || 1,
-            superadmin_id: superadmin.id
-          }
-        });
-      });
-    });
-    
-  } catch (error) {
-    console.error('Create user error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error' 
-    });
-  }
-});
-
-
-
-// Get all users from the superadmin's tenant database
-router.get('/users', (req, res) => {
-  try {
-    const superadmin = req.user;
-    const db = req.db;
-    
-    console.log('Fetching users from tenant database:', {
-      superadminId: superadmin.id,
-      superadminEmail: superadmin.email
-    });
-    
-    // Get all users from this tenant database only
-    getDatabaseFromRequest(req).all(`
-      SELECT id, name, email, role, university_id, status, created_at, updated_at
-      FROM users 
-      ORDER BY created_at DESC
-    `, [], (err, users) => {
-      if (err) {
-        console.error('Error fetching users:', err);
-        return res.status(500).json({ 
-          success: false, 
-          message: 'Database error' 
-        });
-      }
-      
-      console.log(`Found ${users.length} users in tenant database for superadmin ${superadmin.id}`);
-      
-      res.json({
-        success: true,
-        users: users,
-        count: users.length,
-        superadminId: superadmin.id
-      });
-    });
-    
-  } catch (error) {
-    console.error('Get users error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error' 
-    });
-  }
-});
-
 module.exports = router;
+

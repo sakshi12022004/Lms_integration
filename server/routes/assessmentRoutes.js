@@ -27,16 +27,26 @@ router.post(
   controller.createAssessment
 );
 
-// Add question to assessment
+// Add question to assessment (supports both /questions and /add-question)
 router.post(
   "/questions",
   authMiddleware,
   controller.addQuestion
 );
+router.post(
+  "/add-question",
+  authMiddleware,
+  controller.addQuestion
+);
 
-// Get questions for an assessment
+// Get questions for an assessment (supports both /:assessmentId/questions and /questions/:assessmentId)
 router.get(
   "/:assessmentId/questions",
+  authMiddleware,
+  controller.getAssessmentQuestions
+);
+router.get(
+  "/questions/:assessmentId",
   authMiddleware,
   controller.getAssessmentQuestions
 );
@@ -53,6 +63,20 @@ router.get(
   "/course/:courseId/all",
   authMiddleware,
   controller.getAllCourseAssessments
+);
+
+// Get assessment attempts for teacher
+router.get(
+  "/:assessmentId/attempts",
+  authMiddleware,
+  controller.getAssessmentAttempts
+);
+
+// Get all assessment attempts in course for teacher
+router.get(
+  "/course/:courseId/attempts",
+  authMiddleware,
+  controller.getCourseAssessmentAttempts
 );
 
 /**

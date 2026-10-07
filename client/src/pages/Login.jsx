@@ -4,7 +4,6 @@ import { useTranslation } from '../context/TranslationContext';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import axiosInstance from '../utils/axiosInstance';
 import { Mail, Lock, Eye, EyeOff, Chrome, Twitter, Gamepad2, ArrowLeft, RefreshCw } from 'lucide-react';
 import LanguageSelector from '../components/LanguageSelector';

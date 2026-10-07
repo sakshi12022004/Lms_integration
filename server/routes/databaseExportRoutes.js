@@ -61,15 +61,17 @@ function getArabicFieldName(fieldName) {
 // Get all tables in the database
 router.get('/tables', rateLimiters.sensitive, authMiddleware, checkExportAccess, async (req, res) => {
   try {
-    db.all("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND name NOT LIKE 'sqlite_%'", (err, tables) => {
+    db.all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC", (err, tables) => {
       if (err) {
+        console.error('Error fetching tables:', err);
         return res.status(500).json({ error: 'Error fetching tables' });
       }
       
-      const tableNames = tables.map(table => table.name);
+      const tableNames = (tables || []).map(table => table.name);
       res.json({ tables: tableNames });
     });
   } catch (error) {
+    console.error('Server error fetching tables:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -84,17 +86,27 @@ router.get('/table/:tableName/structure', rateLimiters.sensitive, authMiddleware
       return res.status(400).json({ error: 'Invalid table name' });
     }
     
-    db.all(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '${tableName})`, (err, columns) => {
+    db.all(`PRAGMA table_info(${tableName})`, (err, columns) => {
       if (err) {
+        console.error('Error fetching table structure:', err);
         return res.status(500).json({ error: 'Error fetching table structure' });
       }
       
-      res.json({ columns });
+      const cols = (columns || []).map(col => ({
+        name: col.name,
+        column_name: col.name,
+        data_type: col.type || 'TEXT',
+        nullable: !col.notnull,
+        is_primary: !!col.pk
+      }));
+      res.json({ columns: cols });
     });
   } catch (error) {
+    console.error('Server error fetching table structure:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 // Get table data
 router.get('/table/:tableName/data', rateLimiters.sensitive, authMiddleware, checkExportAccess, async (req, res) => {
@@ -144,13 +156,13 @@ router.get('/table/:tableName/excel', rateLimiters.sensitive, authMiddleware, ch
     }
 
     // Get table structure first
-    db.all(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '${tableName})`, async (err, columns) => {
+    db.all(`PRAGMA table_info(${tableName})`, async (err, columns) => {
       if (err) {
         return res.status(500).json({ error: 'Error fetching table structure' });
       }
 
       // Build language-aware column map
-      const cols = columns.map(col => col.name);
+      const cols = (columns || []).map(col => col.name);
       const columnMap = {};
       cols.forEach(c => {
         const m = c.match(/^(.*)_(en|ar)$/);
@@ -200,7 +212,7 @@ router.get('/table/:tableName/excel', rateLimiters.sensitive, authMiddleware, ch
         csv += headers.join(',') + '\n';
 
         // Prepare batch translations for missing Arabic cells to reduce roundtrips
-        for (const row of rows) {
+        for (const row of rows || []) {
           const toTranslate = [];
           const translateKeys = [];
 
@@ -210,7 +222,6 @@ router.get('/table/:tableName/excel', rateLimiters.sensitive, authMiddleware, ch
             const enVal = row[`${base}__en_src`];
 
             if (lang === 'ar') {
-              // if ar exists and non-empty use it, else plan to translate enVal
               if (arVal && String(arVal).trim() !== '') {
                 // nothing to do
               } else if (enVal && String(enVal).trim() !== '') {
@@ -233,7 +244,6 @@ router.get('/table/:tableName/excel', rateLimiters.sensitive, authMiddleware, ch
             }
           }
 
-          // Build CSV row using either existing ar values or translated ones
           const values = bases.map(base => {
             const arVal = row[`${base}__ar_src`];
             const enVal = row[`${base}__en_src`];
@@ -242,12 +252,10 @@ router.get('/table/:tableName/excel', rateLimiters.sensitive, authMiddleware, ch
             if (lang === 'ar') {
               if (arVal && String(arVal).trim() !== '') finalVal = String(arVal);
               else {
-                // find translated value from translated array (Arabic-only, no English fallback)
                 const idx = translateKeys.indexOf(base);
                 finalVal = (idx !== -1) ? translated[idx] : '';
               }
             } else {
-              // english export: prefer en, else ar, else default
               if (enVal && String(enVal).trim() !== '') finalVal = String(enVal);
               else if (arVal && String(arVal).trim() !== '') finalVal = String(arVal);
               else finalVal = '';
@@ -283,18 +291,15 @@ router.get('/database/excel', rateLimiters.sensitive, authMiddleware, checkExpor
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
     // Get all tables
-    db.all("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND name NOT LIKE 'sqlite_%'", async (err, tables) => {
+    db.all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC", async (err, tables) => {
       if (err) {
         return res.status(500).json({ error: 'Error fetching tables' });
       }
       
-      const tableNames = tables.map(table => table.name);
+      const tableNames = (tables || []).map(table => table.name);
       
-      // Create a zip-like response with all tables as separate CSV files
-      // For simplicity, we'll create a combined CSV with all table data
       let combinedCsv = '\uFEFF'; // UTF-8 BOM for Excel compatibility
 
-      // Translate metadata labels when Arabic export is requested
       let line1 = 'DATABASE EXPORT - LMS System';
       let line2 = 'Export Date:';
       let line3 = 'Total Tables:';
@@ -312,28 +317,27 @@ router.get('/database/excel', rateLimiters.sensitive, authMiddleware, checkExpor
       combinedCsv += `${line3} ${tableNames.length}\n`;
       combinedCsv += `${line4} ${lang.toUpperCase()}\n\n`;
 
+      if (tableNames.length === 0) {
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="lms_database_export_${new Date().toISOString().split('T')[0]}.csv"`);
+        return res.send(combinedCsv);
+      }
+
       let completedTables = 0;
       
-      // Export each table
       tableNames.forEach(tableName => {
-        db.all(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '${tableName})`, async (err, columns) => {
+        db.all(`PRAGMA table_info(${tableName})`, async (err, columns) => {
           if (err) {
             completedTables++;
             if (completedTables === tableNames.length) {
               res.setHeader('Content-Type', 'text/csv; charset=utf-8');
               res.setHeader('Content-Disposition', `attachment; filename="lms_database_export_${new Date().toISOString().split('T')[0]}.csv"`);
-              res.setHeader('Cache-Control', 'no-cache');
-              res.setHeader('Pragma', 'no-cache');
-              res.setHeader('Expires', '0');
               res.send(combinedCsv);
             }
             return;
           }
 
-          const columnNames = columns.map(col => col.name);
-          
-          // Build language-aware header & select for this table
-          const cols = columns.map(col => col.name);
+          const cols = (columns || []).map(col => col.name);
           const columnMap = {};
           cols.forEach(c => {
             const m = c.match(/^(.*)_(en|ar)$/);
@@ -348,7 +352,6 @@ router.get('/database/excel', rateLimiters.sensitive, authMiddleware, checkExpor
             }
           });
 
-          // Build select to include both ar/en sources for this table
           const selectParts = [];
           const bases = Object.keys(columnMap);
           bases.forEach(base => {
@@ -367,19 +370,13 @@ router.get('/database/excel', rateLimiters.sensitive, authMiddleware, checkExpor
           const selectQuery = `SELECT ${selectParts.join(', ')} FROM ${tableName}`;
 
           db.all(selectQuery, async (err, rows) => {
-            if (!err && rows.length > 0) {
-              // Add table header
-              let tableLabel = 'جدول'; // Arabic for "TABLE"
-              let recordsLabel = 'السجلات'; // Arabic for "records"
+            if (!err && rows && rows.length > 0) {
+              let tableLabel = lang === 'ar' ? 'جدول' : 'TABLE';
+              let recordsLabel = lang === 'ar' ? 'السجلات' : 'records';
               let displayTableName = tableName;
-              if (lang !== 'ar') {
-                tableLabel = 'TABLE';
-                recordsLabel = 'records';
-              }
 
               combinedCsv += `${tableLabel}: ${String(displayTableName).toUpperCase()} (${rows.length} ${recordsLabel})\n`;
 
-              // Prepare headers and translate if requested
               let headers = bases.slice();
               if (lang === 'ar') {
                 headers = headers.map(h => getArabicFieldName(h));
@@ -387,51 +384,15 @@ router.get('/database/excel', rateLimiters.sensitive, authMiddleware, checkExpor
 
               combinedCsv += headers.join(',') + '\n';
 
-              // Add table data with on-the-fly translations for missing ar values
               for (const row of rows) {
-                const toTranslate = [];
-                const translateKeys = [];
-
-                bases.forEach(base => {
-                  const arVal = row[`${base}__ar_src`];
-                  const enVal = row[`${base}__en_src`];
-                  if (lang === 'ar') {
-                    if (arVal && String(arVal).trim() !== '') {
-                      // ok
-                    } else if (enVal && String(enVal).trim() !== '') {
-                      toTranslate.push(String(enVal));
-                      translateKeys.push(base);
-                    } else {
-                      toTranslate.push('');
-                      translateKeys.push(base);
-                    }
-                  }
-                });
-
-                let translated = [];
-                if (toTranslate.length > 0) {
-                  try {
-                    translated = await translationService.translateBatch(toTranslate, 'ar', 'en');
-                  } catch (e) {
-                    console.error('Value batch translation failed for table', tableName, e.message);
-                    translated = toTranslate.map(t => t);
-                  }
-                }
-
                 const values = bases.map(base => {
                   const arVal = row[`${base}__ar_src`];
                   const enVal = row[`${base}__en_src`];
                   let finalVal = '';
                   if (lang === 'ar') {
-                    if (arVal && String(arVal).trim() !== '') finalVal = String(arVal);
-                    else {
-                      const idx = translateKeys.indexOf(base);
-                      finalVal = (idx !== -1) ? translated[idx] : '';
-                    }
+                    finalVal = (arVal && String(arVal).trim() !== '') ? String(arVal) : (enVal || '');
                   } else {
-                    if (enVal && String(enVal).trim() !== '') finalVal = String(enVal);
-                    else if (arVal && String(arVal).trim() !== '') finalVal = String(arVal);
-                    else finalVal = '';
+                    finalVal = (enVal && String(enVal).trim() !== '') ? String(enVal) : (arVal || '');
                   }
 
                   if (finalVal === null || finalVal === undefined) finalVal = '';
@@ -445,12 +406,10 @@ router.get('/database/excel', rateLimiters.sensitive, authMiddleware, checkExpor
                 combinedCsv += values.join(',') + '\n';
               }
 
-              combinedCsv += '\n'; // Add separator between tables
+              combinedCsv += '\n';
             }
             
             completedTables++;
-            
-            // When all tables are processed, send the response
             if (completedTables === tableNames.length) {
               res.setHeader('Content-Type', 'text/csv; charset=utf-8');
               res.setHeader('Content-Disposition', `attachment; filename="lms_database_export_${new Date().toISOString().split('T')[0]}.csv"`);
@@ -471,17 +430,21 @@ router.get('/database/excel', rateLimiters.sensitive, authMiddleware, checkExpor
 // Get database statistics
 router.get('/stats', rateLimiters.sensitive, authMiddleware, checkExportAccess, async (req, res) => {
   try {
-    db.all("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND name NOT LIKE 'sqlite_%'", (err, tables) => {
+    db.all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC", (err, tables) => {
       if (err) {
         return res.status(500).json({ error: 'Error fetching tables' });
       }
       
-      const tableNames = tables.map(table => table.name);
+      const tableNames = (tables || []).map(table => table.name);
       const stats = {
         totalTables: tableNames.length,
         tables: {},
         exportDate: new Date().toISOString()
       };
+      
+      if (tableNames.length === 0) {
+        return res.json(stats);
+      }
       
       let completedTables = 0;
       
@@ -489,7 +452,7 @@ router.get('/stats', rateLimiters.sensitive, authMiddleware, checkExportAccess, 
         db.get(`SELECT COUNT(*) as count FROM ${tableName}`, (err, result) => {
           completedTables++;
           
-          if (!err) {
+          if (!err && result) {
             stats.tables[tableName] = result.count;
           }
           
@@ -505,3 +468,4 @@ router.get('/stats', rateLimiters.sensitive, authMiddleware, checkExportAccess, 
 });
 
 module.exports = router;
+

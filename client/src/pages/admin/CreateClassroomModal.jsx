@@ -219,11 +219,14 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
               disabled={loadingStudents}
               size={4}
             >
-              {students.map((s) => (
-                <option key={s._id} value={s._id}>
-                  {s.name} ({s.email})
-                </option>
-              ))}
+              {students.map((s) => {
+                const sId = s.id || s._id;
+                return (
+                  <option key={sId} value={sId}>
+                    {s.name} ({s.email})
+                  </option>
+                );
+              })}
             </select>
             <p className="text-[11px] text-slate-500 mt-1">{t('hold_ctrl_to_select_multiple')}</p>
           </div>

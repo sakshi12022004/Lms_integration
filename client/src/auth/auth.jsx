@@ -4,8 +4,20 @@ import { getStorageItem, setStorageItem, removeStorageItem, getBrowserInfo } fro
 
 const AuthContext = createContext();
 
-// Get API URL from environment or use default
-const API = import.meta.env.VITE_BACKEND_URL || 'https://core5.io/api';
+const getBackendUrl = () => {
+  if (import.meta.env.VITE_BACKEND_URL) {
+    return import.meta.env.VITE_BACKEND_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:5002/api';
+    }
+  }
+  return 'https://core5.io/api';
+};
+
+const API = getBackendUrl();
 
 // Derive socket URL (strip trailing /api if present)
 const SOCKET_URL = API.replace(/\/api\/?$/, '');

@@ -46,11 +46,13 @@ function Step({ n, title, hint, children }) {
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">{n}</span>
-          {title}
+        <h3 className="text-[#1e1b4b] text-base flex items-center gap-2.5">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-none bg-[#B99652] text-white text-xs font-medium border border-[#9b7b3e] shadow-xs">
+            {n}
+          </span>
+          <span className="font-['DM_Serif_Display',serif] text-base sm:text-lg text-[#1e1b4b] font-normal">{title}</span>
         </h3>
-        {hint && <p className="text-sm text-gray-500 ml-8">{hint}</p>}
+        {hint && <p className="text-xs text-[#7a705a] ml-8 mt-0.5 leading-relaxed">{hint}</p>}
       </div>
       <div className="ml-8">{children}</div>
     </div>
@@ -217,37 +219,82 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
   const customNeedsText = form.template === "teacher_custom" && !form.instructions.trim();
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <button onClick={discard} disabled={busy} className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
-        <ArrowLeft size={16} /> All tests
+    <div className="max-w-5xl mx-auto space-y-6">
+      <button
+        onClick={discard}
+        disabled={busy}
+        className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-[#B99652] hover:text-[#92400e] transition-colors py-1"
+      >
+        <ArrowLeft size={16} />
+        <span>Back to All Tests</span>
       </button>
 
-      <section className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-xl font-bold mb-1 flex items-center gap-2"><Sparkles size={20} /> Generate with AI</h2>
+      {/* Generator Configuration Section */}
+      <section className="bg-white/95 backdrop-blur-sm rounded-none border border-[#ebdcaa] shadow-[0_4px_25px_rgba(185,150,82,0.06)] p-6 sm:p-8">
+        <div className="flex items-center gap-3.5 pb-4 mb-6 border-b border-[#ebdcaa]">
+          <div className="w-10 h-10 rounded-none bg-gradient-to-br from-[#B99652] to-[#a38243] text-white flex items-center justify-center border border-[#ebdcaa] shadow-xs">
+            <Sparkles size={20} />
+          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">
+              Generate Assessment with AI
+            </h2>
+            <p className="text-xs text-[#7a705a] mt-0.5">
+              The AI proposes smart curriculum questions. Nothing is saved until you review and click "Save as draft".
+            </p>
+          </div>
+        </div>
+
         {prefill && (
-          <div className="mb-3 p-3 rounded-lg bg-indigo-50 border border-indigo-100 text-sm text-indigo-900" data-testid="aia-gen-prefill">
-            Pre-filled from the {prefill.source || "AI Performance Report"}'s suggested next assessment. Check the details, then click "Generate Questions".
-            {suggestedStudent && <span className="block mt-1">Suggested for: <span className="font-semibold">{suggestedStudent.name}</span> (pre-selected when you assign it; you can add other students or the whole class).</span>}
+          <div className="mb-6 p-4 rounded-none bg-[#fff8e7] border border-[#fde68a] text-xs sm:text-sm text-[#92400e]" data-testid="aia-gen-prefill">
+            Pre-filled from the <strong>{prefill.source || "AI Performance Report"}</strong>'s suggested next assessment. Check the details, then click "Generate Questions".
+            {suggestedStudent && <span className="block mt-1">Suggested for: <strong>{suggestedStudent.name}</strong> (pre-selected when you assign; you can adjust anytime).</span>}
           </div>
         )}
-        <p className="text-sm text-gray-500 mb-6">The AI suggests questions. Nothing is saved until you review them and click "Save as draft".</p>
+
         <fieldset disabled={busy} className="space-y-7">
-          <Step n={1} title="What to assess">
-            <div className="grid gap-3 md:grid-cols-2">
-              <input className="p-2 border rounded" placeholder="Topic (e.g. Photosynthesis)" value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })} />
-              <input className="p-2 border rounded" placeholder="Subject" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
-              <select className="p-2 border rounded" value={form.classroomId} onChange={(e) => setForm({ ...form, classroomId: e.target.value })}>
-                <option value="">Class (optional; required to publish)</option>
+          <Step n={1} title="Assessment Target & Scope">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                className="p-2.5 border border-[#ebdcaa] rounded-none bg-[#fffdf4]/40 text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none placeholder:text-[#a09783]"
+                placeholder="Topic (e.g. Thermodynamics, Optics, Algebra)"
+                value={form.topic}
+                onChange={(e) => setForm({ ...form, topic: e.target.value })}
+              />
+              <input
+                className="p-2.5 border border-[#ebdcaa] rounded-none bg-[#fffdf4]/40 text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none placeholder:text-[#a09783]"
+                placeholder="Subject (e.g. Physics, Mathematics)"
+                value={form.subject}
+                onChange={(e) => setForm({ ...form, subject: e.target.value })}
+              />
+              <select
+                className="p-2.5 border border-[#ebdcaa] rounded-none bg-white text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none"
+                value={form.classroomId}
+                onChange={(e) => setForm({ ...form, classroomId: e.target.value })}
+              >
+                <option value="">Classroom (optional; required to publish)</option>
                 {classrooms.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
               </select>
-              <div className="flex gap-3">
-                <label className="flex-1 text-sm">
-                  <span className="block text-gray-600 mb-1">Number of questions</span>
-                  <input className="w-full p-2 border rounded" type="number" min="1" max="20" value={form.count} onChange={(e) => setForm({ ...form, count: e.target.value })} />
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs font-bold text-[#665e4d]">
+                  <span className="block mb-1">Question Count</span>
+                  <input
+                    className="w-full p-2.5 border border-[#ebdcaa] rounded-none bg-white text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] outline-none"
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={form.count}
+                    onChange={(e) => setForm({ ...form, count: e.target.value })}
+                  />
                 </label>
-                <label className="flex-1 text-sm">
-                  <span className="block text-gray-600 mb-1">Difficulty</span>
-                  <select className="w-full p-2 border rounded" value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })} data-testid="aia-gen-difficulty">
+                <label className="text-xs font-bold text-[#665e4d]">
+                  <span className="block mb-1">Difficulty</span>
+                  <select
+                    className="w-full p-2.5 border border-[#ebdcaa] rounded-none bg-white text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] outline-none"
+                    value={form.difficulty}
+                    onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
+                    data-testid="aia-gen-difficulty"
+                  >
                     {DIFFICULTIES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
                   </select>
                 </label>
@@ -255,14 +302,22 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
             </div>
           </Step>
 
-          <Step n={2} title="Question type" hint="How students will answer.">
+          <Step n={2} title="Question Format" hint="Choose the question format and structure.">
             <TypePicker size="lg" value={form.questionType} onChange={(questionType) => setForm({ ...form, questionType })} available={catalog.questionTypesAvailable} testId="aia-gen-type" />
             {form.questionType === "numerical" && (
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm" data-testid="aia-gen-numeric-format">
-                <span className="text-gray-600">Answers should be:</span>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs" data-testid="aia-gen-numeric-format">
+                <span className="text-[#665e4d] font-semibold">Answers should be:</span>
                 {[["", "Whole numbers or decimals"], ["integer", "Whole numbers only"], ["decimal", "Decimals"]].map(([id, label]) => (
-                  <button key={id || "any"} type="button" onClick={() => setForm({ ...form, numericFormat: id })}
-                    className={`px-3 py-1 rounded-full border ${form.numericFormat === id ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-600 hover:border-gray-400"}`}>
+                  <button
+                    key={id || "any"}
+                    type="button"
+                    onClick={() => setForm({ ...form, numericFormat: id })}
+                    className={`px-3 py-1 rounded-none border text-xs font-semibold transition-all ${
+                      form.numericFormat === id
+                        ? "border-[#B99652] bg-[#fff8e7] text-[#92400e] ring-1 ring-[#B99652]"
+                        : "border-[#ebdcaa] text-[#665e4d] bg-white hover:border-[#B99652]"
+                    }`}
+                  >
                     {label}
                   </button>
                 ))}
@@ -270,119 +325,258 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
             )}
           </Step>
 
-          <Step n={3} title="Educational intent (optional)" hint="The kind of learning outcome you want. It guides the style of the questions; it is practice, not a prediction of any exam.">
+          <Step n={3} title="Educational Intent (Pedagogical Guidance)" hint="Guides the style and cognitive level of the questions according to learning outcomes.">
             {catalog.templates.length === 0 ? (
-              <p className="text-sm text-gray-500">Templates are not available right now. You can still describe what you want below.</p>
+              <p className="text-xs text-[#7a705a]">Templates are not available right now. You can describe your specific requirements below.</p>
             ) : (
               <>
-                <div className="grid gap-2 grid-cols-2 md:grid-cols-5" role="radiogroup" aria-label="Educational intent" data-testid="aia-gen-templates">
+                <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-3 md:grid-cols-5" role="radiogroup" aria-label="Educational intent" data-testid="aia-gen-templates">
                   {catalog.templates.map((t) => {
                     const Icon = TEMPLATE_ICON[t.id] || Sparkles;
                     const active = form.template === t.id;
                     return (
-                      <button key={t.id} type="button" role="radio" aria-checked={active} onClick={() => chooseTemplate(t.id)} data-template={t.id}
-                        className={`flex flex-col items-start gap-2 p-3 rounded-lg border text-left text-sm transition-colors ${active ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-gray-200 hover:border-gray-400"}`}>
-                        <Icon size={18} className={active ? "text-primary" : "text-gray-500"} />
-                        <span className={`font-semibold leading-tight ${active ? "text-primary" : "text-gray-800"}`}>{t.label}</span>
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => chooseTemplate(t.id)}
+                        data-template={t.id}
+                        className={`flex flex-col items-start gap-2 p-3 rounded-none border text-left transition-all ${
+                          active
+                            ? "border-[#B99652] bg-[#fff8e7] ring-1 ring-[#B99652] shadow-xs"
+                            : "border-[#ebdcaa] bg-white hover:border-[#B99652]/70 hover:bg-[#fffdf4]/40"
+                        }`}
+                      >
+                        <Icon size={18} className={active ? "text-[#B99652]" : "text-[#7a705a]"} />
+                        <span className={`text-xs font-bold leading-tight ${active ? "text-[#92400e]" : "text-[#1e1b4b]"}`}>{t.label}</span>
                       </button>
                     );
                   })}
                 </div>
-                <p className="mt-3 text-sm text-gray-600 min-h-[1.25rem]" data-testid="aia-gen-template-description">
-                  {selectedTemplate ? <><span className="font-medium text-gray-800">{selectedTemplate.label}:</span> {selectedTemplate.description} <span className="text-gray-400">(click again to clear)</span></> : "No template selected: the AI follows your topic and instructions only."}
-                </p>
+                <div className="mt-3 p-2.5 rounded-none bg-[#fffdf4] border border-[#ebdcaa] text-xs text-[#665e4d]" data-testid="aia-gen-template-description">
+                  {selectedTemplate ? (
+                    <>
+                      <strong className="text-[#92400e]">{selectedTemplate.label}:</strong> {selectedTemplate.description}{" "}
+                      <span className="text-[#a09783] cursor-pointer underline ml-1" onClick={() => chooseTemplate(selectedTemplate.id)}>(click to clear)</span>
+                    </>
+                  ) : (
+                    "No intent template selected: the AI will formulate questions directly from topic & instructions."
+                  )}
+                </div>
               </>
             )}
           </Step>
 
-          <Step n={4} title={form.template === "teacher_custom" ? "Your instructions (required for Teacher Custom)" : "Additional instructions (optional)"}
-            hint="How you want the questions customised: focus areas, contexts, examples or style. They refine the intent above; they cannot change the question type, the number of questions or the answer format.">
-            <textarea className="w-full p-2 border rounded" rows={3} maxLength={500} placeholder="e.g. Focus on Newton's laws and use real-world examples." value={form.instructions}
-              onChange={(e) => setForm({ ...form, instructions: e.target.value })} data-testid="aia-gen-instructions" />
-            <div className="text-xs text-gray-400 text-right">{form.instructions.length}/500</div>
+          <Step
+            n={4}
+            title={form.template === "teacher_custom" ? "Custom Instructions (Required for Teacher Custom)" : "Special Instructions / Focus Areas (Optional)"}
+            hint="Specify topic emphasis, real-world application contexts, or specific formulas. (Max 500 chars)"
+          >
+            <textarea
+              className="w-full p-3 border border-[#ebdcaa] rounded-none bg-[#fffdf4]/40 text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none placeholder:text-[#a09783]"
+              rows={3}
+              maxLength={500}
+              placeholder="e.g. Focus on Newton's laws and include practical application scenarios involving friction and momentum."
+              value={form.instructions}
+              onChange={(e) => setForm({ ...form, instructions: e.target.value })}
+              data-testid="aia-gen-instructions"
+            />
+            <div className="text-[11px] text-[#7a705a] text-right mt-1">{form.instructions.length}/500</div>
           </Step>
 
-          <div className="flex flex-wrap items-center gap-3 border-t pt-5">
-            <button onClick={generate} disabled={customNeedsText} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-semibold disabled:opacity-60">
-              {generating ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-              {generating ? "Generating..." : questions ? "Generate again" : "Generate Questions"}
-            </button>
-            <span className="text-sm text-gray-500">{TYPE_LABEL[form.questionType]}{selectedTemplate ? ` · ${selectedTemplate.label}` : ""} · {form.count} question{Number(form.count) === 1 ? "" : "s"}</span>
-            {generating && <span className="text-sm text-gray-500" data-testid="aia-generating">Generating questions with AI... {elapsed}s (this can take up to a minute)</span>}
-            {questions && !generating && <span className="text-sm text-amber-700">Generating again replaces the questions below.</span>}
+          {/* Action Row */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#ebdcaa] pt-5">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={generate}
+                disabled={customNeedsText || busy}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#B99652] hover:bg-[#a68444] text-white rounded-none font-bold text-xs sm:text-sm border border-[#9b7b3e] shadow-xs transition-all disabled:opacity-50"
+              >
+                {generating ? <Loader2 size={16} className="animate-spin text-white" /> : <Sparkles size={16} />}
+                <span>{generating ? "Synthesizing Questions..." : questions ? "Regenerate Full Test" : "Generate Questions with AI"}</span>
+              </button>
+              {generating && (
+                <span className="text-xs text-[#7a705a] font-medium" data-testid="aia-generating">
+                  AI generating questions... {elapsed}s
+                </span>
+              )}
+            </div>
+
+            <div className="text-xs text-[#7a705a]">
+              <span className="font-semibold text-[#92400e]">{TYPE_LABEL[form.questionType]}</span>
+              {selectedTemplate ? ` · ${selectedTemplate.label}` : ""} · {form.count} {Number(form.count) === 1 ? "question" : "questions"}
+            </div>
           </div>
         </fieldset>
+
         {aiError && !generating && (
-          <div className="mt-4 p-4 rounded-lg bg-red-50 border border-red-200 text-sm" data-testid="aia-ai-error" role="alert">
-            <p className="text-red-700 font-medium">{aiError}</p>
-            <p className="text-gray-600 mt-1">Your inputs are kept. You can try again, or go back and create the test manually.</p>
+          <div className="mt-5 p-4 rounded-none bg-red-50 border border-red-200 text-xs sm:text-sm text-red-800" data-testid="aia-ai-error" role="alert">
+            <p className="font-bold text-red-700">{aiError}</p>
+            <p className="text-red-600 mt-1">Your configuration inputs are retained. You can retry generation or create manually.</p>
             <div className="mt-3 flex gap-2">
-              <button onClick={generate} className="px-3 py-2 bg-primary text-white rounded-lg text-sm font-semibold">Try again</button>
-              <button onClick={onCancel} className="px-3 py-2 border rounded-lg text-sm">Create manually instead</button>
+              <button onClick={generate} className="px-3.5 py-1.5 bg-[#B99652] text-white rounded-none text-xs font-bold">Try again</button>
+              <button onClick={onCancel} className="px-3.5 py-1.5 bg-white border border-[#ebdcaa] text-[#92400e] rounded-none text-xs font-bold">Create manually instead</button>
             </div>
           </div>
         )}
       </section>
 
+      {/* Review Questions Section */}
       {questions && (
         <>
-          <section className="bg-white rounded-xl shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">Review questions ({questions.length})</h3>
-              <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-800">Not saved</span>
+          <section className="bg-white/95 backdrop-blur-sm rounded-none border border-[#ebdcaa] shadow-[0_4px_25px_rgba(0,35,102,0.06)] p-6 sm:p-8 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#ebdcaa]">
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">
+                  Review & Refine Proposed Questions ({questions.length})
+                </h3>
+                <p className="text-xs text-[#7a705a]">
+                  Edit question text, verify answer keys, or regenerate single questions as needed.
+                </p>
+              </div>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-none bg-[#fff8e7] text-[#92400e] border border-[#fde68a]">
+                Draft Proposal (Unsaved)
+              </span>
             </div>
+
             <ol className="space-y-4">
               {questions.map((q, i) => (
-                <li key={i} className="border rounded-lg p-4 space-y-3" data-testid="aia-review-question" data-type={q.type}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold flex items-center gap-2">
-                      Question {i + 1}
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{TYPE_LABEL[q.type]}</span>
-                      {q.difficulty && <span className="text-xs font-normal text-gray-500">{q.difficulty}</span>}
+                <li key={i} className="border border-[#ebdcaa] rounded-none p-4 sm:p-5 bg-[#fffdf4]/20 space-y-3" data-testid="aia-review-question" data-type={q.type}>
+                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#ebdcaa]/60">
+                    <span className="font-semibold text-sm text-[#1e1b4b] flex items-center gap-2">
+                      <span className="w-5 h-5 bg-[#B99652] text-white text-xs flex items-center justify-center font-medium">
+                        {i + 1}
+                      </span>
+                      <span>Question {i + 1}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-none bg-[#fff8e7] text-[#92400e] border border-[#fde68a]">
+                        {TYPE_LABEL[q.type]}
+                      </span>
+                      {q.difficulty && (
+                        <span className="text-[10px] font-medium text-[#7a705a] capitalize">
+                          {q.difficulty}
+                        </span>
+                      )}
                     </span>
-                    <div className="flex gap-3">
-                      <button disabled={busy} title="Regenerate this question" onClick={() => regenerate(i)} className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50">
-                        <RefreshCw size={14} className={regenerating === i ? "animate-spin" : ""} /> Regenerate
+                    <div className="flex items-center gap-3">
+                      <button
+                        disabled={busy}
+                        title="Regenerate this question"
+                        onClick={() => regenerate(i)}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#B99652] hover:text-[#92400e] disabled:opacity-50 transition-colors"
+                      >
+                        <RefreshCw size={13} className={regenerating === i ? "animate-spin" : ""} />
+                        <span>Regenerate</span>
                       </button>
-                      <button disabled={busy} title="Remove" onClick={() => remove(i)} className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 disabled:opacity-50">
-                        <Trash2 size={14} /> Remove
+                      <button
+                        disabled={busy}
+                        title="Remove"
+                        onClick={() => remove(i)}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 disabled:opacity-50 transition-colors"
+                      >
+                        <Trash2 size={13} />
+                        <span>Remove</span>
                       </button>
                     </div>
                   </div>
                   <fieldset disabled={busy}>
-                    <QuestionEditor value={q} onChange={(next) => replaceAt(i, next)} idPrefix={`aia-review-${i}`} availableTypes={catalog.questionTypesAvailable} allowTypeChange={false} />
+                    <QuestionEditor
+                      value={q}
+                      onChange={(next) => replaceAt(i, next)}
+                      idPrefix={`aia-review-${i}`}
+                      availableTypes={catalog.questionTypesAvailable}
+                      allowTypeChange={false}
+                    />
                   </fieldset>
                 </li>
               ))}
             </ol>
-            <button disabled={busy} onClick={() => setQuestions((qs) => [...qs, blankQuestion(form.questionType)])} className="mt-4 flex items-center gap-2 px-3 py-2 border rounded-lg text-sm">
-              <Plus size={16} /> Add a question manually
+
+            <button
+              disabled={busy}
+              onClick={() => setQuestions((qs) => [...qs, blankQuestion(form.questionType)])}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-[#fffdf4] text-[#92400e] border border-[#ebdcaa] hover:border-[#B99652] rounded-none font-bold text-xs shadow-xs transition-all"
+            >
+              <Plus size={14} className="text-[#B99652]" />
+              <span>Add Custom Question Manually</span>
             </button>
           </section>
 
-          <section className="bg-white rounded-xl shadow p-6">
-            <h3 className="text-lg font-bold mb-4">Save as a draft test</h3>
-            <fieldset disabled={busy} className="grid gap-3 md:grid-cols-2">
-              <input className="p-2 border rounded" placeholder="Title" value={details.title} onChange={(e) => setDetails({ ...details, title: e.target.value })} />
-              <input className="p-2 border rounded" type="number" min="1" max="600" placeholder="Duration in minutes (optional)" value={details.durationMinutes} onChange={(e) => setDetails({ ...details, durationMinutes: e.target.value })} />
-              <textarea className="p-2 border rounded md:col-span-2" placeholder="Description (optional)" value={details.description} onChange={(e) => setDetails({ ...details, description: e.target.value })} />
-              <p className="md:col-span-2 text-xs text-gray-500">Subject and class are taken from the form above. "Save as draft" keeps it private; "Save & assign" lets you choose who in the class receives it, then publishes it.</p>
-              <div className="md:col-span-2 flex flex-wrap gap-2">
-                <button onClick={save} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-semibold disabled:opacity-60">
-                  {saving && <Loader2 size={18} className="animate-spin" />} Save as draft
+          {/* Save & Publish Options Card */}
+          <section className="bg-white/95 backdrop-blur-sm rounded-none border border-[#ebdcaa] shadow-[0_4px_25px_rgba(185,150,82,0.06)] p-6 sm:p-8">
+            <h3 className="text-lg sm:text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">
+              Finalize Assessment
+            </h3>
+            <p className="text-xs text-[#7a705a] mb-5">
+              Specify test title and duration. "Save as draft" keeps it private; "Save & assign" publishes directly to selected students.
+            </p>
+
+            <fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2">
+              <input
+                className="p-2.5 border border-[#ebdcaa] rounded-none bg-[#fffdf4]/40 text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none placeholder:text-[#a09783]"
+                placeholder="Test Title (e.g. Physics Midterm Quiz: Mechanics)"
+                value={details.title}
+                onChange={(e) => setDetails({ ...details, title: e.target.value })}
+              />
+              <input
+                className="p-2.5 border border-[#ebdcaa] rounded-none bg-[#fffdf4]/40 text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none placeholder:text-[#a09783]"
+                type="number"
+                min="1"
+                max="600"
+                placeholder="Duration in minutes (e.g. 30)"
+                value={details.durationMinutes}
+                onChange={(e) => setDetails({ ...details, durationMinutes: e.target.value })}
+              />
+              <textarea
+                className="p-2.5 border border-[#ebdcaa] rounded-none bg-[#fffdf4]/40 text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none placeholder:text-[#a09783] sm:col-span-2"
+                rows={2}
+                placeholder="Description & instructions for students (optional)"
+                value={details.description}
+                onChange={(e) => setDetails({ ...details, description: e.target.value })}
+              />
+              
+              <div className="sm:col-span-2 flex flex-wrap items-center gap-3 pt-4 border-t border-[#ebdcaa]">
+                <button
+                  onClick={save}
+                  disabled={saving || busy}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#B99652] hover:bg-[#a68444] text-white rounded-none font-bold text-xs sm:text-sm border border-[#9b7b3e] shadow-xs transition-all disabled:opacity-60"
+                >
+                  {saving && <Loader2 size={16} className="animate-spin text-white" />}
+                  <span>Save as Draft</span>
                 </button>
-                <button onClick={saveAndAssign} disabled={assigning} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold disabled:opacity-60" data-testid="aia-gen-save-assign">
-                  {assigning && <Loader2 size={18} className="animate-spin" />} Save & assign…
+                <button
+                  onClick={saveAndAssign}
+                  disabled={assigning || busy}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#fff8e7] hover:bg-[#fde68a] text-[#92400e] rounded-none font-bold text-xs sm:text-sm border border-[#B99652] shadow-xs transition-all disabled:opacity-60"
+                  data-testid="aia-gen-save-assign"
+                >
+                  {assigning && <Loader2 size={16} className="animate-spin text-[#92400e]" />}
+                  <span>Save & Assign to Class…</span>
                 </button>
-                <button onClick={discard} className="px-4 py-2 border rounded-lg">Discard</button>
+                <button
+                  onClick={discard}
+                  className="px-4 py-2.5 bg-white hover:bg-[#fffdf4] text-[#665e4d] border border-[#ebdcaa] rounded-none text-xs sm:text-sm font-bold transition-colors"
+                >
+                  Discard
+                </button>
               </div>
             </fieldset>
           </section>
         </>
       )}
+
       {assignClass && (
-        <AssignToModal base={base} auth={auth} classroom={assignClass} classLabel={classLabel} testTitle={details.title || form.topic}
-          suggested={suggestedStudent} busy={assigning} onCancel={() => setAssignClass(null)} onConfirm={confirmAssign} />
+        <AssignToModal
+          base={base}
+          auth={auth}
+          classroom={assignClass}
+          classLabel={classLabel}
+          testTitle={details.title || form.topic}
+          suggested={suggestedStudent}
+          busy={assigning}
+          onCancel={() => setAssignClass(null)}
+          onConfirm={confirmAssign}
+        />
       )}
     </div>
   );

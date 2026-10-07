@@ -156,10 +156,18 @@ exports.getCourseAssessments = (req, res) => {
  */
 exports.addQuestion = (req, res) => {
   try {
-    const { assessmentId, questionText, questionType, options, correctAnswer, marks } = req.body;
+    let { assessmentId, questionText, questionType, options, correctAnswer, correctOptionIndex, marks } = req.body;
 
-    if (!assessmentId || !questionText || !questionType) {
+    if (!assessmentId || (!questionText && !req.body.questionImage)) {
       return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    if (!questionType || questionType === "text" || questionType === "image") {
+      questionType = "multiple_choice";
+    }
+
+    if (!correctAnswer && correctOptionIndex !== undefined && Array.isArray(options)) {
+      correctAnswer = options[correctOptionIndex] !== undefined ? options[correctOptionIndex] : String(correctOptionIndex);
     }
 
     // Get the next question number
@@ -178,7 +186,7 @@ exports.addQuestion = (req, res) => {
         db.run(
           `INSERT INTO assessment_questions (assessmentId, questionNumber, questionText, questionType, options, correctAnswer, marks, createdAt, updatedAt)
            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-          [assessmentId, questionNumber, questionText, questionType, optionsJson, correctAnswer, marks || 1],
+          [assessmentId, questionNumber, questionText || "", questionType, optionsJson, correctAnswer || "", marks || 1],
           function(err) {
             if (err) {
               console.error("Error creating question:", err);
@@ -196,7 +204,11 @@ exports.addQuestion = (req, res) => {
 
                 // Parse options if they exist
                 if (question.options) {
-                  question.options = JSON.parse(question.options);
+                  try {
+                    question.options = JSON.parse(question.options);
+                  } catch (e) {
+                    // keep raw
+                  }
                 }
 
                 res.status(201).json({
@@ -246,11 +258,21 @@ exports.getAssessmentQuestions = (req, res) => {
               return res.status(500).json({ message: "Database error" });
             }
 
-            const mappedQuestions = (questions || []).map(q => ({
-              ...q,
-              _id: q.id,
-              options: q.options ? JSON.parse(q.options) : []
-            }));
+            const mappedQuestions = (questions || []).map(q => {
+              let parsedOptions = [];
+              if (q.options) {
+                try {
+                  parsedOptions = JSON.parse(q.options);
+                } catch (e) {
+                  parsedOptions = [];
+                }
+              }
+              return {
+                ...q,
+                _id: q.id,
+                options: parsedOptions
+              };
+            });
 
             res.json({
               assessment: mapAssessment(assessment),
@@ -288,16 +310,34 @@ exports.publishAssessment = (req, res) => {
           return res.status(404).json({ message: "Assessment not found" });
         }
 
-        db.run(
-          "UPDATE assessments SET isPublished = 1, updatedAt = CURRENT_TIMESTAMP WHERE id = ?",
+        // Verify that assessment has at least one question
+        db.get(
+          "SELECT COUNT(*) as count FROM assessment_questions WHERE assessmentId = ?",
           [assessmentId],
-          (updateErr) => {
-            if (updateErr) {
-              console.error("Database error:", updateErr);
-              return res.status(500).json({ message: "Failed to publish assessment" });
+          (countErr, countResult) => {
+            if (countErr) {
+              console.error("Database error:", countErr);
+              return res.status(500).json({ message: "Database error" });
             }
 
-            res.json({ message: "Assessment published successfully" });
+            if (!countResult || countResult.count === 0) {
+              return res.status(400).json({ 
+                message: "Cannot publish an assessment with no questions. Please add at least one question first." 
+              });
+            }
+
+            db.run(
+              "UPDATE assessments SET isPublished = 1, updatedAt = CURRENT_TIMESTAMP WHERE id = ?",
+              [assessmentId],
+              (updateErr) => {
+                if (updateErr) {
+                  console.error("Database error:", updateErr);
+                  return res.status(500).json({ message: "Failed to publish assessment" });
+                }
+
+                res.json({ message: "Assessment published successfully" });
+              }
+            );
           }
         );
       }
@@ -439,6 +479,13 @@ exports.submitAssessment = (req, res) => {
                   // Return score anyway even if save fails
                 }
 
+                // Also mark assessment complete in progress
+                db.run(
+                  `INSERT OR REPLACE INTO progress (studentId, contentId, contentType, courseId, completed, completedAt)
+                   SELECT ?, ?, 'assessment', courseId, 1, CURRENT_TIMESTAMP FROM assessments WHERE id = ?`,
+                  [studentId, assessmentId, assessmentId]
+                );
+
                 res.status(200).json({
                   score,
                   totalQuestions,
@@ -454,6 +501,63 @@ exports.submitAssessment = (req, res) => {
     );
   } catch (error) {
     console.error("SUBMIT ASSESSMENT ERROR:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
+ * ================================
+ * GET ASSESSMENT ATTEMPTS (TEACHER)
+ * ================================
+ */
+exports.getAssessmentAttempts = (req, res) => {
+  try {
+    const { assessmentId } = req.params;
+    db.all(
+      `SELECT aa.*, u.name as studentName, u.email as studentEmail 
+       FROM assessment_attempts aa 
+       LEFT JOIN users u ON aa.studentId = u.id 
+       WHERE aa.assessmentId = ? 
+       ORDER BY aa.attemptedAt DESC`,
+      [assessmentId],
+      (err, attempts) => {
+        if (err) {
+          console.error("Database error:", err);
+          return res.status(500).json({ message: "Database error" });
+        }
+        res.json(attempts || []);
+      }
+    );
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
+ * ================================
+ * GET COURSE ATTEMPTS (TEACHER)
+ * ================================
+ */
+exports.getCourseAssessmentAttempts = (req, res) => {
+  try {
+    const { courseId } = req.params;
+    db.all(
+      `SELECT aa.*, a.title as assessmentTitle, u.name as studentName, u.email as studentEmail 
+       FROM assessment_attempts aa 
+       JOIN assessments a ON aa.assessmentId = a.id 
+       LEFT JOIN users u ON aa.studentId = u.id 
+       WHERE a.courseId = ? 
+       ORDER BY aa.attemptedAt DESC`,
+      [courseId],
+      (err, attempts) => {
+        if (err) {
+          console.error("Database error:", err);
+          return res.status(500).json({ message: "Database error" });
+        }
+        res.json(attempts || []);
+      }
+    );
+  } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
 };

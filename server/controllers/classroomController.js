@@ -362,74 +362,57 @@ const createClassroom = async (req, res) => {
         }
 
         // ASSIGN STUDENTS TO CLASSROOM (KEY FIX)
-        if (studentIds && Array.isArray(studentIds) && studentIds.length > 0) {
-          console.log("CREATE CLASSROOM - Assigning students to classroom:", studentIds);
+        const validStudentIds = (studentIds && Array.isArray(studentIds)) 
+          ? studentIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id))
+          : [];
+
+        if (validStudentIds.length > 0) {
+          console.log("CREATE CLASSROOM - Assigning students to classroom:", validStudentIds);
           
-          // Create the student_classroom_assignment table if it doesn't exist
-          db.run(`
-            CREATE TABLE IF NOT EXISTS student_classroom_assignment (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              studentId TEXT NOT NULL,
-              classroomId INTEGER NOT NULL,
-              assignedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-              UNIQUE(studentId, classroomId),
-              FOREIGN KEY(classroomId) REFERENCES classrooms(id)
-            )
-          `, () => {
-            // Assign each student to the classroom
-            studentIds.forEach(studentId => {
-              console.log(`CREATE CLASSROOM - Assigning student ${studentId} to classroom ${classroomId}`);
-              
-              db.run(`
-                INSERT OR IGNORE INTO student_classroom_assignment (studentId, classroomId)
-                VALUES (?, ?)
-              `, [studentId, classroomId], (err) => {
+          let completed = 0;
+          validStudentIds.forEach(studentId => {
+            db.run(
+              `INSERT OR IGNORE INTO student_classroom_assignment (studentId, classroomId) VALUES (?, ?)`,
+              [studentId, classroomId],
+              (err) => {
                 if (err) {
                   console.error(`Error assigning student ${studentId} to classroom:`, err);
-                } else {
-                  console.log(`Student ${studentId} assigned successfully`);
                 }
-              });
+                
+                // Update student grade
+                db.run(`UPDATE students SET grade = ? WHERE userId = ?`, [grade, studentId]);
 
-              // Apply fee structure to the student
-              if (feeStructure) {
-                db.run(`
-                  UPDATE students 
-                  SET totalFees = ?, grade = ?, pendingFees = ?
-                  WHERE userId = ?
-                `, [
-                  feeStructure.totalFee,
-                  grade,
-                  feeStructure.totalFee, // Initially, pending = total
-                  studentId
-                ], (err) => {
-                  if (err) {
-                    console.error("Error updating student fees:", err);
-                  }
-                });
+                completed++;
+                if (completed === validStudentIds.length) {
+                  sendResponse();
+                }
               }
-            });
+            );
           });
+        } else {
+          sendResponse();
         }
 
-        console.log("CREATE CLASSROOM - Sending success response");
-        res.status(201).json({
-          message: 'Classroom created successfully',
-          data: {
-            classroom: {
-              id: classroomId,
-              name: classroom.name,
-              grade: classroom.grade,
-              section: classroom.section,
-              classTeacher: classroom.classTeacher,
-              studentCount: classroom.studentCount,
-              feeStructure: classroom.feeStructure,
-              feeCategory: classroom.feeCategory
-            },
-            feeApplied: feeStructure ? true : false,
-            studentsAssigned: studentIds ? studentIds.length : 0
-          }
-        });
+        function sendResponse() {
+          console.log("CREATE CLASSROOM - Sending success response");
+          res.status(201).json({
+            message: 'Classroom created successfully',
+            data: {
+              classroom: {
+                id: classroomId,
+                name: classroom.name,
+                grade: classroom.grade,
+                section: classroom.section,
+                classTeacher: classroom.classTeacher,
+                studentCount: validStudentIds.length,
+                feeStructure: classroom.feeStructure,
+                feeCategory: classroom.feeCategory
+              },
+              feeApplied: feeStructure ? true : false,
+              studentsAssigned: validStudentIds.length
+            }
+          });
+        }
       });
     });
   } catch (error) {
@@ -834,6 +817,16 @@ const assignStudentToClassroom = async (req, res) => {
                         if (updateErr) {
                           console.error('Error updating classrooms.studentCount:', updateErr);
                         }
+
+                        // Auto-assign student to all courses belonging to this classroom
+                        db.run(
+                          `INSERT OR IGNORE INTO course_students (courseId, studentId)
+                           SELECT id, ? FROM courses WHERE classroomId = ?`,
+                          [studentId, classroomId],
+                          (cErr) => {
+                            if (cErr) console.warn('Could not auto-assign course_students:', cErr.message);
+                          }
+                        );
 
                         console.log(`Successfully assigned student ${studentId} to classroom ${classroomId}. New studentCount=${newCount}`);
                         res.json({

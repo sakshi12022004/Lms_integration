@@ -6,7 +6,26 @@ import { toast } from "react-toastify";
 import { useTranslation } from "../../context/TranslationContext";
 import io from "socket.io-client";
 import axios from "axios";
-import { Video, X, Clock, Calendar } from "lucide-react";
+import {
+  Video,
+  X,
+  Clock,
+  Calendar,
+  CheckCircle,
+  CheckCircle2,
+  BookOpen,
+  FileText,
+  Lock,
+  Play,
+  Sparkles,
+  Radio,
+  Users,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Award,
+  ExternalLink
+} from "lucide-react";
 
 const CourseViewer = () => {
   const { courseId } = useParams();
@@ -467,25 +486,57 @@ const CourseViewer = () => {
 
   return (
     <StudentLayout>
-      <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-min-h-screen">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
 
         {/* ================= COURSE HEADER ================= */}
-        <div data-tour="course-title" className="mb-8 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">{course.title}</h1>
-              <p className="text-gray-600 text-lg">{course.description}</p>
+        <div
+          data-tour="course-title"
+          className="relative bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_4px_25px_rgba(0,35,102,0.06)] p-6 sm:p-8 border border-[#ebdcaa] overflow-hidden"
+        >
+          {/* Subtle gold decorative gradient in the corner */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#B99652]/10 via-[#ebdcaa]/10 to-transparent pointer-events-none rounded-bl-full" />
+          
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex-1 min-w-0">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#002366]/5 text-[#002366] border border-[#002366]/15 mb-3">
+                <BookOpen size={13} className="text-[#B99652]" />
+                <span>Course Overview</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-wide leading-tight">
+                {course.title}
+              </h1>
+              {course.description && (
+                <p className="text-sm sm:text-base text-[#665e4d] mt-2 leading-relaxed max-w-3xl">
+                  {course.description}
+                </p>
+              )}
             </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-blue-600">{progress}%</div>
-              <div className="text-sm text-gray-500">{t('overall_progress')}</div>
+
+            {/* Overall Progress Stat Card */}
+            <div className="shrink-0 flex sm:flex-col items-center sm:items-end justify-between bg-[#fffdf4] sm:bg-transparent p-4 sm:p-0 rounded-xl border border-[#ebdcaa]/60 sm:border-0">
+              <div className="text-3xl sm:text-4xl lg:text-5xl font-black bg-gradient-to-r from-[#002366] via-[#1e1b4b] to-[#B99652] bg-clip-text text-transparent">
+                {progress}%
+              </div>
+              <div className="text-xs uppercase tracking-wider font-bold text-[#8a7a5b] mt-0.5">
+                {t('overall_progress') !== 'overall_progress' ? t('overall_progress') : 'Overall Progress'}
+              </div>
+            </div>
+          </div>
+
+          {/* Linear Progress Bar */}
+          <div className="relative z-10 mt-6 pt-5 border-t border-[#ebdcaa]/50">
+            <div className="w-full bg-[#ebdcaa]/40 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-[#002366] via-[#B99652] to-[#f1be38] h-full rounded-full transition-all duration-700 shadow-sm"
+                style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }}
+              />
             </div>
           </div>
         </div>
 
         {/* ================= WEEKS CARDS ================= */}
         {weeks.length > 0 ? (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {weeks.map((week, weekIndex) => {
               // Safety checks for week data
               const weekChapters = Array.isArray(week.chapters) ? week.chapters : [];
@@ -501,60 +552,72 @@ const CourseViewer = () => {
               const isExpanded = expandedWeek === week.id;
 
               return (
-                <div key={`week-${week.id || weekIndex}`} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+                <div
+                  key={`week-${week.id || weekIndex}`}
+                  className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgba(0,35,102,0.05)] border border-[#ebdcaa] overflow-hidden hover:shadow-[0_8px_25px_rgba(0,35,102,0.09)] transition-all duration-300"
+                >
                   {/* Week Header with Progress Circle */}
                   <div 
                     data-tour={weekIndex === 0 ? 'course-weeks-progress' : undefined}
                     data-tour-week-items={weekTotalItems}
-                    className="p-6 cursor-pointer bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-colors"
+                    className="p-5 sm:p-6 cursor-pointer bg-gradient-to-r from-[#fffdf4] via-white to-[#fff9ec] hover:from-[#fdf6e7] hover:to-[#fcf2d9] transition-colors"
                     onClick={() => toggleWeekExpansion(week.id)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="relative w-16 h-16">
-                          <svg className="transform -rotate-90 w-16 h-16">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
+                        {/* Circular Progress Ring */}
+                        <div className="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0">
+                          <svg className="transform -rotate-90 w-14 h-14 sm:w-16 sm:h-16">
                             <circle
                               cx="32"
                               cy="32"
-                              r="28"
-                              stroke="#e5e7eb"
+                              r="26"
+                              stroke="#ebdcaa"
                               strokeWidth="4"
                               fill="none"
                             />
                             <circle
                               cx="32"
                               cy="32"
-                              r="28"
-                              stroke="#3b82f6"
+                              r="26"
+                              stroke="#002366"
                               strokeWidth="4"
                               fill="none"
-                              strokeDasharray={`${2 * Math.PI * 28}`}
-                              strokeDashoffset={`${2 * Math.PI * 28 * (1 - weekProgress / 100)}`}
+                              strokeDasharray={`${2 * Math.PI * 26}`}
+                              strokeDashoffset={`${2 * Math.PI * 26 * (1 - weekProgress / 100)}`}
+                              strokeLinecap="round"
                               className="transition-all duration-500"
                             />
                           </svg>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-sm font-bold text-gray-700">{weekProgress}%</span>
+                            <span className="text-xs sm:text-sm font-bold text-[#1e1b4b]">{weekProgress}%</span>
                           </div>
                         </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-800">{week.title}</h3>
-                          <p className="text-sm text-gray-600">
+
+                        <div className="min-w-0">
+                          <h3 className="text-base sm:text-xl font-bold text-[#1e1b4b] truncate">
+                            {week.title}
+                          </h3>
+                          <p className="text-xs sm:text-sm text-[#7a705a] mt-0.5">
                             {weekCompletedItems} of {weekTotalItems} items completed
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <div className="text-sm text-gray-500">{t('status')}</div>
-                          <div className={`text-sm font-medium ${weekProgress === 100 ? 'text-green-600' : 'text-orange-600'}`}>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right hidden sm:block">
+                          <div className="text-xs text-[#8a7a5b] font-medium">{t('status') !== 'status' ? t('status') : 'Status'}</div>
+                          <div className={`text-xs sm:text-sm font-bold ${
+                            weekProgress === 100 ? 'text-emerald-600' : 'text-amber-700'
+                          }`}>
                             {weekProgress === 100 ? 'Completed' : 'In Progress'}
                           </div>
                         </div>
-                        <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
-                          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
+
+                        <div className={`w-8 h-8 rounded-full bg-[#002366]/5 flex items-center justify-center text-[#002366] transform transition-transform duration-300 ${
+                          isExpanded ? "rotate-180 bg-[#002366] text-white" : ""
+                        }`}>
+                          <ChevronDown size={18} />
                         </div>
                       </div>
                     </div>
@@ -562,56 +625,94 @@ const CourseViewer = () => {
 
                   {/* Week Content (Expandable) */}
                   {isExpanded && (
-                    <div className="border-t border-gray-200 p-6 bg-gray-50">
+                    <div className="border-t border-[#ebdcaa]/60 p-5 sm:p-6 bg-[#fffdf4]/60 space-y-6">
                       
                       {/* Chapters Section */}
                       {weekChapters.length > 0 && (
-                        <div className="mb-8">
-                          <h4 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6 flex items-center gap-2">
-                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                              <span className="text-white text-sm">📖</span>
+                        <div>
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-7 h-7 rounded-lg bg-[#002366] text-[#f1be38] flex items-center justify-center text-xs shadow-xs">
+                              <BookOpen size={14} />
                             </div>
-                            {t('chapters')}
-                          </h4>
-                          <div className="space-y-4">
+                            <h4 className="text-sm sm:text-base font-bold text-[#1e1b4b]">
+                              {t('chapters') !== 'chapters' ? t('chapters') : 'Chapters'}
+                            </h4>
+                          </div>
+
+                          <div className="space-y-3">
                             {weekChapters.map((chapter, index) => {
                               if (!chapter || !chapter._id) return null;
                               const isCompleted = Array.isArray(completedChapters) && completedChapters.includes(chapter._id);
                               return (
-                                <div key={`chapter-${chapter._id || index}`} className={`bg-white rounded-lg p-4 border ${isCompleted ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                      <h5 className="font-medium text-gray-800">{chapter.title}</h5>
-                                      <p className="text-sm text-gray-600 mt-1">{chapter.description}</p>
-                                      <div className="flex gap-3 mt-3">
+                                <div
+                                  key={`chapter-${chapter._id || index}`}
+                                  className={`bg-white rounded-xl p-4 sm:p-5 border transition-all duration-200 ${
+                                    isCompleted
+                                      ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
+                                      : 'border-[#ebdcaa]/80 hover:border-[#B99652] hover:shadow-sm'
+                                  }`}
+                                >
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <h5 className="font-bold text-sm sm:text-base text-[#1e1b4b]">{chapter.title}</h5>
+                                        {isCompleted && (
+                                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                            <CheckCircle2 size={11} />
+                                            Done
+                                          </span>
+                                        )}
+                                      </div>
+                                      {chapter.description && (
+                                        <p className="text-xs sm:text-sm text-[#665e4d] mt-1 line-clamp-2">{chapter.description}</p>
+                                      )}
+
+                                      {/* Links */}
+                                      <div className="flex flex-wrap gap-2.5 mt-3">
                                         {chapter.videoUrl && (
-                                          <a href={chapter.videoUrl} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-blue-600 hover:underline">
-                                            🎥 Watch Video
+                                          <a
+                                            href={chapter.videoUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#002366]/5 hover:bg-[#002366]/10 text-[#002366] border border-[#002366]/15 transition-colors"
+                                          >
+                                            <Video size={13} className="text-[#B99652]" />
+                                            Watch Video
                                           </a>
                                         )}
                                         {chapter.pdfUrl && (
-                                          <a href={chapter.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-red-600 hover:underline">
-                                            📄 View PDF
+                                          <a
+                                            href={chapter.pdfUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition-colors"
+                                          >
+                                            <FileText size={13} className="text-red-500" />
+                                            View PDF
                                           </a>
                                         )}
                                       </div>
                                     </div>
-                                    {!isCompleted && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          markChapterAsComplete(chapter._id);
-                                        }}
-                                        className="ml-4 px-4 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors"
-                                      >
-                                        ✓ Complete
-                                      </button>
-                                    )}
-                                    {isCompleted && (
-                                      <div className="ml-4 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
-                                        COMPLETED
-                                      </div>
-                                    )}
+
+                                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                                      {!isCompleted ? (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            markChapterAsComplete(chapter._id);
+                                          }}
+                                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#002366] to-[#1e1b4b] hover:from-[#1e1b4b] hover:to-[#002366] text-white text-xs sm:text-sm font-semibold rounded-none border border-[#B99652]/30 shadow-xs transition-all active:scale-[0.98]"
+                                        >
+                                          <Check size={14} className="text-[#f1be38]" />
+                                          Mark Complete
+                                        </button>
+                                      ) : (
+                                        <div className="px-3 py-1.5 bg-emerald-100/80 text-emerald-800 rounded-none text-xs font-bold border border-emerald-300 flex items-center gap-1.5">
+                                          <CheckCircle2 size={13} />
+                                          Completed
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               );
@@ -622,46 +723,65 @@ const CourseViewer = () => {
 
                       {/* Materials Section */}
                       {weekMaterials.length > 0 && (
-                        <div className="mb-6">
-                          <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            📚 Materials
-                          </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-7 h-7 rounded-none bg-[#B99652] text-white flex items-center justify-center text-xs shadow-xs">
+                              <FileText size={14} />
+                            </div>
+                            <h4 className="text-sm sm:text-base font-bold text-[#1e1b4b]">
+                              Course Materials
+                            </h4>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {weekMaterials.map((material, index) => {
                               if (!material || !material._id) return null;
                               const isCompleted = Array.isArray(completedMaterials) && completedMaterials.includes(material._id);
                               return (
-                                <div key={`material-${material._id || index}`} data-tour={weekIndex === 0 && index === 0 ? 'course-material-item' : undefined} className={`bg-white rounded-lg p-4 border ${isCompleted ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                      <h5 className="font-medium text-gray-800">{material.title}</h5>
-                                      <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 mt-1">
+                                <div
+                                  key={`material-${material._id || index}`}
+                                  data-tour={weekIndex === 0 && index === 0 ? 'course-material-item' : undefined}
+                                  className={`bg-white rounded-none p-4 border transition-all duration-200 ${
+                                    isCompleted
+                                      ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
+                                      : 'border-[#ebdcaa]/80 hover:border-[#B99652]'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <h5 className="font-bold text-sm text-[#1e1b4b] truncate">{material.title}</h5>
+                                      <span className="inline-block px-2 py-0.5 rounded-none text-[10px] font-bold uppercase tracking-wider bg-[#002366]/5 text-[#002366] border border-[#002366]/10 mt-1">
                                         {material.type?.replace('_', ' ') || 'FILE'}
-                                      </div>
+                                      </span>
                                     </div>
-                                    <div className="flex items-center gap-2">
+
+                                    <div className="flex items-center gap-2 shrink-0">
                                       <a
                                         href={material.type?.includes('link') ? material.linkUrl : `${API.replace('/api', '')}${material.fileUrl}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors"
+                                        onClick={() => {
+                                          if (!isCompleted) markMaterialAsComplete(material._id);
+                                        }}
+                                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#002366] hover:bg-[#1e1b4b] text-white text-xs font-semibold rounded-none shadow-xs transition-colors"
                                       >
+                                        <ExternalLink size={12} />
                                         View
                                       </a>
-                                      {!isCompleted && (
+                                      {!isCompleted ? (
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             markMaterialAsComplete(material._id);
                                           }}
-                                          className="px-3 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors"
+                                          title="Mark Complete"
+                                          className="p-1.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-none border border-emerald-200 transition-colors"
                                         >
-                                          ✓
+                                          <Check size={14} />
                                         </button>
-                                      )}
-                                      {isCompleted && (
-                                        <div className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
-                                          ✓
+                                      ) : (
+                                        <div className="p-1.5 bg-emerald-100 text-emerald-700 rounded-none">
+                                          <CheckCircle2 size={14} />
                                         </div>
                                       )}
                                     </div>
@@ -675,22 +795,38 @@ const CourseViewer = () => {
 
                       {/* Assessments Section */}
                       {weekAssessments.length > 0 && (
-                        <div data-tour={weekIndex === 0 ? 'course-assessments' : undefined} className="mb-6">
-                          <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                            📝 Assessments
-                          </h4>
+                        <div data-tour={weekIndex === 0 ? 'course-assessments' : undefined}>
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-7 h-7 rounded-none bg-gradient-to-br from-[#002366] to-[#B99652] text-white flex items-center justify-center text-xs shadow-xs">
+                              <Award size={14} />
+                            </div>
+                            <h4 className="text-sm sm:text-base font-bold text-[#1e1b4b]">
+                              Assessments & Quizzes
+                            </h4>
+                          </div>
+
                           <div className="space-y-3">
                             {weekAssessments.map((assessment, index) => {
                               if (!assessment || !assessment.id) return null;
                               const isCompleted = Array.isArray(completedAssessments) && completedAssessments.includes(assessment.id);
                               return (
-                                <div key={`assessment-${assessment.id || index}`} className={`bg-white rounded-lg p-4 border ${isCompleted ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                      <h5 className="font-medium text-gray-800">{assessment.title}</h5>
-                                      <p className="text-sm text-gray-600 mt-1">{assessment.description}</p>
+                                <div
+                                  key={`assessment-${assessment.id || index}`}
+                                  className={`bg-white rounded-none p-4 sm:p-5 border transition-all duration-200 ${
+                                    isCompleted
+                                      ? 'border-emerald-300 bg-emerald-50/40 shadow-xs'
+                                      : 'border-[#ebdcaa]/80 hover:border-[#B99652]'
+                                  }`}
+                                >
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                      <h5 className="font-bold text-sm sm:text-base text-[#1e1b4b]">{assessment.title}</h5>
+                                      {assessment.description && (
+                                        <p className="text-xs sm:text-sm text-[#665e4d] mt-1">{assessment.description}</p>
+                                      )}
                                     </div>
-                                    <div className="flex items-center gap-2">
+
+                                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                                       {assessment.isUnlocked && !isCompleted && (
                                         <>
                                           <button
@@ -698,29 +834,33 @@ const CourseViewer = () => {
                                               e.stopPropagation();
                                               navigate(`/student/assessment/${assessment.id}`);
                                             }}
-                                            className="px-4 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors"
+                                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#002366] to-[#1e1b4b] hover:from-[#1e1b4b] hover:to-[#002366] text-white text-xs sm:text-sm font-semibold rounded-none border border-[#B99652]/40 shadow-xs transition-all active:scale-[0.98]"
                                           >
-                                            Start
+                                            <Play size={13} className="text-[#f1be38] fill-current" />
+                                            Start Quiz
                                           </button>
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               markAssessmentAsComplete(assessment.id);
                                             }}
-                                            className="px-3 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors"
+                                            title="Mark as Complete"
+                                            className="p-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white rounded-none border border-emerald-200 transition-colors"
                                           >
-                                            ✓
+                                            <Check size={15} />
                                           </button>
                                         </>
                                       )}
                                       {isCompleted && (
-                                        <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
-                                          COMPLETED
+                                        <div className="px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-none text-xs font-bold border border-emerald-300 flex items-center gap-1.5">
+                                          <CheckCircle2 size={13} />
+                                          Completed
                                         </div>
                                       )}
                                       {!assessment.isUnlocked && (
-                                        <div className="px-3 py-2 bg-gray-200 text-gray-600 rounded-lg text-sm">
-                                          🔒 Locked
+                                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-none text-xs font-semibold border border-gray-200">
+                                          <Lock size={13} />
+                                          Locked
                                         </div>
                                       )}
                                     </div>
@@ -733,11 +873,11 @@ const CourseViewer = () => {
                       )}
 
                       {weekChapters.length === 0 && weekMaterials.length === 0 && weekAssessments.length === 0 && (
-                        <div className="text-center py-8 text-gray-500">
-                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <BookOpen className="text-gray-400" size={32} />
+                        <div className="text-center py-8 text-[#7a705a]">
+                          <div className="w-14 h-14 bg-[#ebdcaa]/30 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-[#ebdcaa]">
+                            <BookOpen className="text-[#B99652]" size={26} />
                           </div>
-                          <p>No content available for this week yet</p>
+                          <p className="text-sm font-medium">No content available for this week yet</p>
                         </div>
                       )}
                     </div>
@@ -748,17 +888,20 @@ const CourseViewer = () => {
           </div>
         ) : (
           /* ================= FALLBACK TO ORIGINAL LAYOUT ================= */
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Materials Section */}
             {materials.length > 0 && (
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Course Materials</h2>
+              <div className="bg-white/95 rounded-2xl p-6 border border-[#ebdcaa] shadow-[0_4px_20px_rgba(0,35,102,0.05)]">
+                <h2 className="text-xl font-bold text-[#1e1b4b] mb-4 flex items-center gap-2">
+                  <FileText size={20} className="text-[#B99652]" />
+                  Course Materials
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {materials.map((m, index) => (
-                    <div key={`material-${m._id || index}`} className="bg-white border rounded-lg p-4 flex items-center justify-between shadow-sm">
+                    <div key={`material-${m._id || index}`} className="bg-[#fffdf4] border border-[#ebdcaa] rounded-xl p-4 flex items-center justify-between shadow-xs">
                       <div>
-                        <h3 className="font-medium">{m.title}</h3>
-                        <p className="text-xs text-gray-500 uppercase font-semibold mt-1">
+                        <h3 className="font-bold text-sm text-[#1e1b4b]">{m.title}</h3>
+                        <p className="text-[11px] text-[#8a7a5b] uppercase font-bold mt-1">
                           {m.type?.replace('_', ' ') || 'FILE'}
                         </p>
                       </div>
@@ -766,7 +909,10 @@ const CourseViewer = () => {
                         href={m.type?.includes('link') ? m.linkUrl : `${API.replace('/api', '')}${m.fileUrl}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                        onClick={() => {
+                          if (!completedMaterials.includes(m._id)) markMaterialAsComplete(m._id);
+                        }}
+                        className="px-3.5 py-1.5 bg-[#002366] hover:bg-[#1e1b4b] text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
                       >
                         View
                       </a>
@@ -778,40 +924,48 @@ const CourseViewer = () => {
 
             {/* Chapters Section */}
             {chapters.length > 0 && (
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Course Content</h2>
+              <div className="bg-white/95 rounded-2xl p-6 border border-[#ebdcaa] shadow-[0_4px_20px_rgba(0,35,102,0.05)]">
+                <h2 className="text-xl font-bold text-[#1e1b4b] mb-4 flex items-center gap-2">
+                  <BookOpen size={20} className="text-[#B99652]" />
+                  Course Content
+                </h2>
                 <div className="space-y-3">
                   {chapters.map((ch, index) => {
                     const isCompleted = completedChapters.includes(ch._id);
                     return (
                       <div
                         key={`chapter-${ch._id || index}`}
-                        className={`bg-white border rounded-lg p-4 transition ${isCompleted ? 'border-green-500 bg-green-50' : 'hover:shadow-md'}`}
+                        className={`rounded-xl p-4 transition-all ${
+                          isCompleted
+                            ? 'border border-emerald-300 bg-emerald-50/40'
+                            : 'bg-[#fffdf4] border border-[#ebdcaa] hover:border-[#B99652]'
+                        }`}
                       >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1 cursor-pointer" onClick={() => {
-                            if (ch.videoUrl || ch.pdfUrl) {
-                              window.open(ch.videoUrl || ch.pdfUrl, '_blank');
-                            }
-                          }}>
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <h3 className="font-medium">{ch.title}</h3>
-                              {isCompleted && <span className="text-green-600 text-xs font-bold px-2 py-0.5 bg-green-100 rounded-full">COMPLETED</span>}
+                              <h3 className="font-bold text-sm sm:text-base text-[#1e1b4b]">{ch.title}</h3>
+                              {isCompleted && (
+                                <span className="text-emerald-700 text-xs font-bold px-2 py-0.5 bg-emerald-100 rounded-full border border-emerald-200">
+                                  COMPLETED
+                                </span>
+                              )}
                             </div>
-                            <p className="text-sm text-gray-500 mt-1">
-                              {ch.description}
-                            </p>
+                            {ch.description && (
+                              <p className="text-xs sm:text-sm text-[#665e4d] mt-1">
+                                {ch.description}
+                              </p>
+                            )}
 
-                            {/* Display Chapter Content Links */}
                             <div className="flex gap-3 mt-3">
                               {ch.videoUrl && (
-                                <a href={ch.videoUrl} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-blue-600 hover:underline">
-                                  🎥 Watch Video
+                                <a href={ch.videoUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold flex items-center gap-1.5 text-[#002366] hover:underline">
+                                  <Video size={13} className="text-[#B99652]" /> Watch Video
                                 </a>
                               )}
                               {ch.pdfUrl && (
-                                <a href={ch.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-red-600 hover:underline">
-                                  📄 View PDF
+                                <a href={ch.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold flex items-center gap-1.5 text-red-600 hover:underline">
+                                  <FileText size={13} /> View PDF
                                 </a>
                               )}
                             </div>
@@ -820,7 +974,7 @@ const CourseViewer = () => {
                           {!isCompleted && (
                             <button
                               onClick={() => markChapterAsComplete(ch._id)}
-                              className="ml-4 px-3 py-1 text-xs bg-gray-100 hover:bg-green-600 hover:text-white text-gray-600 rounded-full transition border"
+                              className="px-3 py-1.5 text-xs font-semibold bg-[#002366] hover:bg-[#1e1b4b] text-white rounded-lg transition-colors border border-[#B99652]/30 shadow-xs"
                             >
                               Mark Complete
                             </button>
@@ -832,128 +986,139 @@ const CourseViewer = () => {
                 </div>
               </div>
             )}
-
-            {/* Assessments Section */}
-            {assessments.length > 0 && (
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Assessments</h2>
-                <div className="space-y-3">
-                  {assessments.map((a, index) => (
-                    <div
-                      key={`assessment-${a.id || index}`}
-                      className="bg-white border rounded-xl p-4 flex justify-between items-center"
-                    >
-                      <div>
-                        <h3 className="font-semibold">{a.title}</h3>
-                        <p className="text-sm text-gray-500">
-                          {a.description}
-                        </p>
-                      </div>
-
-                      {a.isUnlocked ? (
-                        <button
-                          onClick={() =>
-                            navigate(`/student/assessment/${a.id}`)
-                          }
-                          className="px-4 py-2 bg-blue-600 text-white rounded"
-                        >
-                          Take Assessment
-                        </button>
-                      ) : (
-                        <span className="px-4 py-2 bg-gray-200 text-gray-600 rounded">
-                          Locked
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
         {weeks.length === 0 && !loading && (
-          <div className="bg-white rounded-xl p-8 text-center border-2 border-dashed border-gray-200">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <BookOpen className="text-gray-400" size={32} />
+          <div className="bg-white/90 rounded-2xl p-8 text-center border-2 border-dashed border-[#ebdcaa]">
+            <div className="w-16 h-16 bg-[#ebdcaa]/30 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#ebdcaa]">
+              <BookOpen className="text-[#B99652]" size={32} />
             </div>
-            <p className="text-gray-500 text-lg">No course content available yet</p>
-            <p className="text-gray-400 text-sm mt-2">Content will be added by your instructor soon</p>
+            <p className="text-[#1e1b4b] font-bold text-base sm:text-lg">No course content available yet</p>
+            <p className="text-[#7a705a] text-xs sm:text-sm mt-1">Content will be added by your instructor soon</p>
           </div>
         )}
 
         {/* ================= LIVE CLASSES SECTION ================= */}
-        <div className="mb-8 space-y-4">
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <Video size={28} className="text-purple-600" />
-            🎥 Live Classes
-          </h2>
+        <div className="space-y-4 pt-2">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-[#ebdcaa]">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-none bg-gradient-to-br from-[#002366] to-[#1e1b4b] text-[#f1be38] flex items-center justify-center shadow-[0_4px_12px_rgba(0,35,102,0.25)] border border-[#B99652]/30">
+                <Video size={22} className="stroke-[2.2]" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-wide">
+                  Live Interactive Classes
+                </h2>
+                <p className="text-xs sm:text-sm text-[#7a705a]">Join live video lectures and interactive sessions</p>
+              </div>
+            </div>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-semibold bg-[#002366]/5 text-[#002366] border border-[#002366]/20">
+              <span className="w-2 h-2 rounded-full bg-[#002366]"></span>
+              {liveClasses.length} {liveClasses.length === 1 ? 'Session' : 'Sessions'}
+            </span>
+          </div>
+
           {liveClasses.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {liveClasses.map((liveClass, liveIndex) => (
-                <div 
-                  key={liveClass.id || liveClass._id}
-                  data-tour={liveIndex === 0 ? 'course-live-video' : undefined}
-                  className="bg-white rounded-xl shadow-lg p-5 border border-purple-200 hover:shadow-xl transition-all"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-800">{liveClass.title}</h3>
-                      {liveClass.description && (
-                        <p className="text-sm text-gray-600 mt-1">{liveClass.description}</p>
-                      )}
-                    </div>
-                    {liveClass.status === 'live' && (
-                      <span className="inline-block w-3 h-3 bg-red-500 rounded-full animate-pulse ml-2"></span>
-                    )}
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+              {liveClasses.map((liveClass, liveIndex) => {
+                const isLiveNow = liveClass.status === 'live';
+                const isCompleted = liveClass.status === 'completed';
 
-                  <div className="space-y-2 text-sm text-gray-700 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Clock size={16} className="text-blue-500" />
-                      <span>{new Date(liveClass.scheduledStartTime).toLocaleString()}</span>
-                    </div>
-                    {liveClass.duration && (
-                      <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-green-500" />
-                        <span>Duration: {liveClass.duration} minutes</span>
+                return (
+                  <div 
+                    key={liveClass.id || liveClass._id}
+                    data-tour={liveIndex === 0 ? 'course-live-video' : undefined}
+                    className={`relative bg-white/95 backdrop-blur-sm rounded-none p-5 sm:p-6 border transition-all duration-300 hover:shadow-[0_10px_30px_rgba(0,35,102,0.12)] hover:-translate-y-0.5 flex flex-col justify-between ${
+                      isLiveNow
+                        ? 'border-red-400 bg-gradient-to-b from-red-50/40 via-white to-white shadow-[0_4px_20px_rgba(239,68,68,0.18)] ring-1 ring-red-400/40'
+                        : 'border-[#ebdcaa] shadow-[0_4px_20px_rgba(0,35,102,0.05)]'
+                    }`}
+                  >
+                    <div>
+                      {/* Top Row: Title + Status Badge */}
+                      <div className="flex items-start justify-between gap-3 mb-2.5">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base sm:text-lg font-bold text-[#1e1b4b] leading-snug truncate">
+                            {liveClass.title}
+                          </h3>
+                          {liveClass.description && (
+                            <p className="text-xs sm:text-sm text-[#665e4d] mt-1 line-clamp-2 leading-relaxed">
+                              {liveClass.description}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Status Badge */}
+                        {isLiveNow ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-black bg-red-100 text-red-700 border border-red-300 shadow-xs shrink-0 animate-pulse">
+                            <span className="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+                            LIVE NOW
+                          </span>
+                        ) : isCompleted ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-none text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200 shrink-0">
+                            <CheckCircle2 size={12} />
+                            Completed
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-semibold bg-[#fff8e7] text-[#92400e] border border-[#fde68a] shrink-0">
+                            <Clock size={12} className="text-[#d97706]" />
+                            Scheduled
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                      liveClass.status === 'live' 
-                        ? 'bg-red-100 text-red-700'
-                        : liveClass.status === 'completed'
-                        ? 'bg-gray-100 text-gray-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {liveClass.status === 'live' ? '🔴 LIVE NOW' : 
-                       liveClass.status === 'completed' ? 'Completed' :
-                       'Scheduled'}
-                    </span>
-                    <button
-                      onClick={() => handleJoinLiveClass(
-                        liveClass.id || liveClass._id,
-                        liveClass.meetingLink
-                      )}
-                      className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-all"
-                    >
-                      <Video size={16} />
-                      {liveClass.status === 'live' ? 'Join Now' : 'Join Class'}
-                    </button>
+                      {/* Time & Duration Info Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-4 pt-3 border-t border-[#f4ecd4]">
+                        <div className="flex items-center gap-2 text-xs text-[#52493a] bg-[#fffdf4] px-3 py-2 rounded-none border border-[#ebdcaa]/80">
+                          <Calendar size={14} className="text-[#B99652] shrink-0" />
+                          <span className="font-medium truncate">
+                            {new Date(liveClass.scheduledStartTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                          </span>
+                        </div>
+                        {liveClass.duration && (
+                          <div className="flex items-center gap-2 text-xs text-[#52493a] bg-[#fffdf4] px-3 py-2 rounded-none border border-[#ebdcaa]/80">
+                            <Clock size={14} className="text-[#B99652] shrink-0" />
+                            <span className="font-medium">Duration: {liveClass.duration} mins</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bottom Action Row */}
+                    <div className="flex items-center justify-between pt-2 border-t border-[#f4ecd4]/60 mt-1">
+                      <div className="text-[11px] text-[#8a7a5b] flex items-center gap-1.5 font-medium">
+                        <Video size={13} className="text-[#B99652]" />
+                        <span>Interactive Class</span>
+                      </div>
+
+                      <button
+                        onClick={() => handleJoinLiveClass(
+                          liveClass.id || liveClass._id,
+                          liveClass.meetingLink
+                        )}
+                        className={`inline-flex items-center gap-2 font-bold text-xs sm:text-sm py-2.5 px-5 rounded-none transition-all duration-200 shadow-sm active:scale-[0.98] ${
+                          isLiveNow
+                            ? 'bg-gradient-to-r from-red-600 via-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white shadow-[0_4px_16px_rgba(220,38,38,0.35)] animate-pulse'
+                            : 'bg-gradient-to-r from-[#002366] to-[#1e1b4b] hover:from-[#1e1b4b] hover:to-[#002366] text-white border border-[#B99652]/40 hover:border-[#B99652] shadow-[0_2px_10px_rgba(0,35,102,0.18)] hover:shadow-[0_4px_16px_rgba(0,35,102,0.28)]'
+                        }`}
+                      >
+                        <Video size={16} className={isLiveNow ? 'animate-bounce' : 'text-[#f1be38]'} />
+                        <span>{isLiveNow ? 'Join Live Now' : 'Join Class'}</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <div data-tour="course-live-video" className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-8 border-2 border-dashed border-purple-200 text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Video className="text-purple-500" size={32} />
+            <div data-tour="course-live-video" className="bg-white/85 backdrop-blur-sm rounded-none p-8 sm:p-10 border border-dashed border-[#ebdcaa] text-center shadow-[0_4px_20px_rgba(0,35,102,0.03)]">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#002366]/10 to-[#B99652]/20 rounded-none flex items-center justify-center mx-auto mb-4 border border-[#ebdcaa]">
+                <Video className="text-[#002366]" size={28} />
               </div>
-              <p className="text-gray-600 font-semibold mb-2">No live classes yet</p>
-              <p className="text-gray-500 text-sm">Your instructor will add live classes here soon</p>
+              <h3 className="text-base sm:text-lg font-bold text-[#1e1b4b] mb-1">No Live Classes Scheduled Yet</h3>
+              <p className="text-xs sm:text-sm text-[#7a705a] max-w-md mx-auto">Your instructor hasn't scheduled any live sessions for this course yet. Check back soon!</p>
             </div>
           )}
         </div>
@@ -962,21 +1127,31 @@ const CourseViewer = () => {
 
       {/* JITSI MODAL FOR LIVE CLASS */}
       {showJitsiModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-black rounded-2xl max-w-4xl w-full h-96 relative">
-            {/* Close Button */}
-            <button
-              onClick={() => setShowJitsiModal(false)}
-              className="absolute top-4 right-4 z-10 bg-white/20 hover:bg-white/40 text-white p-2 rounded-lg transition-all"
-            >
-              <X size={24} />
-            </button>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-6">
+          <div className="bg-[#002366] rounded-2xl max-w-5xl w-full h-[85vh] relative flex flex-col shadow-[0_10px_50px_rgba(0,0,0,0.5)] border border-[#B99652]/40 overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-[#001845] border-b border-[#B99652]/30 text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
+                <div className="w-3 h-3 rounded-full bg-red-500 -ml-3"></div>
+                <span className="font-bold text-sm tracking-wide text-[#f1be38]">Live Video Session</span>
+                <span className="text-white/40 text-xs hidden sm:inline">|</span>
+                <span className="text-xs text-white/80 hidden sm:inline">{course?.title}</span>
+              </div>
+              <button
+                onClick={() => setShowJitsiModal(false)}
+                className="bg-white/10 hover:bg-white/20 text-white p-1.5 rounded-lg transition-all"
+                title="Close Meeting"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
             {/* Jitsi Iframe */}
             <iframe
               src={jitsiUrl}
-              allow="camera; microphone; fullscreen"
-              className="w-full h-full rounded-2xl"
+              allow="camera; microphone; fullscreen; display-capture"
+              className="w-full flex-1 bg-black"
               title="Live Meeting"
             />
           </div>

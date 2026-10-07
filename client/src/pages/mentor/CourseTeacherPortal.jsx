@@ -184,20 +184,6 @@ const CourseTeacherPortal = () => {
     }
   };
 
-  // Fetch Available Students
-  const fetchAvailableStudents = async () => {
-    try {
-      const res = await fetch(`${API}/users/students-simple`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const allStudents = await res.json();
-      const assignedIds = students.map(s => s._id || s.id);
-      setAvailableStudents(allStudents.filter(s => !assignedIds.includes(s._id || s.id)));
-    } catch (err) {
-      console.error("Error fetching students:", err);
-    }
-  };
-
   useEffect(() => {
     if (courseId) {
       fetchCourseData();
@@ -515,9 +501,42 @@ const CourseTeacherPortal = () => {
 
     toast.success("Assessment with questions created successfully!");
     setShowAddQuestionsModal(false);
-    setCurrentAssessmentId(null);
-    setAssessmentQuestions([]);
     fetchCourseData();
+  };
+
+  // Fetch Available and Assigned Students for Modal
+  const fetchAvailableStudents = async () => {
+    try {
+      const [allRes, assignedRes] = await Promise.all([
+        fetch(`${API}/users/students`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/courses/${courseId}/students`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+
+      let all = [];
+      if (allRes.ok) {
+        all = await allRes.json();
+      }
+
+      let assigned = [];
+      if (assignedRes.ok) {
+        assigned = await assignedRes.json();
+      }
+
+      const processedAll = (all || []).map(s => ({
+        ...s,
+        id: s.id || s._id || s.studentId,
+        _id: s._id || s.id || s.studentId,
+        name: s.name || s.studentName || 'Student'
+      }));
+
+      const assignedIds = (assigned || []).map(s => s._id || s.id || s.studentId);
+
+      setAvailableStudents(processedAll);
+      setSelectedStudentsToAdd(assignedIds);
+    } catch (err) {
+      console.error("Failed to fetch students for course assignment", err);
+      toast.error("Failed to load students list");
+    }
   };
 
   // Handle Assign Students to Course
@@ -544,7 +563,6 @@ const CourseTeacherPortal = () => {
 
       toast.success("Students assigned successfully");
       setShowAssignStudentsModal(false);
-      setSelectedStudentsToAdd([]);
       fetchCourseData();
     } catch (err) {
       console.error(err);
@@ -1332,23 +1350,27 @@ const CourseTeacherPortal = () => {
                   {availableStudents.length === 0 ? (
                     <p className="text-xs text-slate-400">No available students</p>
                   ) : (
-                    availableStudents.map(student => (
-                      <label key={student._id} className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-none border border-transparent hover:border-[#ebdcaa]">
-                        <input
-                          type="checkbox"
-                          checked={selectedStudentsToAdd.includes(student._id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedStudentsToAdd([...selectedStudentsToAdd, student._id]);
-                            } else {
-                              setSelectedStudentsToAdd(selectedStudentsToAdd.filter(id => id !== student._id));
-                            }
-                          }}
-                          className="w-4 h-4 text-[#B99652] accent-[#B99652] rounded-none"
-                        />
-                        <span className="text-xs font-medium text-slate-800">{student.name}</span>
-                      </label>
-                    ))
+                    availableStudents.map(student => {
+                      const sId = student._id || student.id;
+                      const isChecked = selectedStudentsToAdd.some(id => Number(id) === Number(sId));
+                      return (
+                        <label key={sId} className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded-none border border-transparent hover:border-[#ebdcaa]">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedStudentsToAdd([...selectedStudentsToAdd, sId]);
+                              } else {
+                                setSelectedStudentsToAdd(selectedStudentsToAdd.filter(id => Number(id) !== Number(sId)));
+                              }
+                            }}
+                            className="w-4 h-4 text-[#B99652] accent-[#B99652] rounded-none"
+                          />
+                          <span className="text-xs font-medium text-slate-800">{student.name}</span>
+                        </label>
+                      );
+                    })
                   )}
                 </div>
               </div>

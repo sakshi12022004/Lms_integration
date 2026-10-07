@@ -24,8 +24,6 @@ import DatabaseExport from "./pages/admin/DatabaseExport";
 
 import ControlledTermsModal from "./components/ControlledTermsModal";
 
-import "react-toastify/dist/ReactToastify.css";
-
 
 
 /* ================= PUBLIC ================= */
@@ -1072,27 +1070,13 @@ function App() {
           {/* ===== STOREKEEPER ===== */}
 
           <Route
-
-            path="/storekeeper/dashboard"
-
+            path="/storekeeper/*"
             element={
-
               <ProtectedRoute requiredRole="storekeeper">
-
                 <StorekeeperDashboard />
-
               </ProtectedRoute>
-
             }
-
           />
-
-	<Route
-	    path="/storekeeper/vendors"
-		 element={
-		<VendorManagement />
-	}
-	 />
 
 
 

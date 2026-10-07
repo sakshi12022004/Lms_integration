@@ -55,65 +55,56 @@ const AssignStudents = () => {
     }
   };
 
-  const getStudents = async () => {
+  const getStudentsAndAssigned = async (courseId) => {
     try {
-      const response = await fetch(`${API}/users/students`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      setLoading(true);
+      const [studentsRes, courseRes] = await Promise.all([
+        fetch(`${API}/users/students`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/courses/${courseId}/students`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
 
-      if (!response.ok) {
-        throw new Error('Could not load students');
+      let allStudents = [];
+      if (studentsRes.ok) {
+        allStudents = await studentsRes.json();
       }
 
-      const allStudents = await response.json();
-      
-      // Filter out already assigned students
-      const availableStudents = allStudents.filter(student => 
-        !assignedStudents.some(assigned => assigned._id === student._id || assigned === student._id)
-      );
-      
-      setStudents(availableStudents);
+      let assigned = [];
+      if (courseRes.ok) {
+        assigned = await courseRes.json();
+      }
 
+      const processedAll = (allStudents || []).map(s => ({
+        ...s,
+        _id: s._id || s.id || s.userId,
+        id: s.id || s._id || s.userId
+      }));
+
+      const processedAssigned = (assigned || []).map(s => ({
+        ...s,
+        _id: s._id || s.id || s.studentId,
+        id: s.id || s._id || s.studentId
+      }));
+
+      setStudents(processedAll);
+      setAssignedStudents(processedAssigned);
+
+      // Pre-select already assigned students
+      const assignedIds = new Set(processedAssigned.map(s => s._id || s.id));
+      setSelected(assignedIds);
     } catch (error) {
       toast.error('Failed to load students');
       console.error(error);
-    }
-  };
-
-  const getAssignedStudents = async (courseId) => {
-    try {
-      const response = await fetch(`${API}/courses/${courseId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Could not load assigned students');
-      }
-
-      const data = await response.json();
-      const assigned = data.students || [];
-      setAssignedStudents(assigned);
-
-      // Pre-select assigned students
-      const assignedIds = new Set(assigned.map(s => s._id || s));
-      setSelected(assignedIds);
-
-    } catch (error) {
-      toast.error('Failed to load assigned students');
-      console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const selectCourse = (course) => {
+    const cid = course._id || course.id;
     setSelectedCourse(course);
-    setAssignedStudents([]); // Clear assigned students when switching courses
-    setSelected(new Set()); // Clear selection
-    getStudents();
-    getAssignedStudents(course._id);
+    setAssignedStudents([]);
+    setSelected(new Set());
+    getStudentsAndAssigned(cid);
   };
 
   const goBackToCourses = () => {
@@ -144,10 +135,10 @@ const AssignStudents = () => {
 
     try {
       setAssigning(true);
-      
       const studentIds = Array.from(selected);
-      
-      const response = await fetch(`${API}/courses/${selectedCourse._id}/assign-students`, {
+      const cid = selectedCourse._id || selectedCourse.id;
+
+      const response = await fetch(`${API}/courses/${cid}/assign-students`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -163,17 +154,11 @@ const AssignStudents = () => {
       }
 
       toast.success(`Assigned ${studentIds.length} student(s) successfully`);
-      // Observed by GuideBot (ActionGuard) only — after the assign request succeeded.
       window.dispatchEvent(new CustomEvent('guidebot:action-success', { detail: { actionId: 'students-assigned' } }));
       
-      // Refresh data
-      await getAssignedStudents(selectedCourse._id);
+      // Refresh
+      await getStudentsAndAssigned(cid);
       await getCourses();
-      
-      // Clear selection and refresh available students
-      setSelected(new Set());
-      await getStudents();
-
     } catch (error) {
       toast.error('Failed to assign students');
       console.error(error);

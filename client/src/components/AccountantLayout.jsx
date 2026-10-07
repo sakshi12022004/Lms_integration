@@ -60,7 +60,7 @@ const AccountantLayout = ({ children }) => {
           return;
         }
 
-        const res = await fetch(`${API}/api/subscriptions/check-feature-access`, {
+        const res = await fetch(`${API}/subscriptions/check-feature-access`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

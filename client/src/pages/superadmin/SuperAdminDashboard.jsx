@@ -9,97 +9,64 @@ import { useAuth } from "../../auth/auth";
 import jsPDF from "jspdf";
 
 import { 
-
   Building2, 
-
   Users, 
-
   GraduationCap, 
-
   TrendingUp, 
-
   MapPin, 
-
   Calendar,
-
   DollarSign,
-
   Award,
-
   BookOpen,
-
   Target,
-
   Activity,
-
   Plus,
-
   Search,
-
   Filter,
-
   MoreVertical,
-
   Eye,
-
   Edit,
-
   Trash2,
-
   Mail,
-
   Phone,
-
   Clock,
-
   Star,
-
   ChevronRight,
-
   BarChart3,
-
   PieChart,
-
   UserPlus,
-
   Building,
-
   Settings,
-
   Bell,
-
-  LogOut
-
+  LogOut,
+  X,
+  Check,
+  Lock,
+  Shield,
+  ShieldCheck,
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react";
 
 import CreateUniversityForm from "./CreateUniversityForm";
-
 import CreateUserForm from "./CreateUserForm";
-
 import SuperAdminLayout from "../../components/SuperAdminLayout";
 
-
 const SuperAdminDashboard = () => {
-
   const navigate = useNavigate();
-
   const [searchParams] = useSearchParams();
-
   const { API, token } = useAuth();
-
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
-
   const [universities, setUniversities] = useState([]);
-
   const [users, setUsers] = useState([]);
-
   const [loading, setLoading] = useState(false);
-
   const [generatedCredentials, setGeneratedCredentials] = useState(null);
-
   const [selectedUni, setSelectedUni] = useState(null);
-
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewingUser, setViewingUser] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [savingUser, setSavingUser] = useState(false);
 
 
 
@@ -340,6 +307,108 @@ const SuperAdminDashboard = () => {
       toast.error('Failed to delete university');
     }
   };
+
+  const handleDeleteUser = async (userId, userName) => {
+    if (!window.confirm(`Are you sure you want to delete staff member "${userName || 'this user'}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      const authToken = token || localStorage.getItem("token");
+      const res = await fetch(`${API}/superadmin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        setStats(prev => ({
+          ...prev,
+          activeUsers: Math.max(0, prev.activeUsers - 1)
+        }));
+        if (viewingUser?.id === userId) setViewingUser(null);
+        if (editingUser?.id === userId) setEditingUser(null);
+        toast.success("🗑️ Staff member deleted successfully!");
+      } else {
+        toast.error(data.message || "Failed to delete staff member");
+      }
+    } catch (err) {
+      console.error("Delete user error:", err);
+      toast.error("Failed to delete staff member");
+    }
+  };
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    try {
+      setSavingUser(true);
+      const authToken = token || localStorage.getItem("token");
+      const bodyPayload = {
+        name: editingUser.name,
+        email: editingUser.email,
+        role: editingUser.role,
+        isApproved: editingUser.isApproved ? 1 : 0,
+        universityId: editingUser.university_id ? Number(editingUser.university_id) : null
+      };
+
+      if (editingUser.password && editingUser.password.trim()) {
+        bodyPayload.password = editingUser.password.trim();
+      }
+
+      const res = await fetch(`${API}/superadmin/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(bodyPayload)
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        let uniName = editingUser.university;
+        if (bodyPayload.universityId) {
+          const matchedUni = universities.find(u => String(u.id) === String(bodyPayload.universityId));
+          if (matchedUni) uniName = matchedUni.name;
+        } else {
+          uniName = "System Admin";
+        }
+
+        setUsers(prev => prev.map(u => {
+          if (u.id === editingUser.id) {
+            return {
+              ...u,
+              name: editingUser.name,
+              email: editingUser.email,
+              role: editingUser.role,
+              isApproved: editingUser.isApproved ? 1 : 0,
+              university_id: bodyPayload.universityId,
+              university: uniName
+            };
+          }
+          return u;
+        }));
+
+        toast.success("✅ Staff member updated successfully!");
+        setEditingUser(null);
+      } else {
+        toast.error(data.message || "Failed to update user");
+      }
+    } catch (err) {
+      console.error("Update user error:", err);
+      toast.error("Failed to update user");
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
 
   const handleUniversityCreated = () => {
 
@@ -719,8 +788,13 @@ const SuperAdminDashboard = () => {
         {activeTab === "universities" && (
           <div>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 pb-3 border-b border-[#ebdcaa]/60">
-              <h2 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">Your Institute Empire</h2>
-              <div className="flex items-center gap-4 mt-4 lg:mt-0 w-full sm:w-auto">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">Your Institute Empire</h2>
+                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">
+                  Manage and expand your educational network across multiple cities ({universities.length} Total)
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 mt-4 lg:mt-0 w-full sm:w-auto">
                 <div className="relative w-full sm:w-80 md:w-96">
                   <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={16} />
                   <input
@@ -731,7 +805,22 @@ const SuperAdminDashboard = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b] placeholder-slate-400 shadow-xs"
                   />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
+                <button 
+                  onClick={() => handleTabChange("createUniversity")}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none font-semibold text-xs uppercase tracking-wider transition-colors shadow-xs"
+                >
+                  <Plus size={16} />
+                  Add Institute
+                </button>
               </div>
             </div>
             
@@ -753,126 +842,70 @@ const SuperAdminDashboard = () => {
             ) : (
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
                 {filteredUniversities.map((uni) => (
-
                   <div
-
                     key={uni.id}
-
                     onClick={() => setSelectedUni(uni)}
-
                     data-tour="university-card"
-
-                    className="group relative bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 hover:border-blue-300 hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105 overflow-hidden"
-
+                    className="group relative bg-white/95 backdrop-blur-xs border border-[#ebdcaa] rounded-none p-6 hover:border-[#B99652] hover:shadow-[0_8px_30px_rgba(185,150,82,0.12)] transition-all duration-200 cursor-pointer overflow-hidden flex flex-col justify-between"
                   >
-
-                    {/* University Badge */}
-
+                    {/* Active Status Badge */}
                     <div className="absolute top-4 right-4">
-
-                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-
+                      <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-none bg-[#fff8e7] text-[#92400e] border border-[#fde68a] text-[11px] font-semibold shadow-2xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#B99652]"></span>
+                        <span>Active</span>
+                      </div>
                     </div>
-
                     
-
                     {/* Content */}
-
-                    <div className="relative z-10">
-
-                      <div className="flex items-center gap-3 mb-4">
-
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-
-                          <Building2 className="text-white" size={20} />
-
+                    <div>
+                      <div className="flex items-start gap-3.5 mb-4 pr-16">
+                        <div className="w-11 h-11 shrink-0 bg-gradient-to-br from-[#B99652] to-[#a38241] rounded-none flex items-center justify-center text-white border border-[#ebdcaa] shadow-xs">
+                          <Building2 size={20} />
                         </div>
-
                         <div>
-
-                          <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-
+                          <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] group-hover:text-[#B99652] transition-colors leading-snug">
                             {uni.name}
-
                           </h3>
-
-                          <p className="text-sm text-gray-600">ID: UNI-{uni.id.toString().padStart(4, '0')}</p>
-
+                          <p className="text-xs text-[#7a705a] font-medium mt-0.5 font-sans">ID: UNI-{uni.id.toString().padStart(4, '0')}</p>
                         </div>
-
                       </div>
-
                       
-
-                      <div className="space-y-3">
-
-                        <div className="flex items-center gap-2 text-gray-700">
-
-                          <MapPin size={16} className="text-gray-400" />
-
-                          <span className="text-sm">{uni.area}</span>
-
+                      <div className="space-y-2.5 my-4">
+                        <div className="flex items-center gap-2.5 text-xs text-[#665e4d]">
+                          <MapPin size={15} className="text-[#B99652] shrink-0" />
+                          <span className="truncate">{uni.area || "Location not specified"}</span>
                         </div>
-
                         
-
-                        <div className="flex items-center gap-2 text-gray-700">
-
-                          <Users size={16} className="text-gray-400" />
-
-                          <span className="text-sm">Admin: {uni.admin?.name || "Not Assigned"}</span>
-
+                        <div className="flex items-center gap-2.5 text-xs text-[#665e4d]">
+                          <Users size={15} className="text-[#B99652] shrink-0" />
+                          <span className="truncate">Admin: <strong className="font-semibold text-[#1e1b4b]">{uni.admin?.name || "Not Assigned"}</strong></span>
                         </div>
-
                         
-
-                        <div className="flex items-center gap-2 text-gray-700">
-
-                          <Mail size={16} className="text-gray-400" />
-
-                          <span className="text-sm text-truncate">{uni.admin?.email || "No email"}</span>
-
+                        <div className="flex items-center gap-2.5 text-xs text-[#665e4d]">
+                          <Mail size={15} className="text-[#B99652] shrink-0" />
+                          <span className="truncate">{uni.admin?.email || "No email"}</span>
                         </div>
-
                       </div>
-
-                      
-
-                      <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                            Active
-                          </div>
-                        </div>
-                        <button className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1">
-                          View <ChevronRight size={16} />
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteUniversity(uni.id);
-                          }}
-                          className="text-red-600 hover:text-red-700 font-medium text-sm flex items-center gap-1 ml-2"
-                        >
-                          <Trash2 size={16} />
-                          Delete
-                        </button>
-                      </div>
-
                     </div>
 
-                    
-
-                    {/* Hover Effect */}
-
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-
+                    <div className="mt-4 pt-3.5 border-t border-[#ebdcaa] flex items-center justify-between">
+                      <button className="text-xs font-bold text-[#B99652] group-hover:text-[#92400e] flex items-center gap-1 transition-colors">
+                        View Details <ChevronRight size={14} />
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteUniversity(uni.id);
+                        }}
+                        className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 transition-colors rounded-none flex items-center gap-1"
+                      >
+                        <Trash2 size={13} />
+                        Delete
+                      </button>
+                    </div>
                   </div>
-
                 ))}
-
               </div>
 
             )}
@@ -899,350 +932,474 @@ const SuperAdminDashboard = () => {
 
 
 
-        {activeTab === "users" && (
-          <div>
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 pb-3 border-b border-[#ebdcaa]/60">
-              <h2 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">Empire Staff Directory</h2>
-              <div className="flex flex-wrap items-center gap-3 mt-4 lg:mt-0 w-full sm:w-auto">
-                <div className="relative w-full sm:w-80 md:w-96">
-                  <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={16} />
-                  <input
-                    type="text"
-                    placeholder="Search staff members..."
-                    data-tour="search-staff"
-                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b] placeholder-slate-400 shadow-xs"
-                  />
+        {activeTab === "users" && (() => {
+          const filteredUsers = (users || []).filter((u) => {
+            const term = (userSearchTerm || "").toLowerCase().trim();
+            if (!term) return true;
+            const nameMatch = (u.name || "").toLowerCase().includes(term);
+            const emailMatch = (u.email || "").toLowerCase().includes(term);
+            const roleMatch = (u.role || "").toLowerCase().includes(term);
+            const uniMatch = (u.university || "").toLowerCase().includes(term);
+            return nameMatch || emailMatch || roleMatch || uniMatch;
+          });
+
+          return (
+            <div>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 pb-3 border-b border-[#ebdcaa]/60">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">
+                    Empire Staff Directory
+                  </h2>
+                  <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">
+                    Manage admins, mentors, students, and institutional staff ({users.length} Total)
+                  </p>
                 </div>
-                <button 
-                  onClick={() => handleTabChange("createUser")}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none font-semibold text-xs uppercase tracking-wider transition-colors shadow-xs"
-                >
-                  <UserPlus size={16} />
-                  Add Staff
-                </button>
-              </div>
-            </div>
-
-            
-
-            {loading ? (
-
-              <div className="flex items-center justify-center py-12">
-
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-
-              </div>
-
-            ) : users.length === 0 ? (
-
-              <div className="text-center py-12">
-
-                <Users className="text-gray-400 mx-auto mb-4" size={48} />
-
-                <p className="text-gray-600 mb-4">No staff members in your empire yet.</p>
-
-                <button 
-
-                  onClick={() => handleTabChange("createUser")}
-
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
-
-                >
-
-                  👥 Hire Your First Staff Member
-
-                </button>
-
+                <div className="flex flex-wrap items-center gap-3 mt-4 lg:mt-0 w-full sm:w-auto">
+                  <div className="relative w-full sm:w-80 md:w-96">
+                    <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={16} />
+                    <input
+                      type="text"
+                      placeholder="Search staff by name, email, role, university..."
+                      data-tour="search-staff"
+                      value={userSearchTerm}
+                      onChange={(e) => setUserSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] text-sm text-[#1e1b4b] placeholder-slate-400 shadow-xs"
+                    />
+                    {userSearchTerm && (
+                      <button
+                        onClick={() => setUserSearchTerm("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => handleTabChange("createUser")}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none font-semibold text-xs uppercase tracking-wider transition-colors shadow-xs"
+                  >
+                    <UserPlus size={16} />
+                    Add Staff
+                  </button>
+                </div>
               </div>
 
-            ) : (
-
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-
-                <div className="overflow-x-auto">
-
-                  <table className="w-full">
-
-                    <thead className="bg-gray-50 border-b border-gray-200">
-
-                      <tr>
-
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Staff Member</th>
-
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">University</th>
-
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-
-                      </tr>
-
-                    </thead>
-
-                    <tbody className="divide-y divide-gray-200">
-
-                      {users.map((u) => (
-
-                        <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-
-                          <td className="px-6 py-4">
-
-                            <div className="flex items-center gap-3">
-
-                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-
-                                <span className="text-white font-bold">
-
-                                  {u.name.charAt(0).toUpperCase()}
-
-                                </span>
-
-                              </div>
-
-                              <div>
-
-                                <p className="font-medium text-gray-900">{u.name}</p>
-
-                                <p className="text-sm text-gray-600">{u.email}</p>
-
-                              </div>
-
-                            </div>
-
-                          </td>
-
-                          <td className="px-6 py-4">
-
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-
-                              u.role === 'superadmin' ? 'bg-purple-100 text-purple-700' :
-
-                              u.role === 'admin' ? 'bg-blue-100 text-blue-700' :
-
-                              u.role === 'faculty' ? 'bg-green-100 text-green-700' :
-
-                              'bg-gray-100 text-gray-700'
-
-                            }`}>
-
-                              {u.role.toUpperCase()}
-
-                            </span>
-
-                          </td>
-
-                          <td className="px-6 py-4 text-sm text-gray-600">
-
-                            {u.university || 'System Admin'}
-
-                          </td>
-
-                          <td className="px-6 py-4">
-
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-
-                              u.isApproved ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-
-                            }`}>
-
-                              {u.isApproved ? "✅ Active" : "⏳ Pending"}
-
-                            </span>
-
-                          </td>
-
-                          <td className="px-6 py-4">
-
-                            <div className="flex items-center gap-2">
-
-                              <button className="text-blue-600 hover:text-blue-700 transition-colors">
-
-                                <Eye size={16} />
-
-                              </button>
-
-                              <button className="text-gray-600 hover:text-gray-700 transition-colors">
-
-                                <Edit size={16} />
-
-                              </button>
-
-                              <button className="text-red-600 hover:text-red-700 transition-colors">
-
-                                <Trash2 size={16} />
-
-                              </button>
-
-                            </div>
-
-                          </td>
-
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-none h-8 w-8 border-2 border-[#B99652] border-t-transparent"></div>
+                </div>
+              ) : users.length === 0 ? (
+                <div className="text-center py-12 bg-white border border-[#ebdcaa] p-8">
+                  <Users className="text-[#ebdcaa] mx-auto mb-4" size={48} />
+                  <p className="text-sm font-semibold text-[#1e1b4b] mb-4">No staff members in your empire yet.</p>
+                  <button 
+                    onClick={() => handleTabChange("createUser")}
+                    className="bg-[#B99652] hover:bg-[#a38241] text-white px-5 py-2.5 rounded-none font-semibold text-xs uppercase tracking-wider transition-colors"
+                  >
+                    👥 Hire Your First Staff Member
+                  </button>
+                </div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="text-center py-12 bg-white border border-[#ebdcaa] p-8">
+                  <Search className="text-slate-400 mx-auto mb-3" size={36} />
+                  <p className="text-sm font-semibold text-slate-700 mb-2">No staff members match &quot;{userSearchTerm}&quot;</p>
+                  <button
+                    onClick={() => setUserSearchTerm("")}
+                    className="text-xs font-semibold text-[#B99652] underline hover:text-[#8c6d32]"
+                  >
+                    Clear Search Filter
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-white rounded-none shadow-xs border border-[#ebdcaa] overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-[#fffdf4] border-b border-[#ebdcaa]">
+                        <tr>
+                          <th className="px-6 py-3.5 text-left text-xs font-bold text-[#1e1b4b] uppercase tracking-wider">Staff Member</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-bold text-[#1e1b4b] uppercase tracking-wider">Role</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-bold text-[#1e1b4b] uppercase tracking-wider">University</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-bold text-[#1e1b4b] uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-bold text-[#1e1b4b] uppercase tracking-wider">Actions</th>
                         </tr>
-
-                      ))}
-
-                    </tbody>
-
-                  </table>
-
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredUsers.map((u) => (
+                          <tr key={u.id} className="hover:bg-[#fffdf4]/60 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-[#1e1b4b] border border-[#B99652]/40 rounded-full flex items-center justify-center shrink-0">
+                                  <span className="text-[#ebdcaa] font-bold text-sm">
+                                    {(u.name || "U").charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-sm text-[#1e1b4b] truncate">{u.name}</p>
+                                  <p className="text-xs text-slate-500 truncate">{u.email}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider border ${
+                                u.role === 'superadmin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                u.role === 'admin' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                                u.role === 'mentor' || u.role === 'faculty' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                u.role === 'student' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                'bg-slate-50 text-slate-700 border-slate-200'
+                              }`}>
+                                {u.role?.toUpperCase() || 'USER'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-xs font-medium text-slate-700">
+                              {u.university || 'System Admin'}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider border ${
+                                u.isApproved ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                              }`}>
+                                {u.isApproved ? "Active" : "Pending"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-1.5">
+                                <button 
+                                  onClick={() => setViewingUser(u)}
+                                  title="View User Details"
+                                  className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded transition-colors"
+                                >
+                                  <Eye size={16} />
+                                </button>
+                                <button 
+                                  onClick={() => setEditingUser({
+                                    id: u.id,
+                                    name: u.name || '',
+                                    email: u.email || '',
+                                    role: u.role || 'student',
+                                    isApproved: Boolean(u.isApproved),
+                                    university_id: u.university_id || '',
+                                    university: u.university || '',
+                                    password: ''
+                                  })}
+                                  title="Edit User"
+                                  className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded transition-colors"
+                                >
+                                  <Edit size={16} />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteUser(u.id, u.name)}
+                                  title="Delete User"
+                                  className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-
-              </div>
-
-            )}
-
-          </div>
-
-        )}
+              )}
+            </div>
+          );
+        })()}
 
       </div>
 
 
 
       {/* University Detail Modal */}
-
       {selectedUni && (
-
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-
-          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full border border-gray-200 shadow-2xl max-h-[90vh] overflow-y-auto">
-
-            <div className="flex items-center justify-between mb-6">
-
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-
-                  <Building2 className="text-white" size={24} />
-
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-none p-6 sm:p-8 max-w-2xl w-full border border-[#ebdcaa] shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 mb-6 border-b border-[#ebdcaa]">
+              <h2 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] flex items-center gap-3">
+                <div className="w-11 h-11 bg-gradient-to-br from-[#B99652] to-[#a38241] rounded-none flex items-center justify-center text-white border border-[#ebdcaa] shadow-xs">
+                  <Building2 size={22} />
                 </div>
-
-                {selectedUni.name}
-
+                <span>{selectedUni.name}</span>
               </h2>
 
               <button
-
                 onClick={() => setSelectedUni(null)}
-
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-
+                className="p-1.5 text-slate-400 hover:text-slate-700 transition-colors"
               >
-
-                <Trash2 size={20} />
-
+                <X size={20} />
               </button>
-
             </div>
 
-            
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-
-              <div className="bg-gray-50 rounded-lg p-4">
-
-                <p className="text-sm text-gray-600 mb-1">Location</p>
-
-                <p className="font-semibold text-gray-900 flex items-center gap-2">
-
-                  <MapPin size={16} className="text-gray-400" />
-
-                  {selectedUni.area}
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-xs">
+              <div className="bg-[#fffdf4] rounded-none p-4 border border-[#ebdcaa]">
+                <p className="font-bold uppercase tracking-wider text-slate-500 mb-1">Location</p>
+                <p className="font-semibold text-sm text-[#1e1b4b] flex items-center gap-2">
+                  <MapPin size={15} className="text-[#B99652]" />
+                  <span>{selectedUni.area || "Location not specified"}</span>
                 </p>
-
               </div>
 
-              
-
-              <div className="bg-gray-50 rounded-lg p-4">
-
-                <p className="text-sm text-gray-600 mb-1">Institute ID</p>
-
-                <p className="font-semibold text-gray-900">UNI-{selectedUni.id.toString().padStart(4, '0')}</p>
-
+              <div className="bg-[#fffdf4] rounded-none p-4 border border-[#ebdcaa]">
+                <p className="font-bold uppercase tracking-wider text-slate-500 mb-1">Institute ID</p>
+                <p className="font-semibold text-sm text-[#1e1b4b]">UNI-{selectedUni.id.toString().padStart(4, '0')}</p>
               </div>
 
-              
-
-              <div className="bg-gray-50 rounded-lg p-4">
-
-                <p className="text-sm text-gray-600 mb-1">Administrator</p>
-
-                <p className="font-semibold text-gray-900 flex items-center gap-2">
-
-                  <Users size={16} className="text-gray-400" />
-
-                  {selectedUni.admin?.name || "Not Assigned"}
-
+              <div className="bg-[#fffdf4] rounded-none p-4 border border-[#ebdcaa]">
+                <p className="font-bold uppercase tracking-wider text-slate-500 mb-1">Administrator</p>
+                <p className="font-semibold text-sm text-[#1e1b4b] flex items-center gap-2">
+                  <Users size={15} className="text-[#B99652]" />
+                  <span>{selectedUni.admin?.name || "Not Assigned"}</span>
                 </p>
-
-                <p className="text-sm text-blue-600 mt-1">{selectedUni.admin?.email || "No email"}</p>
-
+                <p className="text-xs text-[#92400e] font-medium mt-1">{selectedUni.admin?.email || "No email"}</p>
               </div>
 
-
-
-              <div className="bg-gray-50 rounded-lg p-4">
-
-                <p className="text-sm text-gray-600 mb-1">Established</p>
-
-                <p className="font-semibold text-gray-900 flex items-center gap-2">
-
-                  <Calendar size={16} className="text-gray-400" />
-
-                  {new Date(selectedUni.createdAt).toLocaleDateString()}
-
+              <div className="bg-[#fffdf4] rounded-none p-4 border border-[#ebdcaa]">
+                <p className="font-bold uppercase tracking-wider text-slate-500 mb-1">Established</p>
+                <p className="font-semibold text-sm text-[#1e1b4b] flex items-center gap-2">
+                  <Calendar size={15} className="text-[#B99652]" />
+                  <span>{new Date(selectedUni.createdAt).toLocaleDateString()}</span>
                 </p>
-
               </div>
-
             </div>
 
-
-
-            <div className="flex gap-3">
-
+            <div className="flex gap-3 pt-3 border-t border-[#ebdcaa]/60">
               <button
-
                 onClick={() => setSelectedUni(null)}
-
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-semibold transition-colors"
-
+                className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-none font-semibold text-xs uppercase tracking-wider transition-colors"
               >
-
                 Close
-
               </button>
-
               <button
-
                 onClick={() => {
-
                   setSelectedUni(null);
-
                   handleTabChange("createUser");
-
                   toast.info("Go to Add Staff tab to hire staff for this university");
-
                 }}
-
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold transition-colors"
-
+                className="flex-1 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none font-semibold text-xs uppercase tracking-wider transition-colors shadow-xs flex items-center justify-center gap-1.5"
               >
-
                 👥 Hire Staff
-
               </button>
+            </div>
+          </div>
+        </div>
+      )}
 
+      {/* View User Modal */}
+      {viewingUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white max-w-lg w-full border border-[#ebdcaa] shadow-2xl p-6 relative">
+            <div className="flex items-center justify-between pb-4 border-b border-[#ebdcaa]">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-[#1e1b4b] border border-[#B99652] rounded-full flex items-center justify-center text-[#ebdcaa] font-bold text-lg">
+                  {(viewingUser.name || "U").charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">
+                    {viewingUser.name}
+                  </h3>
+                  <p className="text-xs text-slate-500">{viewingUser.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingUser(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                <X size={18} />
+              </button>
             </div>
 
+            <div className="grid grid-cols-2 gap-4 my-5 text-xs">
+              <div className="bg-[#fffdf4] p-3.5 border border-[#ebdcaa]">
+                <p className="text-slate-500 font-bold uppercase tracking-wider mb-1">User ID</p>
+                <p className="font-semibold text-slate-900">USR-{String(viewingUser.id).padStart(4, '0')}</p>
+              </div>
+              <div className="bg-[#fffdf4] p-3.5 border border-[#ebdcaa]">
+                <p className="text-slate-500 font-bold uppercase tracking-wider mb-1">Role</p>
+                <span className="inline-block px-2 py-0.5 font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  {viewingUser.role?.toUpperCase()}
+                </span>
+              </div>
+              <div className="bg-[#fffdf4] p-3.5 border border-[#ebdcaa]">
+                <p className="text-slate-500 font-bold uppercase tracking-wider mb-1">Assigned Institute</p>
+                <p className="font-semibold text-slate-900">{viewingUser.university || 'System Admin'}</p>
+              </div>
+              <div className="bg-[#fffdf4] p-3.5 border border-[#ebdcaa]">
+                <p className="text-slate-500 font-bold uppercase tracking-wider mb-1">Account Status</p>
+                <span className={`inline-block px-2 py-0.5 font-bold uppercase tracking-wider border ${
+                  viewingUser.isApproved ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                  {viewingUser.isApproved ? 'Active' : 'Pending Approval'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-[#ebdcaa]/60">
+              <button
+                onClick={() => {
+                  const targetUser = viewingUser;
+                  setViewingUser(null);
+                  setEditingUser({
+                    id: targetUser.id,
+                    name: targetUser.name || '',
+                    email: targetUser.email || '',
+                    role: targetUser.role || 'student',
+                    isApproved: Boolean(targetUser.isApproved),
+                    university_id: targetUser.university_id || '',
+                    university: targetUser.university || '',
+                    password: ''
+                  });
+                }}
+                className="flex-1 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white font-semibold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Edit size={14} /> Edit User
+              </button>
+              <button
+                onClick={() => setViewingUser(null)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs uppercase tracking-wider transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
-
         </div>
+      )}
 
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white max-w-lg w-full border border-[#ebdcaa] shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-[#ebdcaa]">
+              <div>
+                <h3 className="text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">
+                  Edit Staff Member
+                </h3>
+                <p className="text-xs text-slate-500">Update account credentials and assignment</p>
+              </div>
+              <button
+                onClick={() => setEditingUser(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateUser} className="space-y-4 my-5">
+              <div>
+                <label className="block text-xs font-bold text-[#1e1b4b] uppercase tracking-wider mb-1.5">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editingUser.name}
+                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-[#ebdcaa] text-sm text-[#1e1b4b] focus:outline-none focus:border-[#B99652]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#1e1b4b] uppercase tracking-wider mb-1.5">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={editingUser.email}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-[#ebdcaa] text-sm text-[#1e1b4b] focus:outline-none focus:border-[#B99652]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#1e1b4b] uppercase tracking-wider mb-1.5">
+                    Role
+                  </label>
+                  <select
+                    value={editingUser.role}
+                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-[#ebdcaa] text-sm text-[#1e1b4b] focus:outline-none focus:border-[#B99652]"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="mentor">Mentor / Faculty</option>
+                    <option value="student">Student</option>
+                    <option value="accountant">Accountant</option>
+                    <option value="storekeeper">Storekeeper</option>
+                    <option value="superadmin">Super Admin</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#1e1b4b] uppercase tracking-wider mb-1.5">
+                    Account Status
+                  </label>
+                  <select
+                    value={editingUser.isApproved ? "1" : "0"}
+                    onChange={(e) => setEditingUser({ ...editingUser, isApproved: e.target.value === "1" })}
+                    className="w-full px-3 py-2 bg-white border border-[#ebdcaa] text-sm text-[#1e1b4b] focus:outline-none focus:border-[#B99652]"
+                  >
+                    <option value="1">Active</option>
+                    <option value="0">Pending</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#1e1b4b] uppercase tracking-wider mb-1.5">
+                  Assigned Institute
+                </label>
+                <select
+                  value={editingUser.university_id || ""}
+                  onChange={(e) => setEditingUser({ ...editingUser, university_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-[#ebdcaa] text-sm text-[#1e1b4b] focus:outline-none focus:border-[#B99652]"
+                >
+                  <option value="">System Admin / No Institute</option>
+                  {universities.map((uni) => (
+                    <option key={uni.id} value={uni.id}>
+                      {uni.name} ({uni.area || 'Institute'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#1e1b4b] uppercase tracking-wider mb-1.5">
+                  Reset Password <span className="text-slate-400 font-normal lowercase">(optional)</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="Leave empty to keep current password"
+                  value={editingUser.password || ""}
+                  onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                  className="w-full px-3 py-2 bg-white border border-[#ebdcaa] text-sm text-[#1e1b4b] focus:outline-none focus:border-[#B99652] placeholder-slate-400"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-3 border-t border-[#ebdcaa]/60">
+                <button
+                  type="submit"
+                  disabled={savingUser}
+                  className="flex-1 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white font-semibold text-xs uppercase tracking-wider transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {savingUser ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs uppercase tracking-wider transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
     </SuperAdminLayout>

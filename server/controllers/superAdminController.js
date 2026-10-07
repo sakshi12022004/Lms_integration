@@ -13,31 +13,54 @@ const {
 /* ================= CREATE UNIVERSITY + ADMIN ================= */
 const createUniversityWithAdmin = async (req, res) => {
   try {
-    let { universityName, area, adminName, adminEmail } = req.body;
+    let { 
+      name, 
+      address, 
+      city, 
+      country, 
+      email, 
+      phone, 
+      universityName, 
+      area, 
+      adminName, 
+      adminEmail 
+    } = req.body;
 
-    if (!universityName || !area || !adminName || !adminEmail) {
-      return res.status(400).json({ message: "All fields are required" });
+    const resolvedUniversityName = (name || universityName || "").trim();
+    const resolvedAdminEmail = (email || adminEmail || "").trim().toLowerCase();
+    const resolvedArea = area || [address, city, country].filter(Boolean).join(", ") || city || "Main Campus";
+    const resolvedAdminName = adminName || (resolvedUniversityName ? `${resolvedUniversityName} Admin` : "Institute Admin");
+
+    if (!resolvedUniversityName) {
+      return res.status(400).json({ message: "Institute name is required" });
     }
 
-    // ✅ normalize email (IMPORTANT)
-    adminEmail = adminEmail.trim().toLowerCase();
+    if (!resolvedAdminEmail) {
+      return res.status(400).json({ message: "Official email is required" });
+    }
 
-    console.log('🏛️ Creating university with admin:', { universityName, adminEmail });
+    console.log('🏛️ Creating university with admin:', { 
+      universityName: resolvedUniversityName, 
+      area: resolvedArea,
+      adminName: resolvedAdminName,
+      adminEmail: resolvedAdminEmail,
+      phone 
+    });
 
     // Check if admin already exists
     const existingAdmin = await new Promise((resolve, reject) => {
-      db.get("SELECT * FROM users WHERE email = ?", [adminEmail], (err, user) => {
+      db.get("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [resolvedAdminEmail], (err, user) => {
         if (err) reject(err);
         else resolve(user);
       });
     });
 
     if (existingAdmin) {
-      return res.status(400).json({ message: "Admin already exists" });
+      return res.status(400).json({ message: `User with email ${resolvedAdminEmail} already exists` });
     }
 
     // 🔑 auto-generate password
-    const rawPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+    const rawPassword = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6).toUpperCase();
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
     // Create university first to get the ID
@@ -45,8 +68,7 @@ const createUniversityWithAdmin = async (req, res) => {
       db.run(`
         INSERT INTO universities (name, area, createdAt, updatedAt)
         VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        RETURNING id
-      `, [universityName, area], function(err) {
+      `, [resolvedUniversityName, resolvedArea], function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
       });
@@ -57,8 +79,7 @@ const createUniversityWithAdmin = async (req, res) => {
       db.run(`
         INSERT INTO users (name, email, password, role, isApproved, university_id, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        RETURNING id
-      `, [adminName, adminEmail, hashedPassword, "admin", 1, universityId], function(err) {
+      `, [resolvedAdminName, resolvedAdminEmail, hashedPassword, "admin", 1, universityId], function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
       });
@@ -76,13 +97,13 @@ const createUniversityWithAdmin = async (req, res) => {
       message: "University and Admin created successfully",
       university: {
         id: universityId,
-        name: universityName,
-        area: area,
+        name: resolvedUniversityName,
+        area: resolvedArea,
       },
       admin: {
         id: adminId,
-        name: adminName,
-        email: adminEmail,
+        name: resolvedAdminName,
+        email: resolvedAdminEmail,
       },
       generatedPassword: rawPassword, // 🔥 SHOW ONLY ONCE
     });
@@ -120,11 +141,12 @@ const createUser = async (req, res) => {
     console.log('🔍 DEBUG: About to call getSuperadminSubscription');
     // Get subscription to check plan type
     const subscription = await getSuperadminSubscription(req, "superadmin-1");
-    console.log('🔍 DEBUG: Subscription result:', subscription);
+    const activePlan = university.subscriptionPlan || subscription?.planType || 'professional';
+    console.log('🔍 DEBUG: Effective Plan:', activePlan);
     
-    // Check per-role quota (especially for Free plan: 1 admin, 1 accountant, 1 storekeeper)
+    // Check per-role quota
     const roleCount = await countUsersByRoleInUniversity(req, universityId, role);
-    const roleQuotaCheck = checkRoleQuotaInUniversity(subscription.planType, role, roleCount);
+    const roleQuotaCheck = checkRoleQuotaInUniversity(activePlan, role, roleCount);
     
     if (!roleQuotaCheck.allowed) {
       return res.status(400).json({
@@ -134,14 +156,14 @@ const createUser = async (req, res) => {
 
     // Check if user already exists
     const existingUser = await new Promise((resolve, reject) => {
-      db.get("SELECT * FROM users WHERE email = ?", [email], (err, user) => {
+      db.get("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", [email], (err, user) => {
         if (err) reject(err);
         else resolve(user);
       });
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ message: `User with email ${email} already exists` });
     }
 
     // Hash password
@@ -152,7 +174,6 @@ const createUser = async (req, res) => {
       db.run(`
         INSERT INTO users (name, email, password, role, isApproved, university_id, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        RETURNING id
       `, [name, email, hashedPassword, role, 1, universityId], function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
@@ -219,9 +240,19 @@ const getAllUniversities = (req, res) => {
 const getAllUsers = (req, res) => {
   try {
     db.all(`
-      SELECT id, name, email, role, isApproved, created_at, updated_at
-      FROM users
-      ORDER BY created_at DESC
+      SELECT 
+        u.id, 
+        u.name, 
+        u.email, 
+        u.role, 
+        u.isApproved, 
+        u.university_id,
+        un.name as university,
+        u.created_at, 
+        u.updated_at
+      FROM users u
+      LEFT JOIN universities un ON u.university_id = un.id
+      ORDER BY u.created_at DESC
     `, [], (err, users) => {
       if (err) {
         console.error("GET USERS ERROR:", err);
@@ -236,6 +267,93 @@ const getAllUsers = (req, res) => {
   } catch (error) {
     console.error("GET USERS ERROR:", error);
     return res.status(500).json({ message: "Server error: " + error.message });
+  }
+};
+
+/* ================= UPDATE USER ================= */
+const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let { name, email, role, isApproved, password, universityId } = req.body;
+
+    if (!id) return res.status(400).json({ message: "User ID is required" });
+
+    // Check if user exists
+    const user = await new Promise((resolve, reject) => {
+      db.get("SELECT * FROM users WHERE id = ?", [id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const updatedName = name !== undefined ? name.trim() : user.name;
+    const updatedEmail = email !== undefined ? email.trim().toLowerCase() : user.email;
+    const updatedRole = role !== undefined ? role : user.role;
+    const updatedApproved = isApproved !== undefined ? (isApproved ? 1 : 0) : user.isApproved;
+    const updatedUniId = universityId !== undefined ? universityId : user.university_id;
+
+    let updateQuery = `
+      UPDATE users 
+      SET name = ?, email = ?, role = ?, isApproved = ?, university_id = ?, updated_at = CURRENT_TIMESTAMP
+    `;
+    let params = [updatedName, updatedEmail, updatedRole, updatedApproved, updatedUniId];
+
+    if (password && password.trim()) {
+      const hashedPassword = await bcrypt.hash(password.trim(), 10);
+      updateQuery += `, password = ?`;
+      params.push(hashedPassword);
+    }
+
+    updateQuery += ` WHERE id = ?`;
+    params.push(id);
+
+    await new Promise((resolve, reject) => {
+      db.run(updateQuery, params, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      user: {
+        id,
+        name: updatedName,
+        email: updatedEmail,
+        role: updatedRole,
+        isApproved: updatedApproved,
+        university_id: updatedUniId
+      }
+    });
+  } catch (error) {
+    console.error("UPDATE USER ERROR:", error);
+    return res.status(500).json({ message: "Server error: " + (error.message || error) });
+  }
+};
+
+/* ================= DELETE USER ================= */
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ message: "User ID is required" });
+
+    await new Promise((resolve, reject) => {
+      db.run("DELETE FROM users WHERE id = ?", [id], function(err) {
+        if (err) reject(err);
+        else resolve(this.changes);
+      });
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "User deleted successfully"
+    });
+  } catch (error) {
+    console.error("DELETE USER ERROR:", error);
+    return res.status(500).json({ message: "Server error: " + (error.message || error) });
   }
 };
 
@@ -292,5 +410,7 @@ module.exports = {
   createUser,
   getAllUniversities,
   getAllUsers,
+  updateUser,
+  deleteUser,
   deleteUniversity,
 };

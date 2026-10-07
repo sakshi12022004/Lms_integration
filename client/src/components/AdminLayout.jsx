@@ -12,7 +12,8 @@ import {
   UserPlus,
   School,
   Database,
-  FileSpreadsheet
+  FileSpreadsheet,
+  BookOpen
 } from "lucide-react";
 import { useAuth } from "../auth/auth";
 import QuotaLimitModal from './QuotaLimitModal';
@@ -48,25 +49,30 @@ const AdminLayout = ({ children }) => {
 
   /* ================= SIDEBAR ITEMS ================= */
   const navItems = [
-    { path: "/admin/dashboard", nameKey: 'nav_dashboard', icon: <LayoutDashboard size={20} />, tourId: 'nav-dashboard' },
-    { path: "/admin/users", nameKey: 'nav_users', icon: <Users size={20} />, tourId: 'nav-users' },
-    { path: "/admin/database-export", nameKey: 'nav_database_export', icon: <Database size={20} />, tourId: 'nav-database-export' },
-    { path: "/admin/fee-structure", nameKey: 'nav_fee_structure', icon: <BarChart3 size={20} />, tourId: 'nav-fee-structure' },
-    { path: "/admin/calendar", nameKey: 'nav_calendar', icon: <Calendar size={20} />, tourId: 'nav-calendar' },
+    { path: "/admin/dashboard", nameKey: 'nav_dashboard', name: 'Dashboard', icon: <LayoutDashboard size={20} />, tourId: 'nav-dashboard' },
+    { path: "/admin/users", nameKey: 'nav_users', name: 'Users', icon: <Users size={20} />, tourId: 'nav-users' },
+    { path: "/admin/create-course", nameKey: 'nav_courses', name: 'Courses', icon: <BookOpen size={20} />, tourId: 'nav-courses' },
+    { path: "/admin/database-export", nameKey: 'nav_database_export', name: 'Database Export', icon: <Database size={20} />, tourId: 'nav-database-export' },
+    { path: "/admin/fee-structure", nameKey: 'nav_fee_structure', name: 'Fee Structure', icon: <BarChart3 size={20} />, tourId: 'nav-fee-structure' },
+    { path: "/admin/calendar", nameKey: 'nav_calendar', name: 'Calendar', icon: <Calendar size={20} />, tourId: 'nav-calendar' },
 
     /* ===== BELOW CALENDAR ===== */
-    { path: "/admin/add-student", nameKey: 'nav_add_student', icon: <UserPlus size={20} />, tourId: 'nav-add-student' },
-    { path: "/admin/add-teacher", nameKey: 'nav_add_teacher', icon: <UserPlus size={20} />, tourId: 'nav-add-teacher' },
+    { path: "/admin/add-student", nameKey: 'nav_add_student', name: 'Add Student', icon: <UserPlus size={20} />, tourId: 'nav-add-student' },
+    { path: "/admin/add-teacher", nameKey: 'nav_add_teacher', name: 'Add Teacher', icon: <UserPlus size={20} />, tourId: 'nav-add-teacher' },
 
     /* ===== CLASSROOMS (JUST BELOW ADD TEACHER) ===== */
-    { path: "/admin/classrooms", nameKey: 'nav_classrooms', icon: <School size={20} />, tourId: 'nav-classrooms' },
-    { path: "/admin/student-import", nameKey: 'nav_student_import', icon: <FileSpreadsheet size={20} />, tourId: 'nav-student-import' },
+    { path: "/admin/classrooms", nameKey: 'nav_classrooms', name: 'Classrooms', icon: <School size={20} />, tourId: 'nav-classrooms' },
+    { path: "/admin/student-import", nameKey: 'nav_student_import', name: 'Import Students', icon: <FileSpreadsheet size={20} />, tourId: 'nav-student-import' },
   ];
 
-  const currentPage =
-    navItems.find((item) => item.path === location.pathname)?.nameKey
-      ? t(navItems.find((item) => item.path === location.pathname)?.nameKey)
-      : t('nav_dashboard');
+  const getItemLabel = (item) => {
+    if (!item) return '';
+    const translated = t(item.nameKey);
+    return translated && translated !== item.nameKey ? translated : (item.name || item.nameKey);
+  };
+
+  const currentNavItem = navItems.find((item) => item.path === location.pathname);
+  const currentPage = currentNavItem ? getItemLabel(currentNavItem) : (t('nav_dashboard') !== 'nav_dashboard' ? t('nav_dashboard') : 'Dashboard');
 
   return (
     <div className="h-screen bg-[#fffdf4] overflow-hidden">
@@ -189,7 +195,7 @@ const AdminLayout = ({ children }) => {
                   <div className={`${isActive ? "text-[#B99652]" : "text-white/70"} transition-colors`}>
                     {item.icon}
                   </div>
-                  {!sidebarCollapsed && <span className="ml-3 font-medium text-sm">{t(item.nameKey)}</span>}
+                  {!sidebarCollapsed && <span className="ml-3 font-medium text-sm">{getItemLabel(item)}</span>}
                 </Link>
               );
             })}
@@ -285,7 +291,7 @@ const AdminLayout = ({ children }) => {
                     className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-white/80 hover:text-white"
                   >
                     {item.icon}
-                    <span>{t(item.nameKey)}</span>
+                    <span>{getItemLabel(item)}</span>
                   </Link>
                 ))}
               </div>

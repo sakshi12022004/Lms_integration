@@ -68,11 +68,12 @@ const AttendanceManagement = () => {
     }
   };
 
-  // Fetch All Students
+  // Fetch Students for Classroom
   const fetchStudents = async (classroomId) => {
     try {
-      console.log('Fetching all students for attendance...');
-      const res = await fetch(`${API}/users?role=student`, {
+      if (!classroomId) return;
+      console.log('Fetching students for classroom:', classroomId);
+      const res = await fetch(`${API}/classrooms/${classroomId}/students`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -82,44 +83,39 @@ const AttendanceManagement = () => {
       }
 
       const data = await res.json();
-      console.log('Students response:', data);
       const studentList = unwrapResponse(data);
-      console.log('Unwrapped students:', studentList);
       
-      // Filter to only show students (not admins, mentors, etc.)
-      const filteredStudents = Array.isArray(studentList) 
-        ? studentList.filter(user => user.role === 'student')
-        : [];
-      
-      console.log('Filtered students (role=student):', filteredStudents.length);
-      
-      // Ensure students have proper IDs
-      const processedStudents = filteredStudents.map(s => ({
+      const processedStudents = (Array.isArray(studentList) ? studentList : []).map(s => ({
         ...s,
         id: s.id || s._id,
-        _id: s._id || s.id
+        _id: s._id || s.id,
+        name: s.name || s.studentName || 'Student'
       }));
       
       setStudents(processedStudents);
 
-      // Initialize attendance data
+      // Initialize default attendance
       const initialAttendance = {};
       processedStudents.forEach(student => {
         initialAttendance[student.id] = "present";
       });
       setAttendanceData(initialAttendance);
 
-      // Fetch existing attendance for the date
-      fetchAttendanceForDate(classroomId);
+      // Fetch existing attendance for this classroom and date
+      fetchAttendanceForDate(classroomId, processedStudents);
     } catch (err) {
-      console.error("Failed to fetch students:", err);
+      console.error("Failed to fetch students for classroom:", err);
       toast.error(t('failed_to_load_students'));
+      setStudents([]);
+      setAttendanceData({});
     }
   };
 
   // Fetch Existing Attendance
-  const fetchAttendanceForDate = async (classroomId) => {
+  const fetchAttendanceForDate = async (classroomId, currentStudents) => {
     try {
+      if (!classroomId) return;
+      const studentList = currentStudents || students;
       const res = await fetch(
         `${API}/attendance/classroom/${classroomId}/date/${selectedDate}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -130,13 +126,13 @@ const AttendanceManagement = () => {
         const existingAttendance = unwrapResponse(data);
         const attendanceMap = {};
         
-        if (Array.isArray(existingAttendance)) {
-          students.forEach(student => {
-            const studentId = student.id || student._id;
-            const record = existingAttendance.find(a => a.studentId === studentId || a.studentId?._id === studentId);
-            attendanceMap[studentId] = record?.status || "present";
-          });
-        }
+        studentList.forEach(student => {
+          const studentId = student.id || student._id;
+          const record = Array.isArray(existingAttendance)
+            ? existingAttendance.find(a => Number(a.studentId) === Number(studentId))
+            : null;
+          attendanceMap[studentId] = record?.status || "present";
+        });
 
         setAttendanceData(attendanceMap);
       }
@@ -198,7 +194,7 @@ const AttendanceManagement = () => {
       // Show success with details
       const presentCount = attendanceArray.filter(a => a.status === 'present').length;
       const absentCount = attendanceArray.filter(a => a.status === 'absent').length;
-      toast.success(t('attendance_saved_successfully_count', { present: presentCount, absent: absentCount }));
+      toast.success(`Attendance saved successfully! ${presentCount} present, ${absentCount} absent`);
       
       // Refresh attendance data after successful save
       console.log('Refreshing attendance data...');

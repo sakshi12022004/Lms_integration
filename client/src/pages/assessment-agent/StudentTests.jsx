@@ -97,7 +97,7 @@ export default function StudentTests() {
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     {s && <span className={`text-xs px-2 py-1 rounded-full ${s.cls}`}>{s.label}</span>}
-                    {upcoming && <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-700">Not open yet</span>}
+                    {upcoming && <span className="text-xs px-2.5 py-1 rounded-none bg-[#fff8e7] text-[#92400e] border border-[#fde68a] font-bold">Not open yet</span>}
                     {closedNoAttempt && <span className="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-700" data-testid="aia-test-closed">Closed</span>}
                     {!upcoming && !closedNoAttempt && (
                       <button

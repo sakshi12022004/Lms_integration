@@ -6,26 +6,26 @@ import axios from "axios";
  */
 
 export const ASSIGNMENT_STATUS = {
-  draft: ["Draft", "bg-gray-100 text-gray-600"],
-  published: ["Published", "bg-green-100 text-green-700"],
-  closed: ["Closed", "bg-slate-200 text-slate-700"],
+  draft: ["Draft", "bg-[#fff8e7] text-[#92400e] border border-[#fde68a]"],
+  published: ["Published", "bg-emerald-50 text-emerald-700 border border-emerald-200"],
+  closed: ["Closed", "bg-slate-100 text-slate-700 border border-slate-300"],
 };
 
 /** Per-student submission status (server-computed). */
 export const SUBMISSION_STATUS = {
-  not_submitted: ["Not submitted", "bg-amber-50 text-amber-800 ring-1 ring-amber-200"],
-  submitted: ["Submitted — awaiting evaluation", "bg-blue-50 text-blue-700 ring-1 ring-blue-200"],
-  evaluated: ["Evaluated", "bg-green-50 text-green-700 ring-1 ring-green-200"],
-  missed: ["Missed", "bg-red-50 text-red-700 ring-1 ring-red-200"],
+  not_submitted: ["Not submitted", "bg-[#fff8e7] text-[#92400e] border border-[#fde68a]"],
+  submitted: ["Submitted — awaiting evaluation", "bg-[#fff8e7] text-[#92400e] border border-[#fde68a]"],
+  evaluated: ["Evaluated", "bg-emerald-50 text-emerald-700 border border-emerald-200"],
+  missed: ["Missed", "bg-rose-50 text-rose-700 border border-rose-200"],
 };
-export const STUDENT_STATUS = { ...SUBMISSION_STATUS, submitted: ["Submitted · awaiting evaluation", "bg-blue-50 text-blue-700 ring-1 ring-blue-200"] };
+export const STUDENT_STATUS = { ...SUBMISSION_STATUS, submitted: ["Submitted · awaiting evaluation", "bg-[#fff8e7] text-[#92400e] border border-[#fde68a]"] };
 
 /** The teacher's assignment workflow, shown on the list and in the editor. */
 export const TEACHER_FLOW = ["Draft", "Publish", "Submissions", "AI evaluation", "Review", "Final marks"];
 
 export function Badge({ map, value, testId }) {
-  const [label, cls] = map[value] || [value, "bg-gray-100 text-gray-600"];
-  return <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${cls}`} data-testid={testId} data-status={value}>{label}</span>;
+  const [label, cls] = map[value] || [value, "bg-[#fffdf4] text-[#665e4d] border border-[#ebdcaa]"];
+  return <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-0.5 rounded-none whitespace-nowrap ${cls}`} data-testid={testId} data-status={value}>{label}</span>;
 }
 
 /**
@@ -40,11 +40,22 @@ export function Stepper({ steps, current = -1, optional = [], testId }) {
         const active = i === current;
         return (
           <li key={label} className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${active ? "bg-primary text-white" : done ? "bg-green-50 text-green-700 ring-1 ring-green-200" : "bg-gray-100 text-gray-500"}`}>
-              <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${active ? "bg-white/25" : done ? "bg-green-600 text-white" : "bg-white text-gray-500"}`}>{done ? "✓" : i + 1}</span>
-              {label}{optional.includes(i) && <span className="font-normal opacity-75">(optional)</span>}
+            <span className={`inline-flex items-center gap-1.5 rounded-none px-2.5 py-1 font-bold text-[11px] border transition-all ${
+              active
+                ? "bg-[#B99652] text-white border-[#9b7b3e] shadow-xs"
+                : done
+                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                : "bg-white text-[#7a705a] border-[#ebdcaa]"
+            }`}>
+              <span className={`inline-flex h-4 w-4 items-center justify-center rounded-none text-[10px] font-bold ${
+                active ? "bg-white/25 text-white" : done ? "bg-emerald-600 text-white" : "bg-[#fffdf4] text-[#7a705a]"
+              }`}>
+                {done ? "✓" : i + 1}
+              </span>
+              <span>{label}</span>
+              {optional.includes(i) && <span className="font-normal opacity-75 text-[10px]">(optional)</span>}
             </span>
-            {i < steps.length - 1 && <span className="text-gray-300" aria-hidden>→</span>}
+            {i < steps.length - 1 && <span className="text-[#ebdcaa] font-bold" aria-hidden>→</span>}
           </li>
         );
       })}

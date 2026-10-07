@@ -253,7 +253,7 @@ app.use("/api/materials", require("./routes/materialRoutes"));
 app.use("/api/assessments", require("./routes/assessmentRoutes"));
 app.use("/api/weeks", require("./routes/weekRoutes"));
 app.use("/api/attendance", require("./routes/attendanceRoutes"));
-// app.use("/api/results", require("./routes/resultRoutes")); // DISABLED: Using SQLite via universalRoutes instead
+app.use("/api/results", require("./routes/resultRoutes"));
 
 /* Calendar */
 app.use("/api/calendar", require("./routes/calendarRoutes"));

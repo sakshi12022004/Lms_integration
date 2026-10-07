@@ -54,53 +54,93 @@ export default function AssignToModal({ base, auth, classroom, classLabel, testT
   const suggestedMissing = suggested && students && !students.some((s) => s.id === suggested.id);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="aia-assign-title" data-testid="aia-assign-modal">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[85vh]">
-        <div className="flex items-start justify-between gap-3 p-5 border-b">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="aia-assign-title" data-testid="aia-assign-modal">
+      <div className="bg-white rounded-none border border-[#ebdcaa] shadow-[0_12px_40px_rgba(0,35,102,0.2)] w-full max-w-md flex flex-col max-h-[85vh]">
+        <div className="flex items-start justify-between gap-3 p-5 border-b border-[#ebdcaa] bg-[#fffdf4]">
           <div>
-            <h3 id="aia-assign-title" className="text-lg font-bold flex items-center gap-2"><Users size={18} /> Assign to</h3>
-            <p className="text-xs text-gray-500 mt-0.5">"{testTitle}" · {classLabel(classroom)}</p>
+            <h3 id="aia-assign-title" className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] flex items-center gap-2">
+              <Users size={18} className="text-[#B99652]" />
+              <span>Assign Assessment</span>
+            </h3>
+            <p className="text-xs text-[#7a705a] mt-0.5">"{testTitle}" · {classLabel(classroom)}</p>
           </div>
-          <button type="button" onClick={onCancel} disabled={busy} className="p-1 rounded hover:bg-gray-100 text-gray-500" aria-label="Cancel"><X size={18} /></button>
+          <button type="button" onClick={onCancel} disabled={busy} className="p-1 rounded-none hover:bg-[#B99652]/10 text-[#7a705a] hover:text-[#B99652] transition-colors" aria-label="Cancel">
+            <X size={18} />
+          </button>
         </div>
 
         <div className="p-5 pb-3 space-y-3">
           {suggested && (
-            <div className="p-2.5 rounded-lg bg-indigo-50 border border-indigo-100 text-sm text-indigo-900" data-testid="aia-assign-suggested">
-              Suggested for: <span className="font-semibold">{suggested.name}</span>
-              {suggestedMissing && <span className="block text-xs text-indigo-700 mt-0.5">{suggested.name} is not in this class. Choose the students below.</span>}
+            <div className="p-3 rounded-none bg-[#fff8e7] border border-[#fde68a] text-xs text-[#92400e]" data-testid="aia-assign-suggested">
+              Suggested for: <strong className="text-[#92400e]">{suggested.name}</strong>
+              {suggestedMissing && <span className="block text-xs text-amber-700 mt-0.5">{suggested.name} is not in this class. Choose students below.</span>}
             </div>
           )}
           <div className="relative">
-            <Search size={16} className="absolute left-2.5 top-2.5 text-gray-400" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search students..." aria-label="Search students"
-              className="w-full pl-8 pr-2 py-2 border rounded-lg text-sm" data-testid="aia-assign-search" />
+            <Search size={15} className="absolute left-3 top-2.5 text-[#a09783]" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search students..."
+              aria-label="Search students"
+              className="w-full pl-9 pr-3 py-2 border border-[#ebdcaa] rounded-none text-xs sm:text-sm bg-[#fffdf4]/40 text-[#1e1b4b] focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none"
+              data-testid="aia-assign-search"
+            />
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <button type="button" onClick={() => setSelected(new Set((students || []).map((s) => s.id)))} disabled={!total || busy}
-              className="px-3 py-1.5 border rounded-lg font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50" data-testid="aia-assign-all">Select all</button>
-            <button type="button" onClick={() => setSelected(new Set())} disabled={!count || busy}
-              className="px-3 py-1.5 border rounded-lg font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50" data-testid="aia-assign-none">Deselect all</button>
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => setSelected(new Set((students || []).map((s) => s.id)))}
+              disabled={!total || busy}
+              className="px-3 py-1.5 border border-[#ebdcaa] rounded-none font-bold text-[#92400e] bg-white hover:bg-[#fffdf4] disabled:opacity-50 transition-all"
+              data-testid="aia-assign-all"
+            >
+              Select all
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              disabled={!count || busy}
+              className="px-3 py-1.5 border border-[#ebdcaa] rounded-none font-bold text-[#7a705a] bg-white hover:bg-[#fffdf4] disabled:opacity-50 transition-all"
+              data-testid="aia-assign-none"
+            >
+              Deselect all
+            </button>
           </div>
         </div>
 
         <div className="px-5 overflow-y-auto flex-1 min-h-[8rem]" data-testid="aia-assign-list">
           {students === null ? (
-            <div className="flex items-center gap-2 text-sm text-gray-500 py-6 justify-center"><Loader2 size={16} className="animate-spin" /> Loading students…</div>
+            <div className="flex items-center gap-2 text-xs text-[#7a705a] py-6 justify-center">
+              <Loader2 size={16} className="animate-spin text-[#B99652]" />
+              <span>Loading student roster…</span>
+            </div>
           ) : loadError ? (
-            <p className="text-sm text-red-600 py-4">{loadError}</p>
+            <p className="text-xs text-red-600 py-4 font-medium">{loadError}</p>
           ) : total === 0 ? (
-            <p className="text-sm text-gray-500 py-4">This class has no students yet.</p>
+            <p className="text-xs text-[#7a705a] py-4">This class has no students enrolled.</p>
           ) : visible.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4">No student matches "{query}".</p>
+            <p className="text-xs text-[#7a705a] py-4">No student matches "{query}".</p>
           ) : (
-            <ul className="divide-y">
+            <ul className="divide-y divide-[#ebdcaa]/60">
               {visible.map((s) => (
                 <li key={s.id}>
-                  <label className="flex items-center gap-3 py-2 cursor-pointer text-sm">
-                    <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} disabled={busy} className="h-4 w-4" data-testid="aia-assign-student" data-student-id={s.id} />
-                    <span className="flex-1">{s.name}</span>
-                    {suggested && s.id === suggested.id && <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">Suggested</span>}
+                  <label className="flex items-center gap-3 py-2.5 cursor-pointer text-xs sm:text-sm font-medium hover:bg-[#fffdf4]/50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(s.id)}
+                      onChange={() => toggle(s.id)}
+                      disabled={busy}
+                      className="accent-[#B99652] h-4 w-4 rounded-none"
+                      data-testid="aia-assign-student"
+                      data-student-id={s.id}
+                    />
+                    <span className="flex-1 text-[#1e1b4b]">{s.name}</span>
+                    {suggested && s.id === suggested.id && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-none bg-[#fff8e7] text-[#92400e] border border-[#fde68a]">
+                        Target Student
+                      </span>
+                    )}
                   </label>
                 </li>
               ))}
@@ -108,15 +148,29 @@ export default function AssignToModal({ base, auth, classroom, classLabel, testT
           )}
         </div>
 
-        <div className="p-5 border-t flex items-center justify-between gap-3">
-          <span className="text-sm text-gray-600" data-testid="aia-assign-count">
-            Selected: <span className="font-semibold">{count}</span> student{count === 1 ? "" : "s"}{wholeClass ? " (whole class)" : ""}
+        <div className="p-5 border-t border-[#ebdcaa] flex items-center justify-between gap-3 bg-[#fffdf4]/40">
+          <span className="text-xs text-[#665e4d]" data-testid="aia-assign-count">
+            Selected: <strong className="text-[#92400e]">{count}</strong> student{count === 1 ? "" : "s"}{wholeClass ? " (whole class)" : ""}
           </span>
           <div className="flex gap-2">
-            <button type="button" onClick={onCancel} disabled={busy} className="px-4 py-2 border rounded-lg text-sm font-medium" data-testid="aia-assign-cancel">Cancel</button>
-            <button type="button" onClick={() => onConfirm([...selected].sort((a, b) => a - b), wholeClass)} disabled={busy || count === 0 || !!loadError}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold disabled:opacity-50" data-testid="aia-assign-confirm">
-              {busy && <Loader2 size={16} className="animate-spin" />} Assign
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className="px-4 py-2 border border-[#ebdcaa] rounded-none text-xs font-bold text-[#665e4d] bg-white hover:bg-[#fffdf4] transition-colors"
+              data-testid="aia-assign-cancel"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => onConfirm([...selected].sort((a, b) => a - b), wholeClass)}
+              disabled={busy || count === 0 || !!loadError}
+              className="inline-flex items-center gap-2 px-5 py-2 bg-[#B99652] hover:bg-[#a68444] text-white rounded-none text-xs font-bold border border-[#9b7b3e] shadow-xs transition-all disabled:opacity-50"
+              data-testid="aia-assign-confirm"
+            >
+              {busy && <Loader2 size={14} className="animate-spin text-white" />}
+              <span>Confirm & Assign</span>
             </button>
           </div>
         </div>

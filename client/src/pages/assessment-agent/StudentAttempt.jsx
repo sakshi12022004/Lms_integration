@@ -223,7 +223,7 @@ export default function StudentAttempt() {
                 <div className="mt-2">
                   <label className="text-sm text-gray-600 block mb-1">{q.numericFormat === "integer" ? "Enter a whole number" : "Enter a number (decimals allowed)"}</label>
                   <input
-                    className={`w-full sm:w-64 p-2 border rounded-lg font-mono ${isAnswered(answers[q.id]) && !numberDirty(q.id) ? "border-primary bg-blue-50" : ""}`}
+                    className={`w-full sm:w-64 p-2 border rounded-lg font-mono ${isAnswered(answers[q.id]) && !numberDirty(q.id) ? "border-[#B99652] bg-[#fff8e7]" : ""}`}
                     inputMode={q.numericFormat === "integer" ? "numeric" : "decimal"}
                     placeholder={q.numericFormat === "integer" ? "e.g. 42" : "e.g. 12.5"}
                     value={drafts[q.id] ?? ""}
@@ -243,7 +243,7 @@ export default function StudentAttempt() {
                     const multi = q.type === "multi_select";
                     const checked = multi ? (Array.isArray(answers[q.id]) && answers[q.id].includes(o.position)) : answers[q.id] === o.position;
                     return (
-                      <label key={o.position} className={`flex items-center gap-3 p-2 border rounded-lg cursor-pointer ${checked ? "border-primary bg-blue-50" : ""}`}>
+                      <label key={o.position} className={`flex items-center gap-3 p-2 border rounded-lg cursor-pointer ${checked ? "border-[#B99652] bg-[#fff8e7]" : ""}`}>
                         <input
                           type={multi ? "checkbox" : "radio"}
                           name={`q-${q.id}`}

@@ -27,9 +27,23 @@ export const useTranslation = () => {
 
 // English translations
 const EN_TRANSLATIONS = {
+  'nav_dashboard': 'Dashboard',
+  'nav_users': 'Users',
+  'nav_courses': 'Courses',
+  'nav_database_export': 'Database Export',
+  'nav_fee_structure': 'Fee Structure',
+  'nav_calendar': 'Calendar',
+  'nav_add_student': 'Add Student',
+  'nav_add_teacher': 'Add Teacher',
+  'nav_classrooms': 'Classrooms',
   'nav_student_import': 'Import Students',
+  'nav_collapse': 'Collapse',
+  'nav_logout': 'Logout',
   'nav_ai_assessments': 'AI Assessments',
   'nav_my_tests': 'My Tests',
+  'overall_progress': 'Overall Progress',
+  'joined_live_class': 'Joined live class successfully',
+  'failed_join_live_class': 'Failed to join live class',
   'login_title': 'Core5 Academy',
   'email_label': 'Email Address',
   'email_placeholder': 'Email',

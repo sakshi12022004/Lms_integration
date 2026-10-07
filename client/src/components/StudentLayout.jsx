@@ -8,7 +8,10 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  ClipboardList
+  ClipboardList,
+  FileCheck,
+  Calendar,
+  Bell
 } from 'lucide-react';
 import { useAuth } from "../auth/auth";
 import QuotaLimitModal from './QuotaLimitModal';
@@ -61,6 +64,22 @@ const StudentLayout = ({ children }) => {
       tourId: 'nav-courses'
     },
     {
+      path: '/student/assessment-agent/tests',
+      nameKey: 'nav_my_tests',
+      icon: <ClipboardList size={19} />,
+      label: 'My Tests',
+      description: 'Tests from your teachers',
+      tourId: 'nav-my-tests'
+    },
+    {
+      path: '/student/assessment-agent/assignments',
+      nameKey: 'nav_assignments',
+      icon: <FileCheck size={19} />,
+      label: 'Assignments',
+      description: 'Submit & Track Assignments',
+      tourId: 'nav-assignments'
+    },
+    {
       path: '/student/results',
       nameKey: 'nav_results',
       icon: <Trophy size={20} />,
@@ -77,12 +96,20 @@ const StudentLayout = ({ children }) => {
       tourId: 'nav-attendance'
     },
     {
-      path: '/student/assessment-agent/tests',
-      nameKey: 'nav_my_tests',
-      icon: <ClipboardList size={19} />,
-      label: 'My Tests',
-      description: 'Tests from your teachers',
-      tourId: 'nav-my-tests'
+      path: '/student/calendar',
+      nameKey: 'nav_calendar',
+      icon: <Calendar size={20} />,
+      label: 'Calendar',
+      description: 'Academic Schedule',
+      tourId: 'nav-calendar'
+    },
+    {
+      path: '/announcements',
+      nameKey: 'nav_announcements',
+      icon: <Bell size={20} />,
+      label: 'Announcements',
+      description: 'School Updates',
+      tourId: 'nav-announcements'
     },
   ];
 

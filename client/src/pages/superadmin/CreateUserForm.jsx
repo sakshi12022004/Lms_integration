@@ -63,7 +63,7 @@ const CreateUserForm = ({ onSuccess }) => {
     // Check subscription for accountant and storekeeper roles
     if (form.role === "accountant" || form.role === "storekeeper") {
       try {
-        const res = await fetch(`${API}/api/subscriptions/check-feature-access`, {
+        const res = await fetch(`${API}/subscriptions/check-feature-access`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -96,12 +96,13 @@ const CreateUserForm = ({ onSuccess }) => {
       setLoading(true);
 
       const password = generatePassword();
+      const tokenToUse = token || localStorage.getItem('token');
 
       const res = await fetch(`${API}/superadmin/create-user`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${tokenToUse}`,
         },
         body: JSON.stringify({
           ...form,

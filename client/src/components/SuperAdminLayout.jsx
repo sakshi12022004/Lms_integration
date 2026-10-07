@@ -20,7 +20,7 @@ import whiteLogo from '../assets/core5-final-rbg.png';
 const SuperAdminLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logoutUser, user } = useAuth();
+  const { logoutUser, user, API } = useAuth();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -31,18 +31,18 @@ const SuperAdminLayout = ({ children }) => {
   const [timer, setTimer] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
   const [planName, setPlanName] = useState('Free');
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://core5.io';
 
   // Fetch subscription data function
   const fetchSubscription = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/subscriptions/current`, {
+      const response = await fetch(`${API}/subscriptions/current`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+
 
       const text = await response.text();
       const data = text ? JSON.parse(text) : null;
@@ -157,7 +157,7 @@ const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://core5.io';
   const cancelSubscription = async () => {
     if (!confirm('Are you sure you want to cancel your subscription and downgrade to Free?')) return;
     try {
-      const response = await fetch(`${API_BASE}/api/subscriptions/cancel`, {
+      const response = await fetch(`${API}/subscriptions/cancel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -482,51 +482,51 @@ const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://core5.io';
               >
                 <ChevronRight size={20} />
               </button>
-              <h1 className="text-xl font-['DM_Serif_Display',serif] text-gray-800 tracking-wide">{currentPage}</h1>
+              <h1 className="text-xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-wide">{currentPage}</h1>
             </div>
             
             <div className="flex items-center gap-4">
               {/* Subscription Timer */}
               <div
                 data-tour="header-subscription-timer"
-                className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors duration-300 ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 border rounded-none shadow-2xs transition-colors duration-300 ${
                 timer === 0
-                  ? 'bg-red-100 border-red-300'
-                  : 'bg-blue-100 border-blue-300'
+                  ? 'bg-[#fff8e7] border-[#fde68a] text-[#92400e]'
+                  : 'bg-[#fffdf4] border-[#ebdcaa] text-[#1e1b4b]'
               }`}>
-                <Star className={timer === 0 ? 'text-red-600' : 'text-blue-600'} size={16} />
+                <Star className={timer === 0 ? 'text-[#B99652]' : 'text-[#B99652]'} size={15} />
                 {timer === 0 ? (
-                  <div className="flex items-center gap-2">
-                    <div className="text-center">
-                      <div className="text-xs font-semibold text-red-700">PLAN EXPIRED</div>
-                      <div className="text-xs font-bold text-red-800">Upgrade to continue</div>
+                  <div className="flex items-center gap-2 text-left">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[#92400e]">Plan Expired</div>
+                      <div className="text-xs font-bold text-[#1e1b4b]">Upgrade to continue</div>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 text-xs">
                     <div className="text-center">
-                      <div className="text-xs font-semibold text-blue-700">PLAN</div>
-                      <div className="text-sm font-bold text-blue-800">{planName}</div>
+                      <div className="text-[9px] font-bold uppercase text-[#7a705a]">Plan</div>
+                      <div className="text-xs font-bold text-[#1e1b4b]">{planName}</div>
                     </div>
-                    <span className="text-blue-400 mx-2">•</span>
+                    <span className="text-[#ebdcaa] mx-1">•</span>
                     <div className="text-center">
-                      <div className="text-xs font-semibold text-blue-700">DAYS</div>
-                      <div className="text-sm font-bold text-blue-800">{days.toString().padStart(2, '0')}</div>
+                      <div className="text-[9px] font-bold uppercase text-[#7a705a]">Days</div>
+                      <div className="text-xs font-bold text-[#1e1b4b]">{days.toString().padStart(2, '0')}</div>
                     </div>
-                    <span className="text-blue-600 font-bold text-xs">:</span>
+                    <span className="text-[#B99652] font-bold text-xs">:</span>
                     <div className="text-center">
-                      <div className="text-xs font-semibold text-blue-700">HRS</div>
-                      <div className="text-sm font-bold text-blue-800">{hours.toString().padStart(2, '0')}</div>
+                      <div className="text-[9px] font-bold uppercase text-[#7a705a]">Hrs</div>
+                      <div className="text-xs font-bold text-[#1e1b4b]">{hours.toString().padStart(2, '0')}</div>
                     </div>
-                    <span className="text-blue-600 font-bold text-xs">:</span>
+                    <span className="text-[#B99652] font-bold text-xs">:</span>
                     <div className="text-center">
-                      <div className="text-xs font-semibold text-blue-700">MIN</div>
-                      <div className="text-sm font-bold text-blue-800">{minutes.toString().padStart(2, '0')}</div>
+                      <div className="text-[9px] font-bold uppercase text-[#7a705a]">Min</div>
+                      <div className="text-xs font-bold text-[#1e1b4b]">{minutes.toString().padStart(2, '0')}</div>
                     </div>
-                    <span className="text-blue-600 font-bold text-xs">:</span>
+                    <span className="text-[#B99652] font-bold text-xs">:</span>
                     <div className="text-center">
-                      <div className="text-xs font-semibold text-blue-700">SEC</div>
-                      <div className="text-sm font-bold text-blue-800">{seconds.toString().padStart(2, '0')}</div>
+                      <div className="text-[9px] font-bold uppercase text-[#7a705a]">Sec</div>
+                      <div className="text-xs font-bold text-[#1e1b4b]">{seconds.toString().padStart(2, '0')}</div>
                     </div>
                   </div>
                 )}
@@ -535,9 +535,9 @@ const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://core5.io';
               {/* Logout Button */}
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 rounded-none text-xs font-bold uppercase tracking-wider transition-colors shadow-2xs"
               >
-                <LogOut size={16} />
+                <LogOut size={14} />
                 <span className="hidden sm:inline">Logout</span>
               </button>
             </div>
@@ -609,22 +609,22 @@ const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://core5.io';
 
       {/* Subscription Expired Popup */}
       {showPopup && timer === 0 && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-8 max-w-md w-full border border-gray-200 shadow-2xl">
+        <div className="fixed inset-0 bg-[#1e1b4b]/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-[#fffdf4] rounded-none p-8 max-w-md w-full border border-[#ebdcaa] shadow-[0_12px_40px_rgba(185,150,82,0.2)] animate-in fade-in zoom-in-95 duration-200">
             <div className="text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Star className="text-red-600" size={32} />
+              <div className="w-14 h-14 bg-[#fff8e7] border border-[#fde68a] text-[#B99652] rounded-none flex items-center justify-center mx-auto mb-4 shadow-xs">
+                <Star className="text-[#B99652] fill-[#B99652]/20" size={28} />
               </div>
               
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <h2 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-2">
                 Subscription Expired!
               </h2>
               
-              <p className="text-gray-600 mb-2">
-                Your {planName} plan has expired.
+              <p className="text-xs sm:text-sm text-[#7a705a] mb-2">
+                Your <span className="font-semibold text-[#92400e]">{planName}</span> plan has expired.
               </p>
               
-              <p className="text-gray-600 mb-6">
+              <p className="text-xs sm:text-sm text-[#7a705a] mb-6 leading-relaxed">
                 To continue using the superadmin portal, please upgrade to a subscription plan.
               </p>
               
@@ -634,14 +634,14 @@ const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://core5.io';
                     setShowPopup(false);
                     navigate("/superadmin/subscription");
                   }}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105"
+                  className="flex-1 bg-[#B99652] hover:bg-[#a38243] text-white px-5 py-2.5 rounded-none text-xs sm:text-sm font-bold border border-[#9b7b3e] shadow-xs transition-all uppercase tracking-wider"
                 >
                   Upgrade Now
                 </button>
                 
                 <button
                   onClick={() => setShowPopup(false)}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="flex-1 bg-white hover:bg-[#fff8e7] text-[#665e4d] hover:text-[#1e1b4b] px-5 py-2.5 rounded-none text-xs sm:text-sm font-bold border border-[#ebdcaa] shadow-xs transition-colors"
                 >
                   Later
                 </button>

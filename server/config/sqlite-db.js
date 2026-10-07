@@ -825,8 +825,29 @@ function initializeTables() {
       console.error('Error creating assessment_attempts table:', err);
       return;
     }
-    console.log('✅ Assessment attempts table created');
-    
+    // Results table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        studentId INTEGER NOT NULL,
+        classroomId INTEGER,
+        courseId INTEGER,
+        term TEXT DEFAULT 'General Examination',
+        subjects TEXT,
+        overallPercentage REAL DEFAULT 0,
+        overallStatus TEXT DEFAULT 'PASS',
+        comments TEXT,
+        createdBy INTEGER,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (studentId) REFERENCES users(id),
+        FOREIGN KEY (classroomId) REFERENCES classrooms(id)
+      )
+    `, (resErr) => {
+      if (resErr) console.error('Error creating results table:', resErr);
+      else console.log('✅ Results table verified');
+    });
+
     // Initialize translation tables
     initializeTranslationsTable();
     initializeUserLanguageTable();

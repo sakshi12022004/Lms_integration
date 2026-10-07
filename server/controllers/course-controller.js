@@ -430,25 +430,88 @@ const getCoursesByStudent = async (req, res) => {
 const getCourseById = async (req, res) => {
   try {
     const courseId = req.params.id;
+    const userId = req.user.userId || req.user.id;
+    const userRole = req.user.role;
 
-    db.get("SELECT * FROM courses WHERE id = ?", [courseId], (err, course) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ message: "Database error" });
-      }
+    db.get(
+      `SELECT c.*, u.name as mentorName, u.email as mentorEmail 
+       FROM courses c 
+       LEFT JOIN users u ON c.mentorId = u.id 
+       WHERE c.id = ?`,
+      [courseId],
+      (err, course) => {
+        if (err) {
+          console.error("Database error:", err);
+          return res.status(500).json({ message: "Database error" });
+        }
 
-      if (!course) {
-        return res.status(404).json({ message: "Course not found" });
+        if (!course) {
+          return res.status(404).json({ message: "Course not found" });
+        }
+
+        // Fetch assigned students
+        db.all(
+          `SELECT cs.studentId as id, cs.studentId as _id, u.name, u.email, u.name as studentName 
+           FROM course_students cs 
+           LEFT JOIN users u ON cs.studentId = u.id 
+           WHERE cs.courseId = ?`,
+          [courseId],
+          (stuErr, assignedStudents) => {
+            const studentList = assignedStudents || [];
+
+            // Access control for students
+            if (userRole === 'student') {
+              const isDirectlyEnrolled = studentList.some(s => Number(s.id) === Number(userId));
+              if (!isDirectlyEnrolled) {
+                // Check classroom enrollment
+                if (course.classroomId) {
+                  return db.get(
+                    "SELECT id FROM student_classroom_assignment WHERE classroomId = ? AND studentId = ?",
+                    [course.classroomId, userId],
+                    (scaErr, sca) => {
+                      if (!sca) {
+                        return res.status(403).json({ message: "You are not enrolled in this course" });
+                      }
+                      return respondWithCourse();
+                    }
+                  );
+                } else {
+                  return res.status(403).json({ message: "You are not enrolled in this course" });
+                }
+              }
+            }
+
+            respondWithCourse();
+
+            function respondWithCourse() {
+              const language = req.language || 'en';
+              const courseWithDetails = {
+                ...course,
+                students: studentList,
+                mentor: course.mentorId ? {
+                  id: course.mentorId,
+                  _id: course.mentorId,
+                  name: course.mentorName,
+                  email: course.mentorEmail
+                } : null
+              };
+              const formatted = BilingualDataService.formatCourse(courseWithDetails, language);
+              res.json({
+                ...mapCourse(formatted),
+                students: studentList,
+                mentor: courseWithDetails.mentor
+              });
+            }
+          }
+        );
       }
-        const language = req.language || 'en';
-        const formatted = BilingualDataService.formatCourse(course, language);
-        res.json(mapCourse(formatted));
-    });
+    );
   } catch (err) {
     console.error("GET COURSE BY ID ERROR:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Update course
 const updateCourse = async (req, res) => {

@@ -8,8 +8,14 @@ const roleMiddleware = require("../middleware/roleMiddleware");
 router.get(
   "/my-results",
   authMiddleware,
-  roleMiddleware(["student"]),
   resultController.getMyResults
+);
+
+// Student: Get results by student ID
+router.get(
+  "/student/:studentId",
+  authMiddleware,
+  resultController.getStudentResults
 );
 
 // Teacher: Get classroom results
@@ -26,6 +32,13 @@ router.post(
   authMiddleware,
   roleMiddleware(["mentor", "admin"]),
   resultController.addResult
+);
+
+// Get all results (compat)
+router.get(
+  "/",
+  authMiddleware,
+  resultController.getResults
 );
 
 module.exports = router;

@@ -56,10 +56,10 @@ export default function RequestStatus() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'accepted': return 'text-green-600 bg-green-50';
-      case 'rejected': return 'text-red-600 bg-red-50';
-      case 'pending': return 'text-yellow-600 bg-yellow-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'accepted': return 'text-emerald-300 bg-emerald-950/60 border border-emerald-500/40';
+      case 'rejected': return 'text-rose-300 bg-rose-950/60 border border-rose-500/40';
+      case 'pending': return 'text-[#fde68a] bg-[#B99652]/20 border border-[#B99652]/40';
+      default: return 'text-gray-300 bg-white/10 border border-white/20';
     }
   };
 
@@ -67,12 +67,12 @@ export default function RequestStatus() {
     return (
       <button
         onClick={() => setShowStatus(true)}
-        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all"
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-none bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all text-xs font-semibold uppercase tracking-wider"
       >
-        <Package size={20} />
-        <span className="font-medium">Request Status</span>
+        <Package size={18} className="text-[#B99652]" />
+        <span>Request Status</span>
         {requests.length > 0 && (
-          <span className="ml-auto bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
+          <span className="ml-auto bg-[#B99652] text-white text-[10px] font-bold px-2 py-0.5 rounded-none">
             {requests.length}
           </span>
         )}
@@ -81,20 +81,20 @@ export default function RequestStatus() {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 border-t border-white/10 pt-2">
       <div className="flex items-center justify-between px-4 py-2 text-white/70">
-        <span className="font-medium">Request Status</span>
-        <div className="flex items-center gap-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#B99652]">Request Status</span>
+        <div className="flex items-center gap-1">
           <button
             onClick={fetchRequestStatus}
-            className="p-1 hover:bg-white/10 rounded"
+            className="p-1 hover:bg-white/10 rounded-none text-white/80"
             title="Refresh"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={13} className="text-[#B99652]" />
           </button>
           <button
             onClick={() => setShowStatus(false)}
-            className="p-1 hover:bg-white/10 rounded"
+            className="p-1 hover:bg-white/10 rounded-none text-white/80 text-sm font-bold"
             title="Close"
           >
             ×
@@ -102,16 +102,16 @@ export default function RequestStatus() {
         </div>
       </div>
 
-      <div className="px-2 pb-2 space-y-1 max-h-64 overflow-y-auto">
+      <div className="px-2 pb-2 space-y-1.5 max-h-64 overflow-y-auto scrollbar-thin">
         {loading ? (
           <div className="text-center py-4 text-white/50">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto mb-2"></div>
-            <span className="text-xs">Loading...</span>
+            <div className="animate-spin rounded-none h-4 w-4 border-2 border-[#B99652] border-t-transparent mx-auto mb-2"></div>
+            <span className="text-[11px]">Loading...</span>
           </div>
         ) : requests.length === 0 ? (
           <div className="text-center py-4 text-white/50">
-            <Package size={16} className="mx-auto mb-2 opacity-50" />
-            <span className="text-xs">No requests</span>
+            <Package size={16} className="mx-auto mb-2 opacity-50 text-[#B99652]" />
+            <span className="text-[11px]">No pending requests</span>
           </div>
         ) : (
           requests.map((request) => {
@@ -119,19 +119,19 @@ export default function RequestStatus() {
             return (
               <div
                 key={request.id}
-                className="bg-white/5 hover:bg-white/10 rounded-lg p-2 text-white/80 transition-all"
+                className="bg-white/5 hover:bg-white/10 rounded-none border border-white/10 p-2.5 text-white/80 transition-all text-xs"
               >
                 <div className="flex items-start gap-2">
-                  <StatusIcon size={14} className="mt-0.5 flex-shrink-0" />
+                  <StatusIcon size={14} className="mt-0.5 shrink-0 text-[#B99652]" />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium truncate">{request.title}</p>
-                      <span className={`text-xs px-1 py-0.5 rounded-full ${getStatusColor(request.status)}`}>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="font-bold truncate text-white">{request.title}</p>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none uppercase tracking-wider ${getStatusColor(request.status)}`}>
                         {request.status}
                       </span>
                     </div>
-                    <p className="text-xs text-white/60 truncate">{request.vendor_name}</p>
-                    <p className="text-xs text-white/50">
+                    <p className="text-[11px] text-white/60 truncate mt-0.5">{request.vendor_name}</p>
+                    <p className="text-[10px] text-white/40 mt-0.5">
                       {request.items_count} item{request.items_count !== 1 ? 's' : ''}
                     </p>
                   </div>
