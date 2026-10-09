@@ -73,10 +73,14 @@ function validateGenerationRequest(input) {
     details.push({ field: 'instructions', code: 'UNSAFE_INSTRUCTIONS' });
   }
 
+  // Required: questions are always generated FOR a class, so the academic level is known.
   let classroomId = null;
-  if (input.classroomId !== undefined && input.classroomId !== null) {
-    if (Number.isInteger(input.classroomId) && input.classroomId >= 1) classroomId = input.classroomId;
-    else details.push({ field: 'classroomId', code: 'INVALID_ID' });
+  if (input.classroomId === undefined || input.classroomId === null || input.classroomId === '') {
+    details.push({ field: 'classroomId', code: 'REQUIRED' });
+  } else if (Number.isInteger(input.classroomId) && input.classroomId >= 1) {
+    classroomId = input.classroomId;
+  } else {
+    details.push({ field: 'classroomId', code: 'INVALID_ID' });
   }
 
   const count = input.count;

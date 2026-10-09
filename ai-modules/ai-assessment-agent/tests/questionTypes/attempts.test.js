@@ -53,7 +53,7 @@ describe('teacher authoring of the new types', () => {
   });
 
   it('from-review saves mixed types as ONE draft; an invalid one saves nothing', () => {
-    const body = (questions) => ({ assessment: { title: 'Reviewed', subject: 'Maths' }, questions });
+    const body = (questions) => ({ assessment: { title: 'Reviewed', subject: 'Maths', classroomId: 10 }, questions });
     const saved = service.createAssessmentWithQuestions(T1, body([mcq(), multi(), numerical()]));
     assert.deepEqual([saved.status, saved.questions.map((q) => q.type)], ['draft', ['single_mcq', 'multi_select', 'numerical']]);
     const before = db.prepare('SELECT COUNT(*) AS n FROM aia_questions').get().n;
@@ -181,7 +181,7 @@ describe('legacy mode: a database WITHOUT migration 006 (the live schema today)'
     assert.equal(adapter.isReady(), true);
     const a = svc.createAssessment(T1, { title: 'Legacy', subject: 'Maths', classroomId: IDS.class10 });
     for (const q of [multi(), numerical()]) assert.equal(code(() => svc.addQuestion(T1, a.id, q)), 'QUESTION_TYPES_NOT_READY');
-    assert.equal(code(() => svc.createAssessmentWithQuestions(T1, { assessment: { title: 'x', subject: 'y' }, questions: [numerical()] })), 'QUESTION_TYPES_NOT_READY');
+    assert.equal(code(() => svc.createAssessmentWithQuestions(T1, { assessment: { title: 'x', subject: 'y', classroomId: 10 }, questions: [numerical()] })), 'QUESTION_TYPES_NOT_READY');
     svc.addQuestion(T1, a.id, mcq());
     const test = svc.publish(T1, a.id);
     assert.equal(test.questions[0].type, 'single_mcq');

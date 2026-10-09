@@ -17,25 +17,33 @@ const crypto = require('crypto');
  * Swap this class for a cloud store later by keeping the same four methods.
  */
 const KEY = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.pdf$/;
+const keyPattern = (extensions) => new RegExp(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(${extensions.join('|')})$`);
 
 class LocalSubmissionFileStore {
-  constructor({ rootDir }) {
+  /**
+   * `extensions`: the file kinds this store holds (default: PDF submissions). The same class,
+   * with its own directory and `extensions: ['png', 'jpg', 'gif', 'webp']`, stores question images.
+   */
+  constructor({ rootDir, extensions = ['pdf'] }) {
     if (typeof rootDir !== 'string' || !path.isAbsolute(rootDir)) throw new TypeError('LocalSubmissionFileStore requires an absolute rootDir.');
     this.rootDir = path.resolve(rootDir);
+    this.extensions = extensions;
+    this.key = keyPattern(extensions);
   }
 
   /** Resolves a key to its file, refusing anything that is not a key this store generated. */
   pathOf(storageKey) {
-    if (typeof storageKey !== 'string' || !KEY.test(storageKey)) throw new Error('Invalid storage key.');
+    if (typeof storageKey !== 'string' || !this.key.test(storageKey)) throw new Error('Invalid storage key.');
     const full = path.resolve(this.rootDir, storageKey);
     if (path.dirname(full) !== this.rootDir) throw new Error('Invalid storage key.');
     return full;
   }
 
-  async save(buffer) {
+  async save(buffer, extension = this.extensions[0]) {
     if (!Buffer.isBuffer(buffer) || buffer.length === 0) throw new Error('Nothing to save.');
+    if (!this.extensions.includes(extension)) throw new Error('Unsupported file type.');
     await fs.promises.mkdir(this.rootDir, { recursive: true, mode: 0o700 });
-    const storageKey = `${crypto.randomUUID()}.pdf`;
+    const storageKey = `${crypto.randomUUID()}.${extension}`;
     const target = this.pathOf(storageKey);
     const temp = `${target}.${process.pid}.tmp`;
     await fs.promises.writeFile(temp, buffer, { mode: 0o600, flag: 'wx' });
@@ -67,5 +75,6 @@ class LocalSubmissionFileStore {
 }
 
 const defaultSubmissionsDir = () => path.resolve(__dirname, '../../../data/submissions');
+const defaultQuestionImagesDir = () => path.resolve(__dirname, '../../../data/question-images');
 
-module.exports = { LocalSubmissionFileStore, defaultSubmissionsDir, STORAGE_KEY: KEY };
+module.exports = { LocalSubmissionFileStore, defaultSubmissionsDir, defaultQuestionImagesDir, STORAGE_KEY: KEY };

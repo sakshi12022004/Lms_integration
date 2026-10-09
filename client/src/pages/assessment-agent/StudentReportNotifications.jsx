@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { Bell, Download, Loader2 } from "lucide-react";
+import { Bell, Download, Eye, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { downloadReportPdf } from "./reportPdf";
 import { evidenceLabel } from "./AiPerformanceReport";
 
@@ -58,10 +59,16 @@ export default function StudentReportNotifications({ base, auth }) {
               </div>
             </div>
           </div>
+          <div className="shrink-0 flex flex-wrap items-center justify-end gap-2">
+          <Link to={`/student/assessment-agent/reports/${r.id}`}
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50" data-testid="aia-report-view">
+            <Eye size={16} /> View Report
+          </Link>
           <button type="button" onClick={() => download(r)} disabled={downloading !== null}
             className="shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-semibold disabled:opacity-60" data-testid="aia-report-download">
             {downloading === r.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} Download Report
           </button>
+          </div>
         </div>
       ))}
     </section>

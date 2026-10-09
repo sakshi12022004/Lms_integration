@@ -190,6 +190,7 @@ import StudentSetupPassword from "./pages/StudentSetupPassword";
 import StudentImport from "./pages/admin/StudentImport";
 import TeacherAssessments from "./pages/assessment-agent/TeacherAssessments";
 import StudentTests from "./pages/assessment-agent/StudentTests";
+import StudentPerformanceReport from "./pages/assessment-agent/StudentPerformanceReport";
 import StudentAttempt from "./pages/assessment-agent/StudentAttempt";
 import StudentPerformance from "./pages/assessment-agent/StudentPerformance";
 import TeacherAssignments from "./pages/assessment-agent/TeacherAssignments";
@@ -376,6 +377,7 @@ function App() {
           <Route path="/student/assessment-agent/assignments" element={<ProtectedRoute requiredRole="student"><StudentAssignments /></ProtectedRoute>} />
           <Route path="/student/assessment-agent/assignments/:id" element={<ProtectedRoute requiredRole="student"><StudentAssignment /></ProtectedRoute>} />
           <Route path="/student/assessment-agent/tests" element={<ProtectedRoute requiredRole="student"><StudentTests /></ProtectedRoute>} />
+          <Route path="/student/assessment-agent/reports/:reportId" element={<ProtectedRoute requiredRole="student"><StudentPerformanceReport /></ProtectedRoute>} />
           <Route path="/student/assessment-agent/attempts/:attemptId" element={<ProtectedRoute requiredRole="student"><StudentAttempt /></ProtectedRoute>} />
 
           {/* Test button for terms modal */}

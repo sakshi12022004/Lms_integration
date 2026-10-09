@@ -1,19 +1,41 @@
 const db = require('../config/database-switch');
+const { get, run } = require('../helpers/dbAsync');
+const {
+  HttpError,
+  cleanName,
+  nameKey,
+  authorizeClassroom,
+  requireStudentInClassroom,
+  getEffectiveSubjects,
+} = require('../helpers/subjectConfig');
+const notifications = require('../services/notificationService');
 
 /* ================= ADD/UPDATE RESULT (TEACHER) ================= */
+const parseSavedSubjects = (raw) => {
+  try {
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+};
+
 const addResult = async (req, res) => {
   try {
     let { studentId, classroomId, subjects, term, comments, marks, totalMarks, status, remarks } = req.body;
-    const userId = req.user.userId || req.user.id;
 
     if (!classroomId || !studentId) {
       return res.status(400).json({ message: "Student ID and Classroom ID are required" });
     }
 
+    // The teacher must be allowed to manage this classroom and the student must belong to it
+    const classroom = await authorizeClassroom(req, classroomId);
+    const student = await requireStudentInClassroom(classroom, studentId);
+
     // Normalize payload: if legacy fields provided, convert to subjects array
-    let normalizedSubjects = Array.isArray(subjects) ? subjects : [];
-    if ((!normalizedSubjects || normalizedSubjects.length === 0) && (marks !== undefined || totalMarks !== undefined || status)) {
-      normalizedSubjects = [
+    let submitted = Array.isArray(subjects) ? subjects : [];
+    if (submitted.length === 0 && (marks !== undefined || totalMarks !== undefined || status)) {
+      submitted = [
         {
           name: "General",
           marks: Number(marks || 0),
@@ -24,60 +46,142 @@ const addResult = async (req, res) => {
       comments = remarks || comments || "";
     }
 
+    if (submitted.length === 0) {
+      return res.status(400).json({ message: "At least one subject with marks is required" });
+    }
+
+    const termName = String(term || "").trim() || "General Examination";
+    const existing = await get(
+      "SELECT id, subjects FROM results WHERE studentId = ? AND classroomId = ? AND term = ?",
+      [student.id, classroom.id, termName]
+    );
+
+    // Subjects the student currently has (class template + student overrides) and the
+    // subjects already saved in this result. A saved result keeps its own subject
+    // names and maximum marks, so both are accepted.
+    const effective = await getEffectiveSubjects(classroom.id, student.id);
+    const effectiveByKey = new Map(effective.subjects.map((s) => [nameKey(s.name), s]));
+    const savedByKey = new Map(
+      parseSavedSubjects(existing?.subjects).map((s) => [nameKey(s.name), s])
+    );
+    const hasSubjectConfig = effective.subjects.length > 0;
+
+    const seen = new Set();
+    const normalizedSubjects = submitted.map((sub) => {
+      const name = cleanName(sub?.name);
+      if (!name) throw new HttpError(400, "Subject name is required");
+
+      const key = nameKey(name);
+      if (seen.has(key)) throw new HttpError(400, `Duplicate subject: ${name}`);
+      seen.add(key);
+
+      const configured = effectiveByKey.get(key);
+      const saved = savedByKey.get(key);
+      const providedTotal = sub.total === "" || sub.total === null || sub.total === undefined ? null : Number(sub.total);
+
+      let total;
+      if (hasSubjectConfig) {
+        if (!configured && !saved) {
+          throw new HttpError(400, `Subject "${name}" is not configured for this student`);
+        }
+        const allowedTotals = [configured?.maxMarks, saved?.total]
+          .filter((value) => value !== undefined && value !== null && value !== "")
+          .map(Number);
+        if (providedTotal === null) {
+          total = allowedTotals[0];
+        } else if (allowedTotals.includes(providedTotal)) {
+          total = providedTotal;
+        } else {
+          throw new HttpError(400, `Maximum marks for ${name} must be ${allowedTotals.join(" or ")}`);
+        }
+      } else {
+        // No subject configuration yet: keep the original free-form behaviour
+        total = providedTotal === null ? 100 : providedTotal;
+      }
+
+      if (!Number.isFinite(total) || total <= 0) {
+        throw new HttpError(400, `Maximum marks for ${name} must be greater than 0`);
+      }
+
+      const obtained = Number(sub.marks);
+      if (sub.marks === "" || sub.marks === null || sub.marks === undefined || !Number.isFinite(obtained)) {
+        throw new HttpError(400, `Marks are required for ${name}`);
+      }
+      if (obtained < 0 || obtained > total) {
+        throw new HttpError(400, `Marks for ${name} must be between 0 and ${total}`);
+      }
+
+      return {
+        name: configured?.name || saved?.name || name,
+        marks: obtained,
+        total,
+        status: String(sub.status || "PASS").toUpperCase() === "FAIL" ? "FAIL" : "PASS",
+      };
+    });
+
     let totalObtained = 0;
     let totalMax = 0;
     let failCount = 0;
 
     normalizedSubjects.forEach(sub => {
-      totalObtained += parseFloat(sub.marks || 0);
-      totalMax += parseFloat(sub.total || 100);
-      if ((sub.status || "PASS") === "FAIL") failCount++;
+      totalObtained += sub.marks;
+      totalMax += sub.total;
+      if (sub.status === "FAIL") failCount++;
     });
 
     const overallPercentage = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
     const overallStatus = failCount > 0 ? "FAIL" : "PASS";
     const subjectsJson = JSON.stringify(normalizedSubjects);
-    const termName = term || "General Examination";
 
     // Upsert into results
-    db.get(
-      "SELECT id FROM results WHERE studentId = ? AND classroomId = ? AND term = ?",
-      [studentId, classroomId, termName],
-      (err, existing) => {
-        if (err) {
-          console.error("Database error checking results:", err);
-          return res.status(500).json({ message: "Database error" });
-        }
+    if (existing) {
+      await run(
+        `UPDATE results SET
+          subjects = ?,
+          overallPercentage = ?,
+          overallStatus = ?,
+          comments = ?,
+          updatedAt = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [subjectsJson, overallPercentage, overallStatus, comments || "", existing.id]
+      );
+      return res.json({
+        message: "Result updated successfully",
+        resultId: existing.id,
+        subjects: normalizedSubjects,
+        overallPercentage,
+        overallStatus,
+      });
+    }
 
-        if (existing) {
-          db.run(
-            `UPDATE results SET 
-              subjects = ?, 
-              overallPercentage = ?, 
-              overallStatus = ?, 
-              comments = ?, 
-              updatedAt = CURRENT_TIMESTAMP 
-             WHERE id = ?`,
-            [subjectsJson, overallPercentage, overallStatus, comments || "", existing.id],
-            (updateErr) => {
-              if (updateErr) return res.status(500).json({ message: "Failed to update result" });
-              res.json({ message: "Result updated successfully", resultId: existing.id });
-            }
-          );
-        } else {
-          db.run(
-            `INSERT INTO results (studentId, classroomId, term, subjects, overallPercentage, overallStatus, comments, createdBy)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [studentId, classroomId, termName, subjectsJson, overallPercentage, overallStatus, comments || "", userId],
-            function(insertErr) {
-              if (insertErr) return res.status(500).json({ message: "Failed to create result" });
-              res.status(201).json({ message: "Result saved successfully", resultId: this.lastID });
-            }
-          );
-        }
-      }
+    const inserted = await run(
+      `INSERT INTO results (studentId, classroomId, term, subjects, overallPercentage, overallStatus, comments)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [student.id, classroom.id, termName, subjectsJson, overallPercentage, overallStatus, comments || ""]
     );
+    res.status(201).json({
+      message: "Result saved successfully",
+      resultId: inserted.lastID,
+      subjects: normalizedSubjects,
+      overallPercentage,
+      overallStatus,
+    });
+
+    // New result: one notification for the student (later edits of the same result do not repeat it)
+    notifications.notify({
+      type: "RESULT_AVAILABLE",
+      data: { title: `${termName} - ${classroom.name}` },
+      universityId: classroom.university_id,
+      recipientIds: [student.id],
+      entityType: "result",
+      entityId: inserted.lastID,
+      createdBy: req.user.userId,
+      createdByRole: req.user.role,
+    });
   } catch (error) {
+    if (error instanceof HttpError) {
+      return res.status(error.status).json({ message: error.message });
+    }
     console.error("ADD RESULT ERROR:", error);
     res.status(500).json({ message: "Server error" });
   }

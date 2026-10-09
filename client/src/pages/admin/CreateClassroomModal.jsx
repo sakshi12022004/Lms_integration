@@ -10,6 +10,7 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
 
   const [grade, setGrade] = useState("");
   const [section, setSection] = useState("");
+  const [customGrade, setCustomGrade] = useState(""); // a class that is not Grade 1-12, e.g. BSc
   const [classTeacher, setClassTeacher] = useState("");
   const [studentIds, setStudentIds] = useState([]);
   const [mentors, setMentors] = useState([]);
@@ -70,7 +71,8 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
 
   /* ================= CREATE CLASSROOM ================= */
   const handleCreate = async () => {
-    if (!grade) {
+    const className = customGrade.trim() || grade;
+    if (!className) {
       return toast.error(t('grade_required'));
     }
     
@@ -84,8 +86,8 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
       const teacherName = selectedTeacher ? selectedTeacher.name : "";
 
       const requestData = {
-        name: `Grade ${grade} - Section ${section}`,
-        grade,
+        name: `${className} - ${section}`,
+        grade: className,
         section,
         classTeacher: teacherName,
         classTeacherId: classTeacher ? parseInt(classTeacher) : null,
@@ -170,6 +172,13 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
               <option value="11">Grade 11 (Secondary)</option>
               <option value="12">Grade 12 (Secondary)</option>
             </select>
+            <input
+              className="mt-2 w-full bg-white border border-[#ebdcaa] rounded-none px-3 py-2 text-sm text-[#1e1b4b] focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]"
+              placeholder={t('custom_class_name')}
+              maxLength={50}
+              value={customGrade}
+              onChange={(e) => setCustomGrade(e.target.value)}
+            />
           </div>
 
           <div>

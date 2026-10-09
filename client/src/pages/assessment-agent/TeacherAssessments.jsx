@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import MentorLayout from "../../components/MentorLayout";
 import { useAuth } from "../../auth/auth";
+import { AuthedImage } from "../../components/QuestionImage";
 import AiAssessmentGenerator from "./AiAssessmentGenerator";
 import AssessmentReport from "./AssessmentReport";
 import AssignToModal, { publishBody, recipientsText } from "./AssignToModal";
@@ -645,6 +646,7 @@ export default function TeacherAssessments() {
                   <div className="flex justify-between items-start gap-4">
                     <div className="font-bold text-sm sm:text-base text-[#1e1b4b]">
                       <span>{q.position}. {q.text}</span>
+                      {q.imageKey && <AuthedImage url={`${base}/question-images/${q.imageKey}`} className="block max-w-full max-h-48 h-auto border border-[#ebdcaa] my-2" />}
                       <span className="ml-2.5 align-middle text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-none bg-[#fff8e7] text-[#92400e] border border-[#fde68a]">
                         {TYPE_LABEL[q.type] || "Single MCQ"}
                       </span>

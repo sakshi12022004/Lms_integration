@@ -3,7 +3,9 @@ const express = require("express");
 const {
   createLmsAssessmentAgentRouter,
   assessmentErrorHandler,
+  createQuestionImageStore,
 } = require("../../ai-modules/ai-assessment-agent/backend/src/integration/lmsAssessmentAgent");
+const { onAssessmentAgentEvent } = require("../services/assessmentAgentNotifications");
 
 /**
  * AI Assessment Agent (teacher-authored MCQ assessments, Step 1).
@@ -15,7 +17,12 @@ const {
  */
 const dbPath = path.join(__dirname, "..", "data", "lms_permanent.db");
 
+// One private store for question pictures, shared with the course assessments (routes/assessmentRoutes.js)
+const questionImageStore = createQuestionImageStore();
+
 module.exports = {
-  router: createLmsAssessmentAgentRouter({ express, dbPath }),
+  questionImageStore,
+  // onEvent: published tests/assignments, submissions, final marks and shared reports become notifications
+  router: createLmsAssessmentAgentRouter({ express, dbPath, onEvent: onAssessmentAgentEvent, imageStore: questionImageStore }),
   errorHandler: assessmentErrorHandler,
 };

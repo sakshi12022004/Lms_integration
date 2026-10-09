@@ -22,7 +22,8 @@ const {
   getClassroomFeeStructure,
   getStudentClassrooms,
   getClassroomStudents,
-  testStudentAssignment
+  testStudentAssignment,
+  getTeachingScopeTree
 } = require("../controllers/classroomController");
 
 /* ================= ADMIN ONLY ================= */
@@ -47,6 +48,13 @@ router.post(
 router.get("/", authMiddleware, adminOnly, getAllClassrooms);
 
 /* ================= SPECIFIC ROUTES (before dynamic routes) ================= */
+// Classes -> sections -> courses the signed-in admin/teacher may target
+router.get(
+  "/teaching-scope",
+  authMiddleware,
+  getTeachingScopeTree
+);
+
 router.get(
   "/my-classrooms",
   authMiddleware,

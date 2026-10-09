@@ -16,6 +16,12 @@ const { recipientsReportsMethods } = require('./sqliteRecipientsReportsStore'); 
  * It only READS those tables. It writes only the module's aia_* tables.
  */
 const TEACHER_ROLES = Object.freeze(['mentor', 'teacher']);
+// The teacher runs the classroom or teaches a course in it. Binds the teacher id four times.
+const TEACHES_CLASSROOM = `(
+  CAST(c.classTeacher AS INTEGER) = ? OR c.classTeacherId = ?
+  OR EXISTS (SELECT 1 FROM classroomAssignments ca WHERE ca.classroomId = c.id AND ca.teacherId = ?)
+  OR EXISTS (SELECT 1 FROM courses co WHERE co.classroomId = c.id AND co.mentorId = ?)
+)`;
 const STUDENT_ROLES = Object.freeze(['student']);
 // 001 + 003 (attempts). The module is "ready" only when every migration is applied.
 const MODULE_TABLES = Object.freeze(['aia_assessments', 'aia_questions', 'aia_options', 'aia_attempts', 'aia_attempt_answers', 'aia_attempt_archive']);
@@ -58,6 +64,13 @@ function createSqliteAssessmentLmsAdapter(db) {
   const plain = (row) => (row ? { ...row } : row);
   let typesSupported; // cached per connection
 
+  let imagesSupported;
+  /** Stores (or clears) the question's picture key when migration 009 is applied. */
+  const setQuestionImage = (questionId, question) => {
+    if (!adapter.supportsQuestionImages()) return;
+    db.prepare('UPDATE aia_questions SET image_key = ? WHERE id = ?').run(question.imageKey ?? null, questionId);
+  };
+
   const adapter = {
     // ---- LMS directory ----
 
@@ -81,6 +94,24 @@ function createSqliteAssessmentLmsAdapter(db) {
 
     listClassrooms(universityId) {
       return db.prepare('SELECT id, name, grade, section FROM classrooms WHERE university_id = ? ORDER BY grade, section, name, id').all(universityId).map(plain);
+    },
+
+    /**
+     * The classrooms of the school that THIS teacher may use: class teacher, listed in
+     * classroomAssignments, or teaching a course there (the LMS's own teaching relationships).
+     */
+    listTeacherClassrooms(universityId, teacherId) {
+      return db.prepare(`SELECT c.id, c.name, c.grade, c.section FROM classrooms c
+                         WHERE c.university_id = ? AND ${TEACHES_CLASSROOM}
+                         ORDER BY c.grade, c.section, c.name, c.id`)
+        .all(universityId, teacherId, teacherId, teacherId, teacherId).map(plain);
+    },
+
+    /** One classroom, only if this teacher may use it (same rule as listTeacherClassrooms); else null. */
+    getTeacherClassroom(universityId, teacherId, classroomId) {
+      return plain(db.prepare(`SELECT c.id, c.name, c.grade, c.section FROM classrooms c
+                               WHERE c.id = ? AND c.university_id = ? AND ${TEACHES_CLASSROOM}`)
+        .get(classroomId, universityId, teacherId, teacherId, teacherId, teacherId)) || null;
     },
 
     getStudentClassroomIds(universityId, userId) {
@@ -140,6 +171,14 @@ function createSqliteAssessmentLmsAdapter(db) {
       const columns = db.prepare('PRAGMA table_info(aia_questions)').all().map((c) => c.name);
       const assessmentColumns = db.prepare('PRAGMA table_info(aia_assessments)').all().map((c) => c.name);
       return STEP2_QUESTION_COLUMNS.every((c) => columns.includes(c)) && STEP5_ASSESSMENT_COLUMNS.every((c) => assessmentColumns.includes(c));
+    },
+
+    /** Migration 009 applied: optional picture per question. Without it questions simply have no picture. */
+    supportsQuestionImages() {
+      if (imagesSupported === undefined) {
+        imagesSupported = db.prepare('PRAGMA table_info(aia_questions)').all().some((c) => c.name === 'image_key');
+      }
+      return imagesSupported;
     },
 
     /** Migration 006 applied: question types + aia_attempt_responses. */
@@ -221,7 +260,7 @@ function createSqliteAssessmentLmsAdapter(db) {
     listQuestions(assessmentId) {
       const typed = adapter.supportsQuestionTypes();
       const questions = db
-        .prepare(`SELECT id, position, text, explanation, difficulty${typed ? ', question_type, numeric_answer, numeric_format' : ''}
+        .prepare(`SELECT id, position, text, explanation, difficulty${typed ? ', question_type, numeric_answer, numeric_format' : ''}${adapter.supportsQuestionImages() ? ', image_key' : ''}
                   FROM aia_questions WHERE assessment_id = ? ORDER BY position, id`)
         .all(assessmentId);
       const optionsOf = db.prepare('SELECT position, text, is_correct FROM aia_options WHERE question_id = ? ORDER BY position');
@@ -234,6 +273,7 @@ function createSqliteAssessmentLmsAdapter(db) {
         difficulty: q.difficulty ?? null,
         options: optionsOf.all(q.id).map((o) => ({ position: o.position, text: o.text, isCorrect: o.is_correct === 1 })),
         numericAnswer: typed && q.question_type === 'numerical' && q.numeric_answer !== null ? { format: q.numeric_format, value: q.numeric_answer } : null,
+        imageKey: q.image_key ?? null,
       }));
     },
 
@@ -248,6 +288,7 @@ function createSqliteAssessmentLmsAdapter(db) {
           .prepare('INSERT INTO aia_questions (assessment_id, position, text, explanation, difficulty) VALUES (?, ?, ?, ?, ?)')
           .run(assessmentId, next, question.text, question.explanation ?? '', question.difficulty ?? null).lastInsertRowid);
       insertOptions(id, type === 'numerical' ? [] : question.options);
+      setQuestionImage(id, question);
       return id;
     },
 
@@ -264,6 +305,7 @@ function createSqliteAssessmentLmsAdapter(db) {
       if (changed === 0) return false;
       db.prepare('DELETE FROM aia_options WHERE question_id = ?').run(questionId);
       insertOptions(questionId, type === 'numerical' ? [] : question.options);
+      setQuestionImage(questionId, question);
       return true;
     },
 

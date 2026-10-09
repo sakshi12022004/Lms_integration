@@ -50,14 +50,14 @@ class AssessmentService {
 
   listClassrooms(actor) {
     requireTeacher(actor);
-    return this.lms.listClassrooms(actor.universityId).map(classroomView);
+    return this.lms.listTeacherClassrooms(actor.universityId, actor.userId).map(classroomView); // only classes this teacher is assigned to
   }
 
   /** "Assign to" picker: the students of one class in the teacher's school (id + name only). */
   listClassroomStudents(actor, classroomId) {
     requireTeacher(actor);
     const id = toId(classroomId);
-    if (!id || !this.lms.getClassroom(actor.universityId, id)) throw notFound();
+    if (!id || !this.lms.getTeacherClassroom(actor.universityId, actor.userId, id)) throw notFound();
     return this.lms.listClassroomStudents(actor.universityId, id).map((s) => ({ id: s.id, name: s.name }));
   }
 
@@ -87,6 +87,9 @@ class AssessmentService {
       throw new AssessmentError('VALIDATION_FAILED', 'Send { assessment, questions }.', { details: unknown.map((field) => ({ field, code: 'UNKNOWN_FIELD' })) });
     }
     const fields = validateAssessmentInput(body.assessment);
+    if (fields.classroomId === null || fields.classroomId === undefined) {
+      throw new AssessmentError('VALIDATION_FAILED', 'Choose the class for this test.', { details: [{ field: 'assessment.classroomId', code: 'REQUIRED' }] });
+    }
     const list = body.questions;
     if (!Array.isArray(list) || list.length === 0 || list.length > LIMITS.questionsPerAssessment) {
       throw new AssessmentError('VALIDATION_FAILED', 'The questions are not valid.', {
@@ -122,7 +125,7 @@ class AssessmentService {
   resolveGenerationTarget(actor, classroomId) {
     requireTeacher(actor);
     if (classroomId === null || classroomId === undefined) return null;
-    const classroom = this.lms.getClassroom(actor.universityId, classroomId);
+    const classroom = this.lms.getTeacherClassroom(actor.universityId, actor.userId, classroomId);
     if (!classroom) {
       throw new AssessmentError('VALIDATION_FAILED', 'The generation request is not valid.', { details: [{ field: 'classroomId', code: 'CLASSROOM_NOT_FOUND' }] });
     }
@@ -211,7 +214,7 @@ class AssessmentService {
       if (row.status === 'published') throw new AssessmentError('ALREADY_PUBLISHED', 'This assessment is already published.', { statusCode: 409 });
       const problems = [];
       if (row.classroomId === null) problems.push({ field: 'classroomId', code: 'REQUIRED' });
-      else if (!this.lms.getClassroom(actor.universityId, row.classroomId)) problems.push({ field: 'classroomId', code: 'CLASSROOM_NOT_FOUND' });
+      else if (!this.lms.getTeacherClassroom(actor.universityId, actor.userId, row.classroomId)) problems.push({ field: 'classroomId', code: 'CLASSROOM_NOT_FOUND' });
       const questions = this.lms.listQuestions(row.id);
       if (questions.length === 0) problems.push({ field: 'questions', code: 'NO_QUESTIONS' });
       if (row.closesAt && Date.parse(row.closesAt) <= this.now()) problems.push({ field: 'closesAt', code: 'CLOSES_IN_PAST' }); // Step 5
@@ -312,7 +315,7 @@ class AssessmentService {
 
   checkClassroom(actor, classroomId) {
     if (classroomId === null || classroomId === undefined) return;
-    if (!this.lms.getClassroom(actor.universityId, classroomId)) {
+    if (!this.lms.getTeacherClassroom(actor.universityId, actor.userId, classroomId)) {
       throw new AssessmentError('VALIDATION_FAILED', 'The assessment details are not valid.', { details: [{ field: 'classroomId', code: 'CLASSROOM_NOT_FOUND' }] });
     }
   }
@@ -336,6 +339,15 @@ class AssessmentService {
       closedAt: row.closedAt ?? null,
       recipients: this.recipientsView(actor, row), // migration 008; { mode: 'class' } before it
     };
+  }
+
+  /** The picture key of ONE question of a test this student may see (404 otherwise, or when it has no picture). */
+  questionImageForStudent(actor, assessmentId, questionId) {
+    const visible = this.getAvailableForStudent(actor, assessmentId); // school, class, published, recipient
+    const qid = toId(questionId);
+    const question = qid ? this.lms.listQuestions(visible.id).find((q) => q.id === qid) : null;
+    if (!question || !question.imageKey) throw notFound();
+    return question.imageKey;
   }
 
   detail(actor, row) {

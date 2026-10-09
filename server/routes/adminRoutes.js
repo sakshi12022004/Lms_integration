@@ -8,6 +8,8 @@ const {
   createTeacher,
   getMentors,   // ✅ REQUIRED for classroom dropdown
   deleteUser,   // ✅ REQUIRED for deleting users
+  getStudentClassrooms,
+  changeStudentClassroom,
 } = require("../controllers/adminController");
 const {
   getAllUsers,
@@ -119,6 +121,28 @@ router.get(
   authMiddleware,
   adminOnly,
   getStudents
+);
+
+/**
+ * @route   GET /api/admin/students/:studentId/classrooms
+ * @desc    Get the classrooms a student belongs to
+ */
+router.get(
+  "/students/:studentId/classrooms",
+  authMiddleware,
+  adminOnly,
+  getStudentClassrooms
+);
+
+/**
+ * @route   PUT /api/admin/students/:studentId/classroom
+ * @desc    Change a student's class/section (classroom membership)
+ */
+router.put(
+  "/students/:studentId/classroom",
+  authMiddleware,
+  adminOnly,
+  changeStudentClassroom
 );
 
 /**

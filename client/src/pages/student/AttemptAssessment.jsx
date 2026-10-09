@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/auth";
+import { LegacyQuestionImage } from "../../components/QuestionImage";
 import StudentLayout from "../../components/StudentLayout";
 import { useTranslation } from "../../context/TranslationContext";
 import { toast } from "react-toastify";
@@ -245,13 +246,7 @@ export default function AttemptAssessment() {
                     {q.questionText}
                   </h3>
 
-                  {q.questionImage && (
-                    <img 
-                      src={q.questionImage} 
-                      alt="Question" 
-                      className="max-w-full h-auto rounded-lg mb-4 border"
-                    />
-                  )}
+                  <LegacyQuestionImage question={q} className="max-w-full h-auto rounded-lg mb-4 border" />
 
                   <div className="space-y-3">
                     {q.options.map((opt, i) => {
@@ -325,13 +320,7 @@ export default function AttemptAssessment() {
                 {q.questionText}
               </h3>
 
-              {q.questionImage && (
-                <img 
-                  src={q.questionImage} 
-                  alt="Question" 
-                  className="max-w-full h-auto rounded-lg mb-4 border"
-                />
-              )}
+              <LegacyQuestionImage question={q} className="max-w-full h-auto rounded-lg mb-4 border" />
 
               <div className="space-y-3">
                 {q.options.map((opt, i) => (

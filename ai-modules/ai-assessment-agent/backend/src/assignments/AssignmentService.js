@@ -92,7 +92,7 @@ class AssignmentService {
       const a = this.findOwn(actor, id);
       if (a.status !== 'draft') throw new AssessmentError('NOT_A_DRAFT', 'Only a draft assignment can be published.', { statusCode: 409 });
       const problems = [];
-      if (!this.lms.getClassroom(actor.universityId, a.classroomId)) problems.push({ field: 'classroomId', code: 'CLASSROOM_NOT_FOUND' });
+      if (!this.lms.getTeacherClassroom(actor.universityId, actor.userId, a.classroomId)) problems.push({ field: 'classroomId', code: 'CLASSROOM_NOT_FOUND' });
       if (a.questionCount === 0) problems.push({ field: 'questions', code: 'NO_QUESTIONS' });
       else if (a.questionMarksTotal !== a.maxMarks) problems.push({ field: 'questions', code: 'MARKS_MISMATCH', expected: a.maxMarks, received: a.questionMarksTotal });
       if (a.dueAt && Date.parse(a.dueAt) <= this.now()) problems.push({ field: 'dueAt', code: 'DUE_IN_PAST' });
@@ -224,7 +224,7 @@ class AssignmentService {
     const nowMs = this.now();
     return {
       ...this.studentSummary(actor, a, nowMs),
-      questions: this.lms.listAssignmentQuestions(a.id).map((q) => ({ position: q.position, text: q.text, maxMarks: q.maxMarks })),
+      questions: this.lms.listAssignmentQuestions(a.id).map((q) => ({ position: q.position, text: q.text, maxMarks: q.maxMarks, hasImage: !!q.imageKey })),
       myStatus: statusOf(a, sub, nowMs),
       submission: sub ? studentSubmissionView(sub) : null,
     };
@@ -303,7 +303,7 @@ class AssignmentService {
   }
 
   checkClassroom(actor, classroomId) {
-    if (!this.lms.getClassroom(actor.universityId, classroomId)) {
+    if (!this.lms.getTeacherClassroom(actor.universityId, actor.userId, classroomId)) { // a class this teacher is assigned to
       throw new AssessmentError('VALIDATION_FAILED', 'The assignment details are not valid.', { statusCode: 400, details: [{ field: 'classroomId', code: 'CLASSROOM_NOT_FOUND' }] });
     }
   }
@@ -320,6 +320,15 @@ class AssignmentService {
       publishedAt: a.publishedAt, closedAt: a.closedAt, createdAt: a.createdAt, updatedAt: a.updatedAt,
       acceptingSubmissions: accepting(a, this.now()),
     };
+  }
+
+  /** The picture key of ONE question of an assignment this student may see (404 otherwise). */
+  questionImageForStudent(actor, id, position) {
+    requireStudent(actor);
+    const a = this.findVisible(actor, id);
+    const question = this.lms.listAssignmentQuestions(a.id).find((q) => String(q.position) === String(position));
+    if (!question || !question.imageKey) throw notFound();
+    return question.imageKey;
   }
 
   detail(actor, a) {

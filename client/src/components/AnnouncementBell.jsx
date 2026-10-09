@@ -2,9 +2,12 @@ import { useEffect, useState, useRef } from "react";
 import { Bell } from "lucide-react";
 import { useAuth } from "../auth/auth";
 import { io } from "socket.io-client";
+import { useNavigate } from "react-router-dom";
+import { notificationTarget } from "../utils/notificationRoutes";
 
 const AnnouncementBell = () => {
   const { token, API, user } = useAuth();
+  const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
   const [announcements, setAnnouncements] = useState([]);
@@ -184,8 +187,13 @@ const AnnouncementBell = () => {
     fetchStudentCourses();
 
     const socketUrl = API.replace('/api', '');
-    socketRef.current = io({
+    socketRef.current = io(socketUrl, {
       auth: { token },
+    });
+
+    // A notification addressed to this user arrived: reload the list
+    socketRef.current.on("notification:new", () => {
+      fetchAnnouncements();
     });
 
     const userRole = user?.role || 'student';
@@ -282,6 +290,20 @@ const AnnouncementBell = () => {
     }
   };
 
+  /* ================= OPEN THE SCREEN A NOTIFICATION IS ABOUT ================= */
+  const openNotification = (a) => {
+    const target = notificationTarget(a, user?.role);
+    if (!target) return;
+    setOpen(false);
+    navigate(target);
+  };
+
+  const unreadCount = announcements.filter((a) => {
+    let readBy = [];
+    try { readBy = JSON.parse(a.readBy || '[]'); } catch (e) { readBy = a.readBy || []; }
+    return !(Array.isArray(readBy) ? readBy : []).map(String).includes(String(user?.id));
+  }).length;
+
   /* ================= CLOSE ON OUTSIDE CLICK ================= */
   useEffect(() => {
     const handler = (e) => {
@@ -297,10 +319,12 @@ const AnnouncementBell = () => {
   return (
     <div className="relative" ref={ref}>
       {/* 🔔 BELL ICON (UI UNCHANGED) */}
-      <button onClick={toggleBell} className="relative">
+      <button onClick={toggleBell} className="relative" aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}>
         <Bell className="w-5 h-5" />
         {hasUnread && (
-          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] leading-4 font-bold rounded-full text-center" data-testid="notification-unread-count">
+            {unreadCount > 9 ? "9+" : unreadCount || ""}
+          </span>
         )}
       </button>
 
@@ -308,13 +332,13 @@ const AnnouncementBell = () => {
       {open && (
         <div className="absolute right-0 mt-2 w-80 bg-white border rounded-lg shadow-lg z-50">
           <div className="p-3 font-semibold border-b">
-            Announcements
+            Notifications
           </div>
 
           <div className="max-h-72 overflow-y-auto">
             {announcements.length === 0 ? (
               <p className="p-3 text-sm text-gray-500">
-                No announcements
+                No notifications
               </p>
             ) : (
               announcements.map((a) => {
@@ -328,12 +352,20 @@ const AnnouncementBell = () => {
                 const readByStrings = (Array.isArray(readBy) ? readBy : []).map(String);
                 const isUnread = !readByStrings.includes(String(user?.id));
 
+                const target = notificationTarget(a, user?.role);
+
                 return (
                   <div
                     key={a.id}
+                    data-testid="notification-item"
+                    data-type={a.type || "announcement"}
+                    role={target ? "button" : undefined}
+                    tabIndex={target ? 0 : undefined}
+                    onClick={target ? () => openNotification(a) : undefined}
+                    onKeyDown={target ? (e) => { if (e.key === "Enter") openNotification(a); } : undefined}
                     className={`p-3 border-b last:border-0 ${
                       isUnread ? "bg-gray-50" : ""
-                    }`}
+                    } ${target ? "cursor-pointer hover:bg-[#fffdf4]" : ""}`}
                   >
                     <p className="font-medium">{a.title}</p>
                     <p className="text-sm text-gray-600">

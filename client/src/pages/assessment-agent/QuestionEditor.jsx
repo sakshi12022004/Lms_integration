@@ -1,5 +1,6 @@
 import { CircleDot, Hash, ListChecks } from "lucide-react";
 import { LETTERS, NUMERIC_FORMATS, QUESTION_TYPES, withType } from "./questionForm";
+import { QuestionImageField } from "../../components/QuestionImage";
 
 /*
  * AI Assessment Agent - one question's editor for all three types, used by the AI review
@@ -66,6 +67,8 @@ export default function QuestionEditor({ value: q, onChange, idPrefix, available
         value={q.text}
         onChange={(e) => set({ text: e.target.value })}
       />
+      {/* Optional diagram / figure for this question (all question types) */}
+      <QuestionImageField imageKey={q.imageKey} onChange={(imageKey) => set({ imageKey })} />
 
       {q.type === "numerical" ? (
         <div className="grid gap-3 sm:grid-cols-[auto_1fr] items-end p-3.5 rounded-none bg-[#fffdf4] border border-[#ebdcaa]">

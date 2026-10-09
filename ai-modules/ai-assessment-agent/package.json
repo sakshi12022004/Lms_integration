@@ -20,7 +20,7 @@
     "cost:estimate": "node tests/manual/estimatePromptCost.js"
   },
   "dependencies": {
-    "better-sqlite3": "^11.10.0",
+    "better-sqlite3": "^12.9.0",
     "pdf-parse": "2.4.5"
   }
 }

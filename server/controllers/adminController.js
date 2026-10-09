@@ -7,6 +7,12 @@ const {
   checkAdminClassQuota,
   countUsersByRoleInUniversity
 } = require("../helpers/quotaHelper");
+const { get, all, run, withTransaction } = require("../helpers/dbAsync");
+const {
+  resolveClassroomSelection,
+  refreshStudentCount,
+  enrollStudentInClassroom,
+} = require("../helpers/classroomEnrollment");
 
 
 
@@ -44,6 +50,7 @@ exports.createStudent = async (req, res) => {
       dob,
       className,
       section,
+      classroomId,
     } = req.body;
 
     if (!fullName || !email) {
@@ -54,6 +61,13 @@ exports.createStudent = async (req, res) => {
 
     // Get admin's university for tenant isolation
     const universityId = req.user.universityId || 1;
+
+    // Class + Section must resolve to an existing classroom BEFORE the student is created
+    const selection = await resolveClassroomSelection({ classroomId, className, section, universityId });
+    if (selection.error) {
+      return res.status(selection.error.status).json({ message: selection.error.message });
+    }
+    const classroom = selection.classroom;
 
     // Check quota synchronously first
     countUsersByRoleInUniversity(universityId, 'student').then(async (currentStudentCount) => {
@@ -117,45 +131,49 @@ exports.createStudent = async (req, res) => {
             return res.status(500).json({ message: "Unable to generate unique student ID" });
           }
 
-          // Create user first WITH university_id
-          db.run(
-            "INSERT INTO users (name, email, password, role, isApproved, university_id) VALUES (?, ?, ?, ?, ?, ?)",
-            [fullName, email, hashedPassword, "student", 1, universityId],
-            function(err) {
-              if (err) {
-                console.error("Error creating user:", err);
-                return res.status(500).json({ message: "Error creating student" });
-              }
-
-              const userId = this.lastID;
-
-              // Create student record
-              db.run(
-                "INSERT INTO students (userId, studentId, grade, rollNumber, totalFees, feesPaid, pendingFees) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [userId, studentId, className || "", section || "", 0, 0, 0],
-                function(err) {
-                  if (err) {
-                    console.error("Error creating student record:", err);
-                    return res.status(500).json({ message: "Error creating student record" });
-                  }
-
-                  res.status(201).json({
-                    message: "Student created successfully",
-                    student: {
-                      id: userId,
-                      name: fullName,
-                      email,
-                      role: "student",
-                      grade: className,
-                      section,
-                      studentId: studentId,
-                      password: rawPassword, // Return password for admin
-                    },
-                  });
-                }
+          // Create user + student record + classroom membership together,
+          // so a failure never leaves a student without a class.
+          try {
+            const created = await withTransaction(async () => {
+              const userResult = await run(
+                "INSERT INTO users (name, email, password, role, isApproved, university_id, classroom_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [fullName, email, hashedPassword, "student", 1, universityId, classroom.id]
               );
-            }
-          );
+              const userId = userResult.lastID;
+
+              await run(
+                "INSERT INTO students (userId, studentId, grade, rollNumber, totalFees, feesPaid, pendingFees) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [userId, studentId, classroom.grade || "", classroom.section || "", 0, 0, 0]
+              );
+
+              const enrollment = await enrollStudentInClassroom(userId, classroom.id);
+              return { userId, enrollment };
+            });
+
+            res.status(201).json({
+              message: "Student created successfully",
+              student: {
+                id: created.userId,
+                name: fullName,
+                email,
+                role: "student",
+                grade: classroom.grade,
+                section: classroom.section,
+                studentId: studentId,
+                password: rawPassword, // Return password for admin
+                classroom: {
+                  id: classroom.id,
+                  name: classroom.name,
+                  grade: classroom.grade,
+                  section: classroom.section,
+                  studentCount: created.enrollment.studentCount,
+                },
+              },
+            });
+          } catch (createErr) {
+            console.error("Error creating student:", createErr);
+            return res.status(500).json({ message: "Error creating student" });
+          }
         });
       } catch (error) {
         console.error("CREATE STUDENT ERROR:", error);
@@ -167,6 +185,124 @@ exports.createStudent = async (req, res) => {
     });
   } catch (err) {
     console.error("CREATE STUDENT ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* ================= GET STUDENT CLASSROOMS (ADMIN) ================= */
+const findStudentInUniversity = (studentId, universityId) =>
+  get(
+    "SELECT id, name, email FROM users WHERE id = ? AND role = 'student' AND university_id = ?",
+    [studentId, universityId]
+  );
+
+const getStudentMemberships = (studentId, universityId) =>
+  all(
+    `SELECT c.id, c.name, c.grade, c.section
+     FROM student_classroom_assignment sca
+     JOIN classrooms c ON c.id = sca.classroomId
+     WHERE sca.studentId = ? AND c.university_id = ?
+     ORDER BY sca.createdAt ASC, sca.id ASC`,
+    [studentId, universityId]
+  );
+
+exports.getStudentClassrooms = async (req, res) => {
+  try {
+    const universityId = req.user.universityId || 1;
+    const student = await findStudentInUniversity(req.params.studentId, universityId);
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    const classrooms = await getStudentMemberships(student.id, universityId);
+    res.json({ success: true, data: { student, classrooms } });
+  } catch (err) {
+    console.error("GET STUDENT CLASSROOMS ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* ================= CHANGE STUDENT CLASS/SECTION (ADMIN) ================= */
+// Moves the classroom membership only. Results, attendance, course enrolments and
+// progress are keyed by classroom + student and are never deleted here.
+exports.changeStudentClassroom = async (req, res) => {
+  try {
+    const universityId = req.user.universityId || 1;
+    const { classroomId, className, section, fromClassroomId } = req.body;
+
+    const student = await findStudentInUniversity(req.params.studentId, universityId);
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    const selection = await resolveClassroomSelection({ classroomId, className, section, universityId });
+    if (selection.error) {
+      return res.status(selection.error.status).json({ message: selection.error.message });
+    }
+    const target = selection.classroom;
+
+    const memberships = await getStudentMemberships(student.id, universityId);
+
+    // Work out which existing membership is being replaced
+    let source = null;
+    if (fromClassroomId) {
+      source = memberships.find((m) => Number(m.id) === Number(fromClassroomId)) || null;
+      if (!source) {
+        return res.status(400).json({ message: "Student is not a member of the classroom being changed" });
+      }
+    } else {
+      const others = memberships.filter((m) => Number(m.id) !== Number(target.id));
+      if (others.length > 1) {
+        return res.status(409).json({
+          message: "Student belongs to more than one classroom. Select which classroom to change.",
+          classrooms: memberships,
+        });
+      }
+      source = others[0] || null;
+    }
+    if (source && Number(source.id) === Number(target.id)) {
+      source = null;
+    }
+
+    const outcome = await withTransaction(async () => {
+      if (source) {
+        await run(
+          "DELETE FROM student_classroom_assignment WHERE studentId = ? AND classroomId = ?",
+          [student.id, source.id]
+        );
+        await refreshStudentCount(source.id);
+      }
+
+      const enrollment = await enrollStudentInClassroom(student.id, target.id);
+
+      await run("UPDATE students SET grade = ?, rollNumber = ? WHERE userId = ?", [
+        target.grade || "",
+        target.section || "",
+        student.id,
+      ]);
+      await run("UPDATE users SET classroom_id = ? WHERE id = ?", [target.id, student.id]);
+
+      return enrollment;
+    });
+
+    res.json({
+      success: true,
+      message:
+        outcome.alreadyEnrolled && !source
+          ? "Student is already in this class and section"
+          : "Student class updated successfully",
+      student,
+      previousClassroom: source,
+      classroom: {
+        id: target.id,
+        name: target.name,
+        grade: target.grade,
+        section: target.section,
+        studentCount: outcome.studentCount,
+      },
+    });
+  } catch (err) {
+    console.error("CHANGE STUDENT CLASSROOM ERROR:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

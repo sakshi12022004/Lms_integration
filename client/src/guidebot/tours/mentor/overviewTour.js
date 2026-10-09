@@ -510,7 +510,7 @@ export const mentorOverviewTour = {
       target: '[data-tour="results-table"]',
       title: 'Results Table',
       description:
-        'Every student in the class is listed with their S.No., Student Name, Email, Course, Marks, Status, and Actions.',
+        'Every student in the class is listed with their S.No., Student Name, a marks box for each class subject, Status, and Actions.',
       placement: 'top',
       align: 'start',
       skipIfMissing: { timeout: 6000 },

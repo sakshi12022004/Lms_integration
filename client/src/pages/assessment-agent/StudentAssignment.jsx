@@ -4,6 +4,7 @@ import axios from "axios";
 import { ArrowLeft, CalendarClock, CheckCircle2, Download, FileText, Loader2, UploadCloud, X } from "lucide-react";
 import StudentLayout from "../../components/StudentLayout";
 import { useAuth } from "../../auth/auth";
+import { AuthedImage } from "../../components/QuestionImage";
 import { Badge, STUDENT_STATUS, Stepper, apiError, downloadPdf, dueText, fmtBytes, fmtDateTime } from "./assignmentUi";
 
 const STUDENT_FLOW = ["Read the questions", "Upload your PDF", "Submitted · awaiting evaluation", "Final result"];
@@ -109,7 +110,10 @@ export default function StudentAssignment() {
               <li key={q.position} className="flex gap-3">
                 <span className="w-7 h-7 shrink-0 rounded-full bg-primary/10 text-primary text-sm font-semibold flex items-center justify-center">{q.position}</span>
                 <div className="flex-1 flex justify-between gap-3">
-                  <p className="text-gray-800 whitespace-pre-line">{q.text}</p>
+                  <div>
+                    <p className="text-gray-800 whitespace-pre-line">{q.text}</p>
+                    {q.hasImage && <AuthedImage url={`${base}/questions/${q.position}/image`} />}
+                  </div>
                   <span className="text-xs text-gray-500 whitespace-nowrap">{q.maxMarks} mark{q.maxMarks === 1 ? "" : "s"}</span>
                 </div>
               </li>

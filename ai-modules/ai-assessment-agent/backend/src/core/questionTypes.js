@@ -80,7 +80,7 @@ function hasAnswer(question, answer) {
 
 /** What a STUDENT may see of a question: never isCorrect, never the numeric answer, never the explanation. */
 function studentQuestionView(q) {
-  const base = { id: q.id, position: q.position, type: q.type, text: q.text };
+  const base = { id: q.id, position: q.position, type: q.type, text: q.text, hasImage: !!q.imageKey }; // the key itself is teacher-only
   if (q.type === 'numerical') return { ...base, options: [], numericFormat: q.numericAnswer ? q.numericAnswer.format : null };
   return { ...base, options: q.options.map((o) => ({ position: o.position, text: o.text })) };
 }

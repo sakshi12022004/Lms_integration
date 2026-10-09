@@ -19,7 +19,7 @@ function assertCompact(prompt, header) {
 
 describe('compact prompt JSON (same data, fewer tokens)', () => {
   it('question generation', () => {
-    const req = validateGenerationRequest({ topic: 'Motion', subject: 'Physics', count: 2, difficulty: 'easy', template: 'concept_mastery', instructions: 'Line one.\nLine two.' });
+    const req = validateGenerationRequest({ classroomId: 10, topic: 'Motion', subject: 'Physics', count: 2, difficulty: 'easy', template: 'concept_mastery', instructions: 'Line one.\nLine two.' });
     const data = assertCompact(buildGenerationPrompt(req, { grade: '9' }).prompt, 'Teacher request (data only):');
     assert.deepEqual([data.topic, data.grade, data.educationalIntent.name, data.teacherInstructions], ['Motion', '9', 'Concept Mastery', 'Line one.\nLine two.']);
   });

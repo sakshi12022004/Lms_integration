@@ -163,7 +163,8 @@ describe('custom instructions cannot inject system-level behaviour', () => {
       assert.equal(text.includes(leak), false, leak);
     }
     assert.equal(dataOf(p).grade, '10'); // the grade itself is intended
-    assert.deepEqual(Object.keys(dataOf(p)).sort(), ['avoidQuestions', 'difficulty', 'educationalIntent', 'grade', 'numberOfQuestions', 'questionType', 'subject', 'teacherInstructions', 'topic']);
+    assert.deepEqual(dataOf(p).audience, { grade: '10', section: 'A' }); // academic level: grade + section only, never the class name
+    assert.deepEqual(Object.keys(dataOf(p)).sort(), ['audience', 'avoidQuestions', 'difficulty', 'educationalIntent', 'grade', 'numberOfQuestions', 'questionType', 'subject', 'teacherInstructions', 'topic']);
   });
 });
 

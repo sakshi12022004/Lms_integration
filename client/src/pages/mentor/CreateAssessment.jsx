@@ -16,6 +16,7 @@ const CreateAssessment = () => {
   const [description, setDescription] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [creating, setCreating] = useState(false);
 
   // Reset form on mount
   useEffect(() => {
@@ -30,6 +31,9 @@ const CreateAssessment = () => {
       toast.error(t('please_fill_all_required_fields'));
       return;
     }
+
+    if (creating) return; // a double click creates one assessment
+    setCreating(true);
 
     try {
       const res = await fetch(`${API}/assessments/create`, {
@@ -54,6 +58,7 @@ const CreateAssessment = () => {
       navigate(`/mentor/assessment/${data.assessment._id}`);
     } catch (err) {
       toast.error("Failed to create assessment");
+      setCreating(false);
     }
   };
 
@@ -99,9 +104,10 @@ const CreateAssessment = () => {
 
         <button
           onClick={handleCreate}
-          className="w-full py-3 bg-primary text-white rounded-lg font-semibold"
+          disabled={creating}
+          className="w-full py-3 bg-primary text-white rounded-lg font-semibold disabled:opacity-60"
         >
-          Create Assessment
+          {creating ? "Creating..." : "Create Assessment"}
         </button>
       </div>
     </MentorLayout>

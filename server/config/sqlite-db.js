@@ -213,6 +213,42 @@ function initializeTables() {
         console.log('✅ Added university_id to announcements table');
       }
     });
+
+    // Targeted notifications reuse this table: recipientUserId = the ONE user who may see the row
+    // (NULL = an ordinary announcement), type/entityType/entityId = what it is about (used for
+    // click routing), dedupeKey = one notification per event per recipient.
+    const notificationColumns = [
+      'recipientUserId INTEGER',
+      'type TEXT',
+      'entityType TEXT',
+      'entityId INTEGER',
+      'dedupeKey TEXT',
+      'classroomId INTEGER', // class/section a teacher's announcement is for
+    ];
+    let pendingColumns = notificationColumns.length;
+    notificationColumns.forEach((column) => {
+      db.run(`ALTER TABLE announcements ADD COLUMN ${column}`, (altErr) => {
+        if (altErr && !altErr.message.includes('duplicate column name')) {
+          console.warn(`Could not add ${column} column to announcements:`, altErr.message);
+        }
+        pendingColumns--;
+        if (pendingColumns > 0) return;
+
+        db.run(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_announcements_dedupe
+          ON announcements (dedupeKey)
+          WHERE dedupeKey IS NOT NULL
+        `, (idxErr) => {
+          if (idxErr) console.error('Error creating announcements dedupe index:', idxErr);
+        });
+        db.run(`
+          CREATE INDEX IF NOT EXISTS idx_announcements_recipient
+          ON announcements (recipientUserId)
+        `, (idxErr) => {
+          if (idxErr) console.error('Error creating announcements recipient index:', idxErr);
+        });
+      });
+    });
   });
 
   // Course students table
@@ -612,6 +648,95 @@ function initializeTables() {
     console.log('✅ Results table created');
   });
 
+  // Classroom subjects table (class/section subject template used for result entry)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS classroom_subjects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      classroomId INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      nameKey TEXT NOT NULL,
+      maxMarks REAL NOT NULL DEFAULT 100,
+      sortOrder INTEGER DEFAULT 0,
+      createdBy INTEGER,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(classroomId, nameKey),
+      FOREIGN KEY(classroomId) REFERENCES classrooms(id)
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error creating classroom_subjects table:', err);
+      return;
+    }
+    console.log('✅ Classroom subjects table created');
+  });
+
+  // Student subject overrides table (per-student exceptions to the class template)
+  //   add    = custom subject for this student only
+  //   remove = inherited class subject hidden for this student only
+  //   max    = inherited class subject with different maximum marks for this student only
+  db.run(`
+    CREATE TABLE IF NOT EXISTS student_subject_overrides (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      classroomId INTEGER NOT NULL,
+      studentId INTEGER NOT NULL,
+      classSubjectId INTEGER,
+      subjectName TEXT NOT NULL,
+      nameKey TEXT NOT NULL,
+      action TEXT NOT NULL CHECK (action IN ('add', 'remove', 'max')),
+      maxMarks REAL,
+      createdBy INTEGER,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(classroomId) REFERENCES classrooms(id),
+      FOREIGN KEY(studentId) REFERENCES users(id),
+      FOREIGN KEY(classSubjectId) REFERENCES classroom_subjects(id)
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error creating student_subject_overrides table:', err);
+      return;
+    }
+    console.log('✅ Student subject overrides table created');
+
+    db.run(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_student_subject_overrides_inherited
+      ON student_subject_overrides (classroomId, studentId, classSubjectId)
+      WHERE classSubjectId IS NOT NULL
+    `, (idxErr) => {
+      if (idxErr) console.error('Error creating student_subject_overrides inherited index:', idxErr);
+    });
+
+    db.run(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_student_subject_overrides_custom
+      ON student_subject_overrides (classroomId, studentId, nameKey)
+      WHERE action = 'add'
+    `, (idxErr) => {
+      if (idxErr) console.error('Error creating student_subject_overrides custom index:', idxErr);
+    });
+  });
+
+  // Student subject settings table ('custom' = student ignores the class template)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS student_subject_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      classroomId INTEGER NOT NULL,
+      studentId INTEGER NOT NULL,
+      mode TEXT NOT NULL DEFAULT 'inherit' CHECK (mode IN ('inherit', 'custom')),
+      updatedBy INTEGER,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(classroomId, studentId),
+      FOREIGN KEY(classroomId) REFERENCES classrooms(id),
+      FOREIGN KEY(studentId) REFERENCES users(id)
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error creating student_subject_settings table:', err);
+      return;
+    }
+    console.log('✅ Student subject settings table created');
+  });
+
   // Orders table
   db.run(`
     CREATE TABLE IF NOT EXISTS orders (
@@ -802,6 +927,13 @@ function initializeTables() {
       return;
     }
     console.log('✅ Assessment questions table created');
+
+    // Optional picture for a question: the key of a private file, or (older data) a web address
+    db.run(`ALTER TABLE assessment_questions ADD COLUMN questionImage TEXT`, (altErr) => {
+      if (altErr && !altErr.message.includes('duplicate column name')) {
+        console.warn('Could not add questionImage column to assessment_questions:', altErr.message);
+      }
+    });
   });
 
   // Assessment Attempts table - for storing student assessment submissions
@@ -1026,6 +1158,28 @@ function initializeCalendarTable() {
       console.error('Error creating calendar_events table:', err);
     } else {
       console.log('✅ Calendar events table created/verified');
+
+      // School and class scope. Existing events get the school of the user who created them;
+      // nothing else about old events is changed.
+      const scopeColumns = ['university_id INTEGER', 'classroomId INTEGER'];
+      let pendingColumns = scopeColumns.length;
+      scopeColumns.forEach((column) => {
+        db.run(`ALTER TABLE calendar_events ADD COLUMN ${column}`, (altErr) => {
+          if (altErr && !altErr.message.includes('duplicate column name')) {
+            console.warn(`Could not add ${column} column to calendar_events:`, altErr.message);
+          }
+          pendingColumns--;
+          if (pendingColumns > 0) return;
+
+          db.run(`
+            UPDATE calendar_events
+            SET university_id = (SELECT u.university_id FROM users u WHERE u.id = calendar_events.createdByUser)
+            WHERE university_id IS NULL
+          `, (fillErr) => {
+            if (fillErr) console.error('Error setting calendar_events.university_id:', fillErr);
+          });
+        });
+      });
     }
   });
 }

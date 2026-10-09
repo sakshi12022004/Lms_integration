@@ -18,6 +18,7 @@ import QuotaLimitModal from './QuotaLimitModal';
 import { useTranslation } from "../context/TranslationContext";
 import GuideBotLauncher from '../guidebot/runtime/GuideBotLauncher';
 import whiteLogo from '../assets/core5-final-rbg.png';
+import AnnouncementBell from './AnnouncementBell';
 
 const StudentLayout = ({ children }) => {
   const location = useLocation();
@@ -391,7 +392,15 @@ const StudentLayout = ({ children }) => {
           >
             <ChevronRight size={20} />
           </button>
+          {location.pathname !== '/student/dashboard' && <AnnouncementBell />}
         </div>
+
+        {/* Notifications (the dashboard has its own bell in its header) */}
+        {location.pathname !== '/student/dashboard' && (
+          <div className="hidden md:flex justify-end px-6 pt-4 text-slate-700">
+            <AnnouncementBell />
+          </div>
+        )}
 
         {/* ================= CONTENT AREA ================= */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden scrollable-content p-3 sm:p-4 md:p-6 h-full max-h-screen">

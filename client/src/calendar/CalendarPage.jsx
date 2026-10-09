@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -17,6 +17,14 @@ const CalendarPage = ({ role }) => {
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [error, setError] = useState(null);
+  const calendarRef = useRef(null);
+
+  // Opened from a notification (?eventId=...): show the month of that event
+  useEffect(() => {
+    const eventId = new URLSearchParams(window.location.search).get("eventId");
+    const event = eventId ? events.find((e) => String(e.id) === String(eventId)) : null;
+    if (event && calendarRef.current) calendarRef.current.getApi().gotoDate(event.start);
+  }, [events]);
 
   const token =
     localStorage.getItem("token") ||
@@ -127,6 +135,7 @@ const CalendarPage = ({ role }) => {
           ) : (
             <div className="bg-white rounded-none shadow-sm border border-[#ebdcaa]/60 p-4 md:p-6 flex-1 flex flex-col overflow-hidden">
               <FullCalendar
+                ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                 initialView="dayGridMonth"
                 headerToolbar={{

@@ -3,6 +3,7 @@ import { useAuth } from '../../auth/auth';
 import AdminLayout from '../../components/AdminLayout';
 import { useTranslation } from '../../context/TranslationContext';
 import { toast } from 'react-toastify';
+import ChangeStudentClassModal from '../../components/admin/ChangeStudentClassModal';
 import {
   Search,
   Filter,
@@ -19,6 +20,7 @@ const UserList = () => {
   const { token, API } = useAuth();
   const { t } = useTranslation();
   const [userList, setUserList] = useState([]);
+  const [classChangeStudent, setClassChangeStudent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('all');
@@ -403,6 +405,14 @@ const UserList = () => {
                         </span>
                       </td>
                       <td className="p-4">
+                        {user.role === 'student' && (
+                          <button
+                            onClick={() => setClassChangeStudent(user)}
+                            className="mr-2 px-3 py-1 bg-[#fffdf4] text-[#1e1b4b] border border-[#ebdcaa] hover:bg-[#f7efd2] rounded-none text-xs font-semibold uppercase tracking-wider transition-colors"
+                          >
+                            {t('change_class')}
+                          </button>
+                        )}
                         <button
                           onClick={() => removeUser(user.id, user.name)}
                           className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 rounded-none text-xs font-semibold uppercase tracking-wider transition-colors"
@@ -467,6 +477,11 @@ const UserList = () => {
           </div>
         </div>
       </div>
+      <ChangeStudentClassModal
+        open={!!classChangeStudent}
+        student={classChangeStudent}
+        onClose={() => setClassChangeStudent(null)}
+      />
     </AdminLayout>
   );
 };

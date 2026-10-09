@@ -4,6 +4,7 @@ import { Camera } from "lucide-react";
 import { useAuth } from "../../auth/auth";
 import { useTranslation } from "../../context/TranslationContext";
 import { toast } from "react-toastify";
+import ClassSectionSelect from "../../components/admin/ClassSectionSelect";
 
 const AddStudent = () => {
   const { token, API } = useAuth();
@@ -20,6 +21,7 @@ const AddStudent = () => {
     dob: "",
     className: "",
     section: "",
+    classroomId: "",
   });
 
   const [photo, setPhoto] = useState(null);
@@ -40,6 +42,12 @@ const AddStudent = () => {
     if (!form.fullName || !form.email) {
       return toast.error(t('name_and_email_required'));
     }
+    if (!form.className) {
+      return toast.error(t('class_required'));
+    }
+    if (!form.classroomId) {
+      return toast.error(t('section_required'));
+    }
 
     try {
       setLoading(true);
@@ -50,7 +58,7 @@ const AddStudent = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, classroomId: Number(form.classroomId) }),
       });
 
       const data = await res.json();
@@ -60,7 +68,7 @@ const AddStudent = () => {
       }
 
       toast.success(
-        `${t('student_created_successfully')}\n${t('login_password')}: ${data.student.password}`,
+        `${t('student_created_successfully')}\n${t('added_to_class')}: ${data.student.classroom?.name || ''}\n${t('login_password')}: ${data.student.password}`,
         { autoClose: false }
       );
 
@@ -76,6 +84,7 @@ const AddStudent = () => {
         dob: "",
         className: "",
         section: "",
+        classroomId: "",
       });
       setPhoto(null);
     } catch (err) {
@@ -156,8 +165,10 @@ const AddStudent = () => {
               <h3 className="font-bold font-['DM_Serif_Display',serif] text-lg text-[#1e1b4b] mb-4 pb-2 border-b border-[#ebdcaa]">{t('academic_information')}</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label={t('class')} name="className" value={form.className} onChange={handleChange} />
-                <Input label={t('section')} name="section" value={form.section} onChange={handleChange} />
+                <ClassSectionSelect
+                  value={form}
+                  onChange={(selection) => setForm((prev) => ({ ...prev, ...selection }))}
+                />
                 <Input label={t('admission_date')} type="date" name="admissionDate" value={form.admissionDate} onChange={handleChange} />
               </div>
             </div>

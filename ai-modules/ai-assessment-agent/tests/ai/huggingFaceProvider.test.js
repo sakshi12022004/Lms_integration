@@ -27,7 +27,7 @@ const reply = (status, body, headers = {}) => ({
 });
 const chat = (content, extra = {}) => reply(200, { choices: [{ message: { role: 'assistant', content }, finish_reason: 'stop', ...extra }] }, { 'x-inference-provider': 'deepinfra' });
 const make = (fetchImpl) => new HuggingFaceProvider({ token: TOKEN, model: MODEL, fetchImpl });
-const req = () => buildGenerationPrompt(validateGenerationRequest({ topic: 'Photosynthesis', subject: 'Biology', count: 1, difficulty: 'easy' }), { grade: '8' });
+const req = () => buildGenerationPrompt(validateGenerationRequest({ classroomId: 10, topic: 'Photosynthesis', subject: 'Biology', count: 1, difficulty: 'easy' }), { grade: '8' });
 async function errorOf(p) { try { await p; } catch (e) { return e; } assert.fail('expected an error'); }
 
 describe('HuggingFaceProvider request', () => {
@@ -133,7 +133,7 @@ describe('configuration: assessment-only override, onboarding config untouched',
 
 describe('HF output goes through the SAME unweakened parser, validator and guard', () => {
   const gen = (fetchImpl) => new AssessmentGenerator({ provider: make(fetchImpl), log: () => {} });
-  const request = validateGenerationRequest({ topic: 'Photosynthesis', subject: 'Biology', count: 1, difficulty: 'easy' });
+  const request = validateGenerationRequest({ classroomId: 10, topic: 'Photosynthesis', subject: 'Biology', count: 1, difficulty: 'easy' });
 
   it('valid structured output -> one validated MCQ proposal', async () => {
     const out = await gen(async () => chat(genOutput(1))).generate(request, { grade: '8' });

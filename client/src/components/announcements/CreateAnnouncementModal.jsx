@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../auth/auth";
+import ClassSectionCoursePicker from "../ClassSectionCoursePicker";
 
 const CreateAnnouncementModal = ({
   open,
@@ -11,6 +12,9 @@ const CreateAnnouncementModal = ({
   onQuotaExceeded,
 }) => {
   const { user, token, API } = useAuth();
+  const isTeacher = user?.role === "mentor" || user?.role === "teacher";
+  const [target, setTarget] = useState({ classroomId: "", courseId: "" });
+  const [forCourse, setForCourse] = useState(false); // false = all of this teacher's classes and sections
 
   const [form, setForm] = useState({
     title: "",
@@ -37,7 +41,11 @@ const CreateAnnouncementModal = ({
       return toast.error("Title and message are required");
     }
 
-    if (user.role === "mentor" && !form.courseId) {
+    // Class and section are chosen only for a course announcement
+    if (isTeacher && forCourse && !target.classroomId) {
+      return toast.error("Please select a class and section");
+    }
+    if (isTeacher && forCourse && !target.courseId) {
       return toast.error("Please select a course");
     }
 
@@ -101,8 +109,13 @@ const CreateAnnouncementModal = ({
       }
 
       // MENTOR PAYLOAD
-      if (user.role === "mentor") {
-        payload.courseId = form.courseId;
+      if (isTeacher) {
+        if (forCourse) {
+          payload.classroomId = Number(target.classroomId);
+          payload.courseId = Number(target.courseId);
+        } else {
+          payload.allClasses = true; // the server sends it to every class and section this teacher is assigned to
+        }
       }
 
       const res = await fetch(`${API}/announcements`, {
@@ -115,7 +128,8 @@ const CreateAnnouncementModal = ({
       });
 
       if (!res.ok) {
-        throw new Error("Publish failed");
+        const failure = await res.json().catch(() => ({}));
+        throw new Error(failure.message || "Failed to publish announcement");
       }
 
       toast.success("Announcement published");
@@ -127,11 +141,13 @@ const CreateAnnouncementModal = ({
         publishFor: "students",
         courseId: "",
       });
+      setTarget({ classroomId: "", courseId: "" });
+      setForCourse(false);
 
       onSuccess?.(); // 🔔 refresh bell instantly
       onClose();
     } catch (err) {
-      toast.error("Failed to publish announcement");
+      toast.error(err.message || "Failed to publish announcement");
       console.error(err);
     } finally {
       setLoading(false);
@@ -184,21 +200,25 @@ const CreateAnnouncementModal = ({
             </select>
         )}
 
-        {/* MENTOR OPTIONS */}
-        {user.role === "mentor" && (
-          <select
-            name="courseId"
-            value={form.courseId}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-3"
-          >
-            <option value="">Select Course</option>
-            {courses.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
+        {/* MENTOR OPTIONS: class -> section -> optional course (only what this teacher is assigned to) */}
+        {isTeacher && (
+          <>
+            <div className="flex gap-4 mb-3 text-sm">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" checked={!forCourse} onChange={() => { setForCourse(false); setTarget({ classroomId: "", courseId: "" }); }} />
+                Whole class and section
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" checked={forCourse} onChange={() => setForCourse(true)} />
+                One course
+              </label>
+            </div>
+            {forCourse ? (
+              <ClassSectionCoursePicker value={target} onChange={setTarget} courseMode="required" />
+            ) : (
+              <p className="text-xs text-gray-500 mb-3">This goes to all the classes and sections you are assigned to.</p>
+            )}
+          </>
         )}
 
         {/* ACTIONS */}

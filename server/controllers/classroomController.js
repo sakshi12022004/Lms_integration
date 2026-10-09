@@ -1,5 +1,7 @@
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 const db = require('../config/database-switch');
+const { get } = require('../helpers/dbAsync');
+const { HttpError, CLASSROOM_ACCESS_SQL, getTeachingScope } = require('../helpers/teachingScope');
 
 
 
@@ -50,7 +52,12 @@ const createTestAssignment = async (req, res) => {
 const getAssignedClassrooms = async (req, res) => {
   try {
     // Get user ID - handle both authenticated and default users
-    let teacherId = req.user?.id;
+    const role = req.user?.role;
+    if (!req.user?.userId || !["admin", "mentor", "teacher"].includes(role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    // Admin: every classroom of the school (list below). Teacher: only assigned classrooms.
+    let teacherId = role === "admin" ? null : req.user.userId;
     
     console.log("GET ASSIGNED CLASSROOMS - User:", req.user, "TeacherId:", teacherId);
     
@@ -102,9 +109,9 @@ const getAssignedClassrooms = async (req, res) => {
       console.log("GET ASSIGNED CLASSROOMS - Getting classrooms for teacher:", teacherId);
       
       db.all(`
-        SELECT 
-          ca.classroomId,
-          ca.role,
+        SELECT
+          c.id as classroomId,
+          'class_teacher' as role,
           c.id,
           c.name,
           c.grade,
@@ -113,12 +120,11 @@ const getAssignedClassrooms = async (req, res) => {
           c.studentCount,
           c.createdAt,
           u.name as classTeacherName
-        FROM classroomAssignments ca
-        JOIN classrooms c ON ca.classroomId = c.id
+        FROM classrooms c
         LEFT JOIN users u ON c.classTeacher = u.id
-        WHERE ca.teacherId = ?
+        WHERE c.university_id = ? AND ${CLASSROOM_ACCESS_SQL}
         ORDER BY c.createdAt DESC
-      `, [teacherId], (err, assignments) => {
+      `, [req.user.universityId || 1, teacherId, teacherId, teacherId, teacherId], (err, assignments) => {
         if (err) {
           console.error("❌ Database error in getAssignedClassrooms (teacher):", err);
           console.error("❌ Error message:", err.message);
@@ -280,6 +286,24 @@ const createClassroom = async (req, res) => {
 
     console.log("CREATE CLASSROOM - Processing grade:", grade);
 
+    const className = String(grade).trim();
+    const sectionName = String(section).trim();
+    if (!className || !sectionName || className.length > 50 || sectionName.length > 50) {
+      return res.status(400).json({ message: 'Class and section must be between 1 and 50 characters' });
+    }
+
+    const duplicate = await get(
+      `SELECT id, name, grade, section FROM classrooms
+       WHERE university_id = ? AND LOWER(TRIM(grade)) = LOWER(?) AND LOWER(TRIM(COALESCE(section, ''))) = LOWER(?)`,
+      [req.user?.universityId || 1, className, sectionName]
+    );
+    if (duplicate) {
+      return res.status(409).json({
+        message: `${duplicate.name} already exists`,
+        classroom: duplicate,
+      });
+    }
+
     // Determine fee structure category based on grade
     const gradeNum = parseInt(grade);
     const feeCategory = gradeNum >= 1 && gradeNum <= 4 ? 'Primary' : 'Secondary';
@@ -300,7 +324,8 @@ const createClassroom = async (req, res) => {
         console.log("CREATE CLASSROOM - Fee structure:", feeStructure);
 
         // Create classroom name
-        const classroomName = `Grade ${grade} - ${section}`;
+        // "Grade 10 - A" for numbered grades, "BSc - A" for named classes
+        const classroomName = /^\d+$/.test(className) ? `Grade ${className} - ${sectionName}` : `${className} - ${sectionName}`;
 
         // Use the classTeacherId directly from the request
         let teacherIdToAssign = classTeacherId ? parseInt(classTeacherId, 10) : null;
@@ -1076,7 +1101,20 @@ const getClassroomStudents = async (req, res) => {
   }
 };
 
+/* ================= TEACHING SCOPE (CLASS -> SECTION -> COURSE) ================= */
+// What the signed-in admin/teacher may target: their classrooms with the courses inside each.
+const getTeachingScopeTree = async (req, res) => {
+  try {
+    res.json({ success: true, data: await getTeachingScope(req) });
+  } catch (error) {
+    if (error instanceof HttpError) return res.status(error.status).json({ message: error.message });
+    console.error("GET TEACHING SCOPE ERROR:", error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
+  getTeachingScopeTree,
   getAllClassrooms,
   createClassroom,
   updateClassroom,

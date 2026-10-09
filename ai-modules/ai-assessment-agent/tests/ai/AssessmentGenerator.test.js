@@ -4,7 +4,7 @@ const { AssessmentGenerator } = require('../../backend/src/core/ai/AssessmentGen
 const { validateGenerationRequest } = require('../../backend/src/core/ai/generationRequest');
 const { MockProvider, hangingProvider, providerError, genOutput } = require('../helpers/mockProvider');
 
-const request = (over = {}) => validateGenerationRequest({ topic: 'Planets', subject: 'Science', count: 2, difficulty: 'medium', ...over });
+const request = (over = {}) => validateGenerationRequest({ classroomId: 10, topic: 'Planets', subject: 'Science', count: 2, difficulty: 'medium', ...over });
 const gen = (provider, opts = {}) => new AssessmentGenerator({ provider, log: () => {}, ...opts });
 async function errorOf(promise) {
   try { await promise; } catch (err) { return err; }
@@ -119,13 +119,13 @@ describe('validateGenerationRequest', () => {
       assert.fail('should throw');
     } catch (err) {
       assert.deepEqual(err.details.map((d) => `${d.field}:${d.code}`), [
-        'universityId:UNKNOWN_FIELD', 'teacherId:UNKNOWN_FIELD', 'topic:REQUIRED', 'subject:REQUIRED', 'count:OUT_OF_RANGE', 'difficulty:INVALID_DIFFICULTY',
+        'universityId:UNKNOWN_FIELD', 'teacherId:UNKNOWN_FIELD', 'topic:REQUIRED', 'subject:REQUIRED', 'classroomId:REQUIRED', 'count:OUT_OF_RANGE', 'difficulty:INVALID_DIFFICULTY',
       ]);
     }
   });
 
   it('normalizes a valid request', () => {
-    assert.deepEqual({ ...validateGenerationRequest({ topic: ' Fractions ', subject: 'Maths', count: 5, difficulty: 'easy', classroomId: 10 }) }, {
+    assert.deepEqual({ ...validateGenerationRequest({ classroomId: 10, topic: ' Fractions ', subject: 'Maths', count: 5, difficulty: 'easy', classroomId: 10 }) }, {
       topic: 'Fractions', subject: 'Maths', classroomId: 10, count: 5, difficulty: 'easy', instructions: '', avoidQuestions: [],
       // Advanced generation: defaults that keep the original behaviour (single-answer MCQ, no template).
       questionType: 'single_mcq', numericFormat: null, template: null,
