@@ -16,9 +16,21 @@ const CreateUniversityForm = ({ onSuccess }) => {
 
   const [loading, setLoading] = useState(false);
   const [createdData, setCreatedData] = useState(null);
+  const [phoneError, setPhoneError] = useState(false);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === "phone") {
+      const cleanValue = value.replace(/\D/g, "").slice(0, 10);
+      setForm({ ...form, [name]: cleanValue });
+      if (cleanValue.length === 10 || cleanValue.length === 0) {
+        setPhoneError(false);
+      } else {
+        setPhoneError(true);
+      }
+      return;
+    }
+    setForm({ ...form, [name]: value });
   };
 
   const handleCreate = async (e) => {
@@ -33,6 +45,12 @@ const CreateUniversityForm = ({ onSuccess }) => {
       toast.error("Please enter the Official Admin Email");
       return;
     }
+
+    if (form.phone && form.phone.length !== 10) {
+      setPhoneError(true);
+      return;
+    }
+    setPhoneError(false);
 
     try {
       setLoading(true);
@@ -258,12 +276,17 @@ const CreateUniversityForm = ({ onSuccess }) => {
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={18} />
                     <input
                       name="phone"
-                      placeholder="+91 98765 43210"
-                      className="w-full pl-10 pr-4 py-3 bg-white border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] placeholder-slate-400 text-sm"
+                      type="tel"
+                      maxLength={10}
+                      placeholder="10-digit mobile number"
+                      className={`w-full pl-10 pr-4 py-3 bg-white border ${phoneError ? 'border-rose-400 focus:border-rose-500' : 'border-[#ebdcaa] focus:border-[#B99652]'} rounded-none focus:outline-none focus:ring-1 focus:ring-[#B99652] transition-all text-[#1e1b4b] placeholder-slate-400 text-sm`}
                       value={form.phone}
                       onChange={handleChange}
                     />
                   </div>
+                  {phoneError && (
+                    <p className="text-[11px] text-rose-600 font-medium mt-1">Please enter a 10-digit number</p>
+                  )}
                 </div>
               </div>
             </div>

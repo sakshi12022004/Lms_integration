@@ -59,6 +59,9 @@ const SuperAdminDashboard = () => {
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
   const [universities, setUniversities] = useState([]);
   const [users, setUsers] = useState([]);
+  const [demoLeads, setDemoLeads] = useState([]);
+  const [demoSearchTerm, setDemoSearchTerm] = useState("");
+  const [demoFilterStatus, setDemoFilterStatus] = useState("all");
   const [loading, setLoading] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState(null);
   const [selectedUni, setSelectedUni] = useState(null);
@@ -68,58 +71,33 @@ const SuperAdminDashboard = () => {
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [savingUser, setSavingUser] = useState(false);
 
-
-
-  // Mock statistics for overview
-
+  // Statistics for overview
   const [stats, setStats] = useState({
-
     totalUniversities: 0,
-
     totalStudents: 0,
-
     totalFaculty: 0,
-
     totalRevenue: 0,
-
     growthRate: 0,
-
-    activeUsers: 0
-
+    activeUsers: 0,
+    totalDemoLeads: 0
   });
 
-
-
   useEffect(() => {
-
     // Check if user is superadmin
-
     const user = JSON.parse(localStorage.getItem("user") || "{}");
-
     if (user.role !== "superadmin") {
-
       navigate("/superadmin/login");
-
       return;
-
     }
 
-    
-
     // Set active tab from URL parameters
-
     const tabParam = searchParams.get('tab');
-
     setActiveTab(tabParam || 'overview');
 
-    
-
     loadUniversities();
-
     loadUsers();
-
+    loadDemoLeads();
     loadStats();
-
   }, [searchParams]);
 
 
@@ -244,22 +222,65 @@ const SuperAdminDashboard = () => {
 
     // Calculate actual stats from real data
 
-    setStats({
-
+    setStats(prev => ({
+      ...prev,
       totalUniversities: universities.length,
-
       totalStudents: users.filter(u => u.role === 'student').length,
-
       totalFaculty: users.filter(u => u.role === 'faculty').length,
-
-      totalRevenue: Math.floor(Math.random() * 1000000) + 100000, // Keep mock for revenue
-
-      growthRate: Math.floor(Math.random() * 30) + 10, // Keep mock for growth
-
+      totalRevenue: Math.floor(Math.random() * 1000000) + 100000,
+      growthRate: Math.floor(Math.random() * 30) + 10,
       activeUsers: users.filter(u => u.isApproved).length
+    }));
+  };
 
-    });
+  const loadDemoLeads = async () => {
+    try {
+      const res = await fetch(`${API}/demo-requests`);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDemoLeads(data.data || []);
+        setStats(prev => ({ ...prev, totalDemoLeads: data.count || 0 }));
+      }
+    } catch (err) {
+      console.error("Error loading demo leads:", err);
+    }
+  };
 
+  const handleUpdateLeadStatus = async (leadId, newStatus) => {
+    try {
+      const res = await fetch(`${API}/demo-requests/${leadId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(`Lead marked as ${newStatus}`);
+        setDemoLeads(prev => prev.map(lead => lead.id === leadId ? { ...lead, status: newStatus } : lead));
+      } else {
+        toast.error(data.message || 'Failed to update status');
+      }
+    } catch (err) {
+      console.error("Error updating lead status:", err);
+      toast.error('Network error updating status');
+    }
+  };
+
+  const handleDeleteLead = async (leadId) => {
+    if (!confirm('Are you sure you want to delete this demo lead?')) return;
+    try {
+      const res = await fetch(`${API}/demo-requests/${leadId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success('Lead removed');
+        setDemoLeads(prev => prev.filter(l => l.id !== leadId));
+        setStats(prev => ({ ...prev, totalDemoLeads: Math.max(0, prev.totalDemoLeads - 1) }));
+      }
+    } catch (err) {
+      toast.error('Failed to delete lead');
+    }
   };
 
 
@@ -665,118 +686,99 @@ const SuperAdminDashboard = () => {
 
 
 
-            {/* Recent Activity */}
-
+            {/* Recent Activity & Quick Actions */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-              <div data-tour="recent-activity" className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-
-                  <Clock size={20} className="text-gray-600" />
-
-                  Recent Activity
-
+              <div data-tour="recent-activity" className="bg-white/95 backdrop-blur-xs rounded-none border border-[#ebdcaa] p-6 shadow-[0_4px_25px_rgba(185,150,82,0.06)]">
+                <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-4 flex items-center gap-2.5 pb-3 border-b border-[#ebdcaa]/60">
+                  <div className="w-8 h-8 rounded-none bg-[#fffdf4] border border-[#ebdcaa] text-[#B99652] flex items-center justify-center">
+                    <Clock size={16} />
+                  </div>
+                  <span>Recent Activity</span>
                 </h3>
 
                 <div className="space-y-3">
-
-                  {universities.slice(0, 3).map((uni, index) => (
-
-                    <div key={uni.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-
-                      <div className="flex-1">
-
-                        <p className="font-medium text-gray-900">{uni.name}</p>
-
-                        <p className="text-sm text-gray-600">New institute added</p>
-
+                  {universities.slice(0, 3).map((uni) => (
+                    <div key={uni.id} className="flex items-center gap-3.5 p-3.5 bg-[#fffdf4]/60 border border-[#ebdcaa] rounded-none hover:border-[#B99652] transition-colors">
+                      <div className="w-2.5 h-2.5 bg-[#B99652] rounded-none shrink-0 shadow-2xs"></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-[#1e1b4b] font-['DM_Serif_Display',serif] truncate">{uni.name}</p>
+                        <p className="text-xs text-[#7a705a] mt-0.5">New institute registered under empire</p>
                       </div>
-
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#92400e] bg-[#fff8e7] border border-[#fde68a] px-2 py-0.5 rounded-none">
+                        Active
+                      </span>
                     </div>
-
                   ))}
-
+                  {universities.length === 0 && (
+                    <div className="text-center py-6 text-xs text-[#7a705a] italic">
+                      No recent activities recorded yet.
+                    </div>
+                  )}
                 </div>
-
               </div>
 
-
-
-              <div data-tour="quick-actions" className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-
-                  <Target size={20} className="text-gray-600" />
-
-                  Quick Actions
-
+              <div data-tour="quick-actions" className="bg-white/95 backdrop-blur-xs rounded-none border border-[#ebdcaa] p-6 shadow-[0_4px_25px_rgba(185,150,82,0.06)]">
+                <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-4 flex items-center gap-2.5 pb-3 border-b border-[#ebdcaa]/60">
+                  <div className="w-8 h-8 rounded-none bg-[#fffdf4] border border-[#ebdcaa] text-[#B99652] flex items-center justify-center">
+                    <Target size={16} />
+                  </div>
+                  <span>Quick Actions</span>
                 </h3>
 
-                <div className="grid grid-cols-2 gap-3">
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <button 
-
                     onClick={() => handleTabChange("createUniversity")}
-
-                    className="p-3 bg-blue-50 hover:bg-blue-100 rounded-lg text-center transition-colors"
-
+                    className="p-3.5 bg-white hover:bg-[#fffdf4] border border-[#ebdcaa] hover:border-[#B99652] rounded-none text-left transition-all duration-200 group flex items-center gap-3 shadow-2xs hover:shadow-xs"
                   >
-
-                    <Building2 className="text-blue-600 mx-auto mb-1" size={20} />
-
-                    <span className="text-sm font-medium text-blue-900">Add Institute</span>
-
+                    <div className="w-10 h-10 rounded-none bg-gradient-to-br from-[#1e1b4b] to-[#2d296a] text-[#ebdcaa] flex items-center justify-center shrink-0 border border-[#3b357a] shadow-2xs group-hover:scale-105 transition-transform">
+                      <Building2 size={18} />
+                    </div>
+                    <div>
+                      <span className="block text-xs font-bold text-[#1e1b4b] group-hover:text-[#B99652] transition-colors uppercase tracking-wider">Add Institute</span>
+                      <span className="block text-[11px] text-[#7a705a] mt-0.5">Register new institution</span>
+                    </div>
                   </button>
 
                   <button 
-
                     onClick={() => handleTabChange("createUser")}
-
-                    className="p-3 bg-green-50 hover:bg-green-100 rounded-lg text-center transition-colors"
-
+                    className="p-3.5 bg-white hover:bg-[#fffdf4] border border-[#ebdcaa] hover:border-[#B99652] rounded-none text-left transition-all duration-200 group flex items-center gap-3 shadow-2xs hover:shadow-xs"
                   >
-
-                    <UserPlus className="text-green-600 mx-auto mb-1" size={20} />
-
-                    <span className="text-sm font-medium text-green-900">Add Staff</span>
-
+                    <div className="w-10 h-10 rounded-none bg-gradient-to-br from-[#1e1b4b] to-[#2d296a] text-[#ebdcaa] flex items-center justify-center shrink-0 border border-[#3b357a] shadow-2xs group-hover:scale-105 transition-transform">
+                      <UserPlus size={18} />
+                    </div>
+                    <div>
+                      <span className="block text-xs font-bold text-[#1e1b4b] group-hover:text-[#B99652] transition-colors uppercase tracking-wider">Add Staff</span>
+                      <span className="block text-[11px] text-[#7a705a] mt-0.5">Hire admin or mentor</span>
+                    </div>
                   </button>
 
                   <button 
-
                     onClick={() => handleTabChange("universities")}
-
-                    className="p-3 bg-purple-50 hover:bg-purple-100 rounded-lg text-center transition-colors"
-
+                    className="p-3.5 bg-white hover:bg-[#fffdf4] border border-[#ebdcaa] hover:border-[#B99652] rounded-none text-left transition-all duration-200 group flex items-center gap-3 shadow-2xs hover:shadow-xs"
                   >
-
-                    <Building2 className="text-purple-600 mx-auto mb-1" size={20} />
-
-                    <span className="text-sm font-medium text-purple-900">View Institutes</span>
-
+                    <div className="w-10 h-10 rounded-none bg-gradient-to-br from-[#1e1b4b] to-[#2d296a] text-[#ebdcaa] flex items-center justify-center shrink-0 border border-[#3b357a] shadow-2xs group-hover:scale-105 transition-transform">
+                      <Building2 size={18} />
+                    </div>
+                    <div>
+                      <span className="block text-xs font-bold text-[#1e1b4b] group-hover:text-[#B99652] transition-colors uppercase tracking-wider">View Institutes</span>
+                      <span className="block text-[11px] text-[#7a705a] mt-0.5">Explore empire directory</span>
+                    </div>
                   </button>
 
                   <button 
-
                     onClick={() => handleTabChange("users")}
-
-                    className="p-3 bg-orange-50 hover:bg-orange-100 rounded-lg text-center transition-colors"
-
+                    className="p-3.5 bg-white hover:bg-[#fffdf4] border border-[#ebdcaa] hover:border-[#B99652] rounded-none text-left transition-all duration-200 group flex items-center gap-3 shadow-2xs hover:shadow-xs"
                   >
-
-                    <Users className="text-orange-600 mx-auto mb-1" size={20} />
-
-                    <span className="text-sm font-medium text-orange-900">View Staff</span>
-
+                    <div className="w-10 h-10 rounded-none bg-gradient-to-br from-[#1e1b4b] to-[#2d296a] text-[#ebdcaa] flex items-center justify-center shrink-0 border border-[#3b357a] shadow-2xs group-hover:scale-105 transition-transform">
+                      <Users size={18} />
+                    </div>
+                    <div>
+                      <span className="block text-xs font-bold text-[#1e1b4b] group-hover:text-[#B99652] transition-colors uppercase tracking-wider">View Staff</span>
+                      <span className="block text-[11px] text-[#7a705a] mt-0.5">Manage all user accounts</span>
+                    </div>
                   </button>
-
                 </div>
-
               </div>
-
             </div>
 
           </div>
@@ -1096,6 +1098,211 @@ const SuperAdminDashboard = () => {
                             </td>
                           </tr>
                         ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ================= DEMO LEADS TAB ================= */}
+        {activeTab === "demoLeads" && (() => {
+          const filteredLeads = demoLeads.filter((lead) => {
+            const matchesSearch =
+              (lead.fullName || "").toLowerCase().includes(demoSearchTerm.toLowerCase()) ||
+              (lead.workEmail || "").toLowerCase().includes(demoSearchTerm.toLowerCase()) ||
+              (lead.institutionName || "").toLowerCase().includes(demoSearchTerm.toLowerCase());
+            
+            const matchesStatus =
+              demoFilterStatus === "all" || (lead.status || "Pending").toLowerCase() === demoFilterStatus.toLowerCase();
+
+            return matchesSearch && matchesStatus;
+          });
+
+          const pendingCount = demoLeads.filter(l => (l.status || 'Pending').toLowerCase() === 'pending').length;
+          const scheduledCount = demoLeads.filter(l => ['contacted', 'scheduled'].includes((l.status || '').toLowerCase())).length;
+          const completedCount = demoLeads.filter(l => (l.status || '').toLowerCase() === 'completed').length;
+
+          return (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between pb-4 border-b border-[#ebdcaa]/60">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">
+                    Institutional Demo Inquiries
+                  </h2>
+                  <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">
+                    Direct walkthrough requests submitted from prospective university leaders ({demoLeads.length} Total Leads)
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 mt-4 lg:mt-0">
+                  <button
+                    onClick={loadDemoLeads}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-[#fffdf4] text-[#1e1b4b] border border-[#ebdcaa] rounded-none font-semibold text-xs uppercase tracking-wider transition-colors shadow-2xs"
+                  >
+                    <Activity size={14} className="text-[#B99652]" />
+                    Refresh Leads
+                  </button>
+                </div>
+              </div>
+
+              {/* Metric Overview Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 bg-white border border-[#ebdcaa] rounded-none shadow-2xs">
+                  <p className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">Total Inquiries</p>
+                  <p className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mt-1">{demoLeads.length}</p>
+                </div>
+                <div className="p-4 bg-white border border-[#ebdcaa] rounded-none shadow-2xs">
+                  <p className="text-[11px] uppercase font-bold text-amber-700 tracking-wider">Pending Outreach</p>
+                  <p className="text-2xl font-bold font-['DM_Serif_Display',serif] text-amber-600 mt-1">{pendingCount}</p>
+                </div>
+                <div className="p-4 bg-white border border-[#ebdcaa] rounded-none shadow-2xs">
+                  <p className="text-[11px] uppercase font-bold text-indigo-700 tracking-wider">Scheduled / Contacted</p>
+                  <p className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1d528f] mt-1">{scheduledCount}</p>
+                </div>
+                <div className="p-4 bg-white border border-[#ebdcaa] rounded-none shadow-2xs">
+                  <p className="text-[11px] uppercase font-bold text-emerald-700 tracking-wider">Completed / Onboarded</p>
+                  <p className="text-2xl font-bold font-['DM_Serif_Display',serif] text-emerald-600 mt-1">{completedCount}</p>
+                </div>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 border border-[#ebdcaa]">
+                {/* Search */}
+                <div className="relative w-full sm:w-80">
+                  <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-[#B99652]" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search by name, email, university..."
+                    value={demoSearchTerm}
+                    onChange={(e) => setDemoSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-[#fffdf4]/40 border border-[#ebdcaa] rounded-none focus:outline-none focus:border-[#B99652] text-xs text-[#1e1b4b]"
+                  />
+                </div>
+
+                {/* Status Tabs Filter */}
+                <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+                  {['all', 'Pending', 'Contacted', 'Scheduled', 'Completed'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setDemoFilterStatus(status)}
+                      className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-none transition-colors ${
+                        demoFilterStatus.toLowerCase() === status.toLowerCase()
+                          ? 'bg-[#1e1b4b] text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Table */}
+              {filteredLeads.length === 0 ? (
+                <div className="text-center py-12 bg-white border border-[#ebdcaa] p-8">
+                  <Calendar className="text-[#ebdcaa] mx-auto mb-3" size={44} />
+                  <p className="text-sm font-semibold text-[#1e1b4b] mb-1">No demo inquiries match your filter.</p>
+                  <p className="text-xs text-slate-500">Incoming submissions from the "Book a Demo" modal will appear here in real-time.</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-none shadow-xs border border-[#ebdcaa] overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-[#fffdf4] border-b border-[#ebdcaa]">
+                        <tr>
+                          <th className="px-6 py-3.5 text-left text-xs font-bold text-[#1e1b4b] uppercase tracking-wider">Prospect Details</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-bold text-[#1e1b4b] uppercase tracking-wider">Institution & Size</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-bold text-[#1e1b4b] uppercase tracking-wider">Requested Slot</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-bold text-[#1e1b4b] uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3.5 text-left text-xs font-bold text-[#1e1b4b] uppercase tracking-wider">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredLeads.map((lead) => {
+                          const statusLower = (lead.status || 'pending').toLowerCase();
+                          return (
+                            <tr key={lead.id} className="hover:bg-[#fffdf4]/60 transition-colors">
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-[#1e1b4b] border border-[#B99652]/40 rounded-full flex items-center justify-center shrink-0">
+                                    <span className="text-[#ebdcaa] font-bold text-sm">
+                                      {(lead.fullName || 'P').charAt(0).toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-sm text-[#1e1b4b] truncate">{lead.fullName}</p>
+                                    <p className="text-xs text-slate-500 truncate">{lead.workEmail}</p>
+                                    <p className="text-[11px] text-slate-400 font-medium">{lead.role || 'Dean / Director'}</p>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="px-6 py-4">
+                                <p className="font-semibold text-xs text-[#1e1b4b]">{lead.institutionName}</p>
+                                <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
+                                  {lead.studentCount || '1,000 - 5,000'} Students
+                                </span>
+                              </td>
+
+                              <td className="px-6 py-4">
+                                <div className="space-y-0.5">
+                                  <p className="text-xs font-bold text-[#B99652] flex items-center gap-1.5">
+                                    <Calendar size={13} />
+                                    <span>{lead.preferredDate || 'N/A'}</span>
+                                  </p>
+                                  <p className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+                                    <Clock size={13} />
+                                    <span>{lead.preferredTime || '10:00 AM'}</span>
+                                  </p>
+                                </div>
+                              </td>
+
+                              <td className="px-6 py-4">
+                                <select
+                                  value={lead.status || 'Pending'}
+                                  onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
+                                  className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1.5 border rounded-none focus:outline-none ${
+                                    statusLower === 'pending'
+                                      ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                      : statusLower === 'scheduled' || statusLower === 'contacted'
+                                      ? 'bg-blue-50 text-blue-800 border-blue-300'
+                                      : statusLower === 'completed'
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                      : 'bg-slate-50 text-slate-700 border-slate-300'
+                                  }`}
+                                >
+                                  <option value="Pending">Pending</option>
+                                  <option value="Contacted">Contacted</option>
+                                  <option value="Scheduled">Scheduled</option>
+                                  <option value="Completed">Completed</option>
+                                  <option value="Rejected">Rejected</option>
+                                </select>
+                              </td>
+
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <a
+                                    href={`mailto:${lead.workEmail}?subject=Re:%20Core5%20LMS%20Live%20Demo%20Walkthrough&body=Dear%20${encodeURIComponent(lead.fullName)},%0D%0A%0D%0AThank%20you%20for%20requesting%20a%20walkthrough%20of%20Core5%20LMS%20for%20${encodeURIComponent(lead.institutionName)}.%0D%0A%0D%0AI%20would%20be%20happy%20to%20confirm%20our%20live%20walkthrough%20slot%20on%20${encodeURIComponent(lead.preferredDate)}%20at%20${encodeURIComponent(lead.preferredTime)}.`}
+                                    title="Send Email to Prospect"
+                                    className="p-2 bg-[#1e1b4b] hover:bg-[#2d296a] text-white rounded-none transition-colors"
+                                  >
+                                    <Mail size={14} />
+                                  </a>
+                                  <button
+                                    onClick={() => handleDeleteLead(lead.id)}
+                                    title="Delete Demo Lead"
+                                    className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-none transition-colors"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

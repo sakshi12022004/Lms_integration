@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from "../../auth/auth";
 import AccountantLayout from "../../components/AccountantLayout";
-import { BarChart3, DollarSign, Users, TrendingUp, Calendar, RefreshCw, FileText, Download } from "lucide-react";
+import { BarChart3, DollarSign, Users, TrendingUp, Calendar, RefreshCw, FileText, Download, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+
+import OfflineFeeModal from '../../components/OfflineFeeModal';
 
 const FeesCollection = () => {
   const { token, API } = useAuth();
+  const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
   const [feesData, setFeesData] = useState({
     totalFeesCollected: 0,
     totalStudents: 0,
@@ -20,7 +23,6 @@ const FeesCollection = () => {
       console.log('🧾 Invoice download started for:', payment);
       setDownloadingInvoice(payment.transactionId || payment.id);
       
-      // Generate invoice directly in frontend (no backend dependency)
       const invoiceHTML = `
 <!DOCTYPE html>
 <html>
@@ -39,17 +41,18 @@ const FeesCollection = () => {
             margin: 0 auto;
             background: white;
             padding: 30px;
-            border-radius: 10px;
+            border-radius: 0px;
+            border: 2px solid #B99652;
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
         .header {
             text-align: center;
             margin-bottom: 30px;
-            border-bottom: 2px solid #007bff;
+            border-bottom: 2px solid #002366;
             padding-bottom: 20px;
         }
         .header h1 {
-            color: #007bff;
+            color: #002366;
             margin: 0;
             font-size: 28px;
         }
@@ -63,23 +66,23 @@ const FeesCollection = () => {
         }
         .invoice-info h3 {
             margin: 0 0 10px 0;
-            color: #333;
+            color: #002366;
         }
         .student-details {
             background: #f8f9fa;
             padding: 20px;
-            border-radius: 8px;
+            border: 1px solid #ebdcaa;
             margin-bottom: 20px;
         }
         .payment-details {
             background: #e9ecef;
             padding: 20px;
-            border-radius: 8px;
+            border: 1px solid #ebdcaa;
         }
         .amount {
             font-size: 24px;
             font-weight: bold;
-            color: #28a745;
+            color: #10b981;
             text-align: center;
             margin: 20px 0;
         }
@@ -95,13 +98,9 @@ const FeesCollection = () => {
             left: 50%;
             transform: translate(-50%, -50%) rotate(-45deg);
             font-size: 120px;
-            color: rgba(0, 128, 0, 0.1);
+            color: rgba(0, 35, 102, 0.08);
             font-weight: bold;
             z-index: -1;
-        }
-        @media print {
-            body { background: white; }
-            .watermark { color: rgba(0, 128, 0, 0.05); }
         }
     </style>
 </head>
@@ -109,35 +108,34 @@ const FeesCollection = () => {
     <div class="watermark">PAID</div>
     <div class="invoice-container">
         <div class="header">
-            <h1>Fee Receipt</h1>
-            <p>Official Payment Confirmation</p>
+            <h1>Core5 Academy — Fee Receipt</h1>
+            <p>Official Tax Payment Invoice</p>
         </div>
         
         <div class="invoice-info">
             <div>
                 <h3>Receipt Details</h3>
-                <p><strong>Receipt No:</strong> ${payment.transactionId || payment.id || 'INV' + Date.now()}</p>
-                <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
-                <p><strong>Status:</strong> <span style="color: #28a745;">Completed</span></p>
+                <p><strong>Receipt No:</strong> ${payment.transactionId || payment.id || 'INV-' + Date.now()}</p>
+                <p><strong>Date:</strong> ${payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : new Date().toLocaleDateString()}</p>
+                <p><strong>Status:</strong> <span style="color: #10b981; font-weight: bold;">Completed</span></p>
             </div>
             <div style="text-align: right;">
                 <h3>Payment Method</h3>
                 <p><strong>Method:</strong> ${payment.paymentMethod || 'Online'}</p>
-                <p><strong>Transaction ID:</strong> ${payment.transactionId || payment.id || 'INV' + Date.now()}</p>
+                <p><strong>Transaction ID:</strong> ${payment.transactionId || payment.id || 'INV-' + Date.now()}</p>
             </div>
         </div>
         
         <div class="student-details">
             <h3>Student Information</h3>
             <p><strong>Name:</strong> ${payment.studentName || 'Student'}</p>
-            <p><strong>Email:</strong> student@university.edu</p>
             <p><strong>Payment Date:</strong> ${payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : new Date().toLocaleDateString()}</p>
         </div>
         
         <div class="payment-details">
-            <h3>Payment Details</h3>
-            <p><strong>Description:</strong> Academic Fee Payment</p>
-            <p><strong>Payment Date:</strong> ${payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : new Date().toLocaleDateString()}</p>
+            <h3>Payment Breakdown</h3>
+            <p><strong>Description:</strong> Academic Tuition & Institutional Fee</p>
+            <p><strong>Mode:</strong> ${payment.paymentMethod || 'Online'}</p>
         </div>
         
         <div class="amount">
@@ -145,35 +143,27 @@ const FeesCollection = () => {
         </div>
         
         <div class="footer">
-            <p>This is a computer-generated receipt and does not require a signature.</p>
-            <p>For any queries, please contact the accounts department.</p>
+            <p>This is a computer-generated tax receipt and does not require a physical signature.</p>
+            <p>Core5 Technologies Private Limited — Finance Department</p>
             <p>Thank you for your payment!</p>
         </div>
     </div>
 </body>
 </html>`;
 
-      console.log('📄 Invoice HTML generated successfully in frontend');
-
-      // Create download link
       const link = document.createElement('a');
       link.href = 'data:text/html;charset=utf-8,' + encodeURIComponent(invoiceHTML);
       link.download = `Invoice_${payment.studentName || 'Student'}_${payment.transactionId || payment.id || Date.now()}.html`;
       
-      console.log('📥 Download link created:', link.download);
-      
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      console.log('✅ Download initiated successfully!');
       
     } catch (error) {
       console.error('❌ Download invoice error:', error);
       alert('Error downloading invoice: ' + error.message);
     } finally {
       setDownloadingInvoice(null);
-      console.log('🔄 Download state reset');
     }
   };
 
@@ -181,7 +171,6 @@ const FeesCollection = () => {
     try {
       setLoading(true);
       
-      // Fetch fees stats (this is the main API we know exists)
       const feesRes = await fetch(`${API}/accountant/fees-stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -202,26 +191,23 @@ const FeesCollection = () => {
           setError('Failed to fetch fees data');
         }
       } else {
-        // If fees-stats fails, try to set some default values
         setFeesData({
           totalFeesCollected: 0,
           totalStudents: 0,
           averageFeesPerStudent: 0,
           recentPayments: []
         });
-        console.warn('Fees stats API not available, using default values');
       }
 
     } catch (error) {
       console.error('Error fetching fees data:', error);
-      // Set default data instead of showing error
       setFeesData({
         totalFeesCollected: 0,
         totalStudents: 0,
         averageFeesPerStudent: 0,
         recentPayments: []
       });
-      setError(null); // Clear error state
+      setError(null);
     } finally {
       setLoading(false);
     }
@@ -234,120 +220,173 @@ const FeesCollection = () => {
   if (loading) {
     return (
       <AccountantLayout>
-        <div className="space-y-8">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-2">📊 Fee Collection</h2>
-            <p className="text-gray-400">Monitor and manage student fee collections</p>
-          </div>
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+          <div className="p-12 text-center text-[#002366]">
+            <div className="w-8 h-8 border-3 border-[#B99652] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            Loading fee collection stats...
           </div>
         </div>
       </AccountantLayout>
     );
   }
 
+  const recentPaymentsList = feesData.recentPayments || [];
+
   return (
     <AccountantLayout>
-      <div className="space-y-8">
-        <div className="flex justify-between items-center">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+        
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#ebdcaa]">
           <div>
-            <h2 className="text-3xl font-bold text-white mb-2">📊 Fee Collection</h2>
-            <p className="text-gray-400">Monitor and manage student fee collections</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#002366] tracking-tight">
+              Fee Collection & Financial Ledger
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">
+              Monitor student tuition collections, record offline payments, and issue tax invoice receipts.
+            </p>
           </div>
-          <button
-            onClick={fetchFeesData}
-            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors"
-          >
-            <RefreshCw size={20} />
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => setIsOfflineModalOpen(true)}
+              className="bg-[#B99652] hover:bg-[#a58342] text-white px-5 py-2.5 rounded-none font-bold text-xs uppercase tracking-wider shadow-xs transition-all cursor-pointer border border-[#B99652]"
+            >
+              Collect Offline Fee
+            </button>
+            <button
+              onClick={fetchFeesData}
+              className="bg-white hover:bg-[#fffdf4] text-[#002366] p-2.5 rounded-none border border-[#ebdcaa] shadow-xs transition-all cursor-pointer"
+              title="Refresh Data"
+            >
+              <RefreshCw size={18} />
+            </button>
+          </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 gap-6">
-          {/* Recent Payments Summary */}
-          {feesData.recentPayments && feesData.recentPayments.length > 0 && (
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-6 text-white mb-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Recent Payments Summary</h3>
-                  <p className="text-indigo-100">Last {feesData.recentPayments.length} payments</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold">
-                    ₹{feesData.recentPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0).toLocaleString('en-IN')}
-                  </div>
-                  <p className="text-indigo-100">Sum of Recent Payments</p>
-                </div>
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-2 border-t-emerald-600 shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Fees Collected</span>
+              <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-none border border-emerald-500/20">
+                <DollarSign size={20} />
               </div>
             </div>
-          )}
+            <h3 className="text-2xl font-bold text-emerald-600">₹{Number(feesData.totalFeesCollected || 0).toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-slate-500">Lifetime fee revenue</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-2 border-t-[#002366] shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Students</span>
+              <div className="p-2 bg-[#002366]/10 text-[#002366] rounded-none border border-[#002366]/20">
+                <Users size={20} />
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900">{feesData.totalStudents || 0}</h3>
+            <p className="text-xs text-slate-500">Enrolled accounts</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-2 border-t-[#B99652] shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Average Fee / Student</span>
+              <div className="p-2 bg-[#B99652]/15 text-[#8c6d31] rounded-none border border-[#B99652]/30">
+                <TrendingUp size={20} />
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-[#8c6d31]">₹{Number(feesData.averageFeesPerStudent || 0).toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-[#8c6d31] font-medium">Average collection</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-2 border-t-indigo-600 shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Recent Transactions</span>
+              <div className="p-2 bg-indigo-500/10 text-indigo-600 rounded-none border border-indigo-500/20">
+                <FileText size={20} />
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900">{recentPaymentsList.length}</h3>
+            <p className="text-xs text-slate-500">Recorded payments</p>
+          </div>
         </div>
 
-        {/* Recent Payments */}
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl">
-          <div className="p-6 border-b border-slate-700/50">
-            <h3 className="text-xl font-semibold text-white">Recent Fee Payments</h3>
+        {/* Payments Table */}
+        <div className="bg-white rounded-none border border-[#ebdcaa] shadow-xs overflow-hidden">
+          <div className="bg-[#fbf6e6] p-4 border-b border-[#ebdcaa] flex justify-between items-center">
+            <h3 className="text-base font-bold text-[#002366]">Recent Fee Payments & Tax Receipts</h3>
+            <span className="text-xs font-semibold text-[#8c6d31] uppercase tracking-wider">
+              {recentPaymentsList.length} Total Receipts
+            </span>
           </div>
-          
-          {feesData.recentPayments.length === 0 ? (
-            <div className="p-12 text-center">
-              <BarChart3 size={64} className="mx-auto text-gray-600 mb-4" />
-              <h3 className="text-2xl font-bold text-white mb-2">No Recent Payments</h3>
-              <p className="text-gray-400">Recent fee payments will appear here once students make payments.</p>
-              <div className="mt-6 p-4 bg-slate-700/30 rounded-lg">
-                <p className="text-gray-300 text-sm">💡 Tip: Students can make payments through the Student Portal → Pay Fees section</p>
-              </div>
+
+          {recentPaymentsList.length === 0 ? (
+            <div className="p-12 text-center text-slate-500">
+              <BarChart3 size={40} className="mx-auto text-slate-400 mb-2" />
+              <p className="text-base font-semibold">No fee payments recorded yet</p>
+              <p className="text-xs text-slate-400 mt-1">Use the "Collect Offline Fee" button above to register student payments.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-700/50">
-                    <th className="text-left p-4 text-gray-400 font-medium">Student Name</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Amount</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Payment Date</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Payment Method</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Status</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Invoice</th>
+                  <tr className="bg-[#fbf6e6]/60 text-[#002366] text-xs uppercase tracking-wider font-bold border-b border-[#ebdcaa]">
+                    <th className="px-6 py-4">Student Name</th>
+                    <th className="px-6 py-4">Payment Type</th>
+                    <th className="px-6 py-4">Amount Paid</th>
+                    <th className="px-6 py-4">Payment Method</th>
+                    <th className="px-6 py-4">Date</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Tax Invoice</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {feesData.recentPayments.map((payment, index) => (
-                    <tr key={index} className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <Users size={16} className="text-gray-400" />
-                          <span className="text-white font-medium">{payment.studentName || 'Student'}</span>
+                <tbody className="divide-y divide-[#ebdcaa]/60 text-sm">
+                  {recentPaymentsList.map((payment, index) => (
+                    <tr key={payment.id || index} className="hover:bg-[#fffdf4] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-none bg-[#002366] text-white font-bold flex items-center justify-center text-xs border border-[#001845]">
+                            {payment.studentName?.charAt(0)?.toUpperCase() || 'S'}
+                          </div>
+                          <span className="font-bold text-[#002366]">{payment.studentName || 'Student'}</span>
                         </div>
                       </td>
-                      <td className="p-4">
-                        <span className="text-white font-semibold">₹{payment.amount.toLocaleString('en-IN')}</span>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <Calendar size={16} className="text-gray-400" />
-                          <span className="text-white">
-                            {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <span className="text-white">{payment.paymentMethod || 'Online'}</span>
-                      </td>
-                      <td className="p-4">
-                        <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium border text-green-500 bg-green-500/10 border-green-500/20">
-                          <span className="uppercase">Completed</span>
+
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-none text-xs font-bold uppercase tracking-wider border ${
+                          payment.type === 'OFFLINE' 
+                            ? 'bg-[#B99652]/15 text-[#8c6d31] border-[#B99652]/40' 
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        }`}>
+                          {payment.type || 'ONLINE'}
                         </span>
                       </td>
-                      <td className="p-4">
+
+                      <td className="px-6 py-4 font-bold text-emerald-700">
+                        ₹{Number(payment.amount || 0).toLocaleString('en-IN')}
+                      </td>
+
+                      <td className="px-6 py-4 text-slate-700 font-medium uppercase text-xs">
+                        {payment.paymentMethod || payment.paymentMode || 'Online'}
+                      </td>
+
+                      <td className="px-6 py-4 text-slate-500 text-xs font-medium">
+                        {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : payment.date ? new Date(payment.date).toLocaleDateString() : 'Recent'}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-300">
+                          <CheckCircle2 size={12} /> Completed
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4 text-right">
                         <button
                           onClick={() => downloadInvoice(payment)}
                           disabled={downloadingInvoice === (payment.transactionId || payment.id)}
-                          className="inline-flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white text-sm font-medium rounded-lg transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#002366] hover:bg-[#001845] text-white font-bold text-xs uppercase tracking-wider rounded-none shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50 border border-[#002366]"
                         >
-                          <Download size={16} />
-                          <span>{downloadingInvoice === (payment.transactionId || payment.id) ? 'Downloading...' : 'Invoice'}</span>
+                          <Download size={14} />
+                          <span>{downloadingInvoice === (payment.transactionId || payment.id) ? 'Downloading...' : 'Invoice PDF'}</span>
                         </button>
                       </td>
                     </tr>
@@ -358,6 +397,12 @@ const FeesCollection = () => {
           )}
         </div>
       </div>
+
+      <OfflineFeeModal
+        isOpen={isOfflineModalOpen}
+        onClose={() => setIsOfflineModalOpen(false)}
+        onSuccess={fetchFeesData}
+      />
     </AccountantLayout>
   );
 };

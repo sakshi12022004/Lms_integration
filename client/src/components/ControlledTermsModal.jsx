@@ -1,15 +1,11 @@
-import React from 'react';
-import TermsConditionsModal from './TermsConditionsModal';
+import React, { useState } from 'react';
+import { ShieldCheck, CheckCircle, FileText, Lock } from 'lucide-react';
 
 const ControlledTermsModal = ({ isOpen, onAccept }) => {
-  // This component wraps the existing TermsConditionsModal 
-  // but makes it controllable from outside
-  
   if (!isOpen) return null;
 
-  // Create a modified version that can be controlled externally
   const ModalContent = () => {
-    const [acknowledged, setAcknowledged] = React.useState(false);
+    const [acknowledged, setAcknowledged] = useState(false);
 
     React.useEffect(() => {
       const previousOverflow = document.body.style.overflow;
@@ -19,16 +15,10 @@ const ControlledTermsModal = ({ isOpen, onAccept }) => {
 
     const handleAccept = () => {
       if (acknowledged) {
-        // Store acceptance in localStorage with user ID
         localStorage.setItem('termsAccepted', 'true');
         localStorage.setItem('termsAcceptedDate', new Date().toISOString());
         onAccept();
       }
-    };
-
-    const closeModal = () => {
-      // Don't allow closing without accepting for mandatory terms
-      // User must accept to proceed
     };
 
     return (
@@ -44,6 +34,7 @@ const ControlledTermsModal = ({ isOpen, onAccept }) => {
               {/* No close button - user must accept */}
             </div>
           </div>
+          <div className="h-[2px] flex-shrink-0 bg-gradient-to-r from-[#B99652]/20 via-[#B99652] to-[#B99652]/20" />
 
           {/* Content */}
           <div className="px-5 sm:px-7 py-5 overflow-y-auto overscroll-contain flex-1 scrollable-content bg-white">
@@ -207,7 +198,7 @@ const ControlledTermsModal = ({ isOpen, onAccept }) => {
               </label>
             </div>
 
-            <div className="flex justify-center sm:justify-end">
+            <div className="flex justify-end">
               <button
                 onClick={handleAccept}
                 disabled={!acknowledged}
@@ -217,10 +208,12 @@ const ControlledTermsModal = ({ isOpen, onAccept }) => {
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }`}
               >
+                <CheckCircle size={18} />
                 Accept & Continue to Dashboard
               </button>
             </div>
           </div>
+
         </div>
       </div>
     );

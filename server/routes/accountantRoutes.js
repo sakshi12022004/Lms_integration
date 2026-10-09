@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
+const { requirePaymentAuth, requireRoles, resolveStudentScope, STAFF_ROLES } = require('../middleware/paymentAuth');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { getCurrentConfig } = require('../config/razorpay-config');
@@ -25,7 +26,7 @@ const razorpay = new Razorpay({
  * GET /api/accountant/dashboard
  * Get accountant dashboard data for their university
  */
-router.get('/dashboard', authMiddleware, (req, res) => {
+router.get('/dashboard', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, res) => {
   try {
     const userId = req.user?.userId;
     
@@ -58,7 +59,7 @@ router.get('/dashboard', authMiddleware, (req, res) => {
       };
 
       // Get revenue from payments table
-      getDatabaseFromRequest(req).all('SELECT SUM(amount) as totalRevenue FROM payments WHERE status = "paid" AND university_id = ?', [universityId], (err, revenueResult) => {
+      getDatabaseFromRequest(req).all(`SELECT SUM(p.amount) as totalRevenue FROM payments p JOIN users u ON u.id = p.studentId WHERE p.status IN ('paid', 'success') AND u.university_id = ?`, [universityId], (err, revenueResult) => {
         if (err) {
           console.error('Get revenue error:', err);
         } else {
@@ -66,7 +67,7 @@ router.get('/dashboard', authMiddleware, (req, res) => {
         }
 
         // Get payment stats
-        getDatabaseFromRequest(req).all('SELECT status, COUNT(*) as count FROM payments WHERE university_id = ?', [universityId], (err, paymentResults) => {
+        getDatabaseFromRequest(req).all('SELECT p.status as status, COUNT(*) as count FROM payments p JOIN users u ON u.id = p.studentId WHERE u.university_id = ? GROUP BY p.status', [universityId], (err, paymentResults) => {
           if (err) {
             console.error('Get payment stats error:', err);
           } else {
@@ -90,7 +91,7 @@ router.get('/dashboard', authMiddleware, (req, res) => {
                 console.error('Get university name error:', err);
                 stats.universityName = 'University';
               } else {
-                stats.universityName = universityResult.name || 'University';
+                stats.universityName = universityResult?.name || 'University';
               }
 
               console.log(' Accountant Dashboard Stats:', stats);
@@ -489,7 +490,7 @@ router.post('/download-invoice', authMiddleware, async (req, res) => {
  * GET /api/accountant/fees-stats
  * Get fee collection statistics
  */
-router.get('/fees-stats', authMiddleware, (req, res) => {
+router.get('/fees-stats', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, res) => {
   try {
     const userId = req.user?.userId;
     
@@ -504,15 +505,15 @@ router.get('/fees-stats', authMiddleware, (req, res) => {
         // If users table doesn't exist, use default university_id
         const universityId = 1;
         console.log('Users table not found, using default university_id:', universityId);
-        fetchFeesStats(universityId, res);
+        fetchFeesStats(req, universityId, res);
       } else if (!user) {
         const universityId = 1;
         console.log('Accountant user not found, using default university_id:', universityId);
-        fetchFeesStats(universityId, res);
+        fetchFeesStats(req, universityId, res);
       } else {
         const universityId = user.university_id || 1;
         console.log(' Accountant Fees Stats - User ID:', userId, 'University ID:', universityId);
-        fetchFeesStats(universityId, res);
+        fetchFeesStats(req, universityId, res);
       }
     });
   } catch (error) {
@@ -521,7 +522,7 @@ router.get('/fees-stats', authMiddleware, (req, res) => {
   }
 });
 
-function fetchFeesStats(universityId, res) {
+function fetchFeesStats(req, universityId, res) {
   // Get fee collection statistics from database
   const stats = {
     totalFeesCollected: 0,
@@ -530,7 +531,7 @@ function fetchFeesStats(universityId, res) {
   };
 
   // Get total fees collected from payments table
-  getDatabaseFromRequest(req).all('SELECT SUM(amount) as totalFeesCollected FROM payments WHERE status = "success"', [universityId], (err, feesResult) => {
+  getDatabaseFromRequest(req).all('SELECT SUM(amount) as totalFeesCollected FROM payments WHERE status = "success"', [], (err, feesResult) => {
     if (err) {
       console.error('Get paid fees error:', err);
     } else {
@@ -587,4 +588,152 @@ function fetchFeesStats(universityId, res) {
   });
 }
 
+/**
+ * GET /api/accountant/students
+ * Fetch all students for offline fee collection dropdown and fee management
+ */
+router.get('/students', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, res) => {
+  try {
+    getDatabaseFromRequest(req).all(
+      `SELECT u.id, u.name, u.email, u.role, c.grade, c.name as className,
+              COALESCE(c.grade, '1') as studentGrade
+       FROM users u 
+       LEFT JOIN student_classroom_assignment sca ON u.id = sca.studentId 
+       LEFT JOIN classrooms c ON sca.classroomId = c.id 
+       WHERE u.role = 'student' 
+       GROUP BY u.id
+       ORDER BY u.name ASC`,
+      [],
+      (err, rows) => {
+        if (err) {
+          console.error('Error fetching students list:', err);
+          return res.status(500).json({ success: false, message: 'Database query failed' });
+        }
+        res.status(200).json({ success: true, students: rows || [] });
+      }
+    );
+  } catch (error) {
+    console.error('Error in /api/accountant/students:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+const {
+  PaymentError,
+  calculateStudentInstallmentSummary,
+  recordOfflineInstallmentPayment
+} = require('../services/installmentService');
+
+const FEE_VIEW_ROLES = ['student', ...STAFF_ROLES];
+
+// Known payment errors carry their own status; anything else is a generic 500 (no raw DB errors to clients)
+function sendPaymentError(res, error, fallbackMessage) {
+  if (error instanceof PaymentError) {
+    return res.status(error.statusCode).json({ success: false, code: error.code, message: error.message });
+  }
+  console.error(fallbackMessage, error);
+  return res.status(500).json({ success: false, message: fallbackMessage });
+}
+
+/**
+ * GET /api/accountant/student-installment-status
+ * Fetch detailed installment summary, schedule snapshot, and stage balances for a student.
+ * Students always get their own record; staff must pass ?studentId=. Read-only.
+ */
+router.get('/student-installment-status', requirePaymentAuth, requireRoles(FEE_VIEW_ROLES), async (req, res) => {
+  try {
+    const studentId = resolveStudentScope(req, res, req.query.studentId);
+    if (studentId === null) return;
+
+    const db = getDatabaseFromRequest(req);
+    const summary = await calculateStudentInstallmentSummary(db, studentId);
+    res.status(200).json({ success: true, data: summary });
+  } catch (error) {
+    sendPaymentError(res, error, 'Failed to calculate student installment status.');
+  }
+});
+
+/**
+ * POST /api/accountant/collect-offline-fee
+ * Record an offline fee collection (Cash, Cheque, DD, Bank Transfer, UPI)
+ * with strict atomic stage validation, partial payment support, and idempotency protection.
+ */
+router.post('/collect-offline-fee', requirePaymentAuth, requireRoles(STAFF_ROLES), async (req, res) => {
+  try {
+    const db = getDatabaseFromRequest(req);
+    const result = await recordOfflineInstallmentPayment(db, req.body, { userId: req.user.userId });
+
+    res.status(result.isDuplicate ? 200 : 201).json({
+      success: true,
+      message: result.message,
+      isDuplicate: result.isDuplicate,
+      payment: result.payment,
+      stageUpdated: result.stageUpdated
+    });
+  } catch (error) {
+    sendPaymentError(res, error, 'Server error while recording offline payment.');
+  }
+});
+
+/**
+ * GET /api/accountant/student-payments-history
+ * Fetch all payments (online + offline) for a student.
+ * Students always get their own history; staff must pass ?studentId=.
+ */
+router.get('/student-payments-history', requirePaymentAuth, requireRoles(FEE_VIEW_ROLES), (req, res) => {
+  try {
+    const studentId = resolveStudentScope(req, res, req.query.studentId);
+    if (studentId === null) return;
+
+    getDatabaseFromRequest(req).all(
+      `SELECT * FROM payments WHERE studentId = ? ORDER BY createdAt DESC`,
+      [studentId],
+      (err, rows) => {
+        if (err) {
+          console.error('Error fetching student payments:', err);
+          return res.status(500).json({ success: false, message: 'Database error' });
+        }
+        const formatDate = (r) => r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
+        const formatTime = (r) => r.createdAt ? new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+        const allRows = rows || [];
+
+        res.json({
+          success: true,
+          data: allRows.map(r => ({
+            id: r.transactionId || r.id,
+            studentId: r.studentId,
+            amount: r.amount,
+            type: r.type,
+            status: r.status,
+            transactionId: r.transactionId || r.id,
+            description: r.description,
+            paymentDate: formatDate(r),
+            paymentTime: formatTime(r)
+          })),
+          // Shape consumed by the Student Portal fee page: confirmed offline collections only (online rows reach it via /api/transactions)
+          payments: allRows
+            .filter(r => (r.status === 'success' || r.status === 'paid') && /^offline/i.test(r.type || ''))
+            .map(r => ({
+              id: r.id,
+              transaction_id: String(r.transactionId || r.receiptNo || `TXN_${r.id}`),
+              amount: r.amount,
+              status: r.status,
+              payment_mode: r.type,
+              term_type: r.installmentStage ? `Installment Stage ${r.installmentStage}` : (r.type || 'Payment'),
+              payment_date: formatDate(r),
+              payment_time: formatTime(r),
+              created_at: r.createdAt,
+              installment_stage: r.installmentStage,
+              receipt_no: r.receiptNo
+            }))
+        });
+      }
+    );
+  } catch (error) {
+    console.error('Error in student-payments-history:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;
+

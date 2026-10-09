@@ -428,13 +428,13 @@ function initializeTables() {
         console.log('✅ Added university_id to feeStructures table');
       }
     });
-    
-    // Clear existing fee structures to start fresh
-    db.run('DELETE FROM feeStructures', (err) => {
-      if (err) {
-        console.error('Error clearing fee structures:', err);
+
+    // Add installmentOptions column if it doesn't exist
+    db.run(`ALTER TABLE feeStructures ADD COLUMN installmentOptions TEXT`, (altErr) => {
+      if (altErr && !altErr.message.includes('duplicate column name')) {
+        console.warn('Could not add installmentOptions column to feeStructures:', altErr.message);
       } else {
-        console.log('✅ Cleared existing fee structures - starting fresh');
+        console.log('✅ Added installmentOptions to feeStructures table');
       }
     });
   });
@@ -983,6 +983,7 @@ function initializeTables() {
     // Initialize translation tables
     initializeTranslationsTable();
     initializeUserLanguageTable();
+    initializeDemoRequestsTable();
     
     // Insert demo data after all tables are created
     setTimeout(insertDemoData, 1000);
@@ -1029,6 +1030,32 @@ function initializeUserLanguageTable() {
       console.error('Error creating user_language_preferences table:', err);
     } else {
       console.log('✅ User language preferences table created');
+    }
+  });
+}
+
+// Initialize Book a Demo requests table
+function initializeDemoRequestsTable() {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS demo_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fullName TEXT NOT NULL,
+      workEmail TEXT NOT NULL,
+      institutionName TEXT NOT NULL,
+      role TEXT DEFAULT 'Dean / Director',
+      studentCount TEXT DEFAULT '1,000 - 5,000',
+      preferredDate TEXT,
+      preferredTime TEXT,
+      status TEXT DEFAULT 'Pending',
+      notes TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error creating demo_requests table:', err);
+    } else {
+      console.log('✅ Demo requests table created/verified');
     }
   });
 }
@@ -1093,15 +1120,6 @@ function insertDemoData() {
   });
 
   // Initialize default fee structures for each grade
-  // First, clear any existing fee structures to ensure clean state
-  db.run(`DELETE FROM feeStructures`, (err) => {
-    if (err) {
-      console.error('Error clearing fee structures:', err);
-    } else {
-      console.log('✅ Cleared existing fee structures - starting fresh');
-    }
-  });
-
   db.get(`SELECT COUNT(*) as count FROM feeStructures`, (err, result) => {
     if (err) {
       console.error('Error checking fee structures:', err);
@@ -1209,6 +1227,8 @@ function initializeTranslationsTable() {
   });
 }
 
+const { runInstallmentMigrations } = require('./migration-runner');
+
 // Call the initialization in initializeTables
 // Add this to the end of initializeTables function
 setTimeout(() => {
@@ -1216,6 +1236,13 @@ setTimeout(() => {
   initializeTranslationsTable();
   initializeUserLanguageTable();
   insertDemoData();
+  runInstallmentMigrations(db)
+    .then((res) => {
+      console.log('✅ Reliable Installment Tracking DB migrations verified/applied successfully.');
+    })
+    .catch((err) => {
+      console.error('❌ Critical: Installment DB migration error:', err);
+    });
 }, 1000);
 
 module.exports = db;

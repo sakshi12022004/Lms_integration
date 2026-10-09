@@ -13,7 +13,8 @@ import {
   School,
   FileText,
   Package,
-  ClipboardCheck
+  ClipboardCheck,
+  Receipt
 } from "lucide-react";
 import { useAuth } from "../auth/auth";
 import QuotaLimitModal from './QuotaLimitModal';

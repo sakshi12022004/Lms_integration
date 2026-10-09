@@ -1,5 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const { requirePaymentAuth, requireRoles, resolveStudentScope, STAFF_ROLES } = require('../middleware/paymentAuth');
+const { parseRupeesToPaise, MAX_PAYMENT_PAISE } = require('../services/money');
+
+const TRANSACTION_ROLES = ['student', ...STAFF_ROLES];
 
 
 // Helper function to get database from request context or fallback to master
@@ -218,7 +222,7 @@ exports.generateInvoice = (req, res) => {
 };
 
 // Define routes
-router.get('/', (req, res) => {
+router.get('/', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, res) => {
   const query = `
     SELECT 
       p.id,
@@ -262,56 +266,73 @@ router.get('/', (req, res) => {
   });
 });
 
-router.post('/', (req, res) => {
-  const { studentId, amount, type, status, transactionId, razorpay_payment_id, razorpay_order_id, razorpay_signature, description } = req.body;
+/**
+ * POST /api/transactions
+ * Records a payment CLAIM reported by a client. The caller cannot make it count:
+ * status is always 'pending' and the row is unallocated, so it never increases
+ * paid totals or fee balances until a server-side verification marks it successful.
+ */
+router.post('/', requirePaymentAuth, requireRoles(TRANSACTION_ROLES), (req, res) => {
+  const { type, transactionId, description } = req.body || {};
 
-  const query = `
-    INSERT INTO payments (studentId, amount, type, status, transactionId, razorpay_payment_id, razorpay_order_id, razorpay_signature, description)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+  const studentId = resolveStudentScope(req, res, req.body?.studentId);
+  if (studentId === null) return;
 
-  getDatabaseFromRequest(req).run(query, [studentId, amount, type, status || 'success', transactionId, razorpay_payment_id, razorpay_order_id, razorpay_signature, description], function(err) {
-    if (err) {
-      console.error('Error creating transaction:', err);
+  const amountPaise = parseRupeesToPaise(req.body?.amount);
+  if (amountPaise === null || amountPaise > MAX_PAYMENT_PAISE) {
+    return res.status(400).json({ success: false, message: 'Invalid payment amount' });
+  }
+
+  const text = (value, max) => (typeof value === 'string' && value.trim() !== '' ? value.trim().slice(0, max) : null);
+  const db = getDatabaseFromRequest(req);
+
+  db.get(`SELECT id FROM users WHERE id = ? AND role = 'student'`, [studentId], (lookupErr, student) => {
+    if (lookupErr) {
+      console.error('Error validating student for transaction:', lookupErr);
       return res.status(500).json({ success: false, message: 'Failed to create transaction' });
     }
-
-    // Update student's paid fees
-    const updateStudentQuery = `
-      UPDATE students 
-      SET feesPaid = feesPaid + ?, 
-          pendingFees = totalFees - (feesPaid + ?),
-          updatedAt = CURRENT_TIMESTAMP
-      WHERE userId = ?
-    `;
-
-    getDatabaseFromRequest(req).run(updateStudentQuery, [amount, amount, studentId], function(err) {
-      if (err) {
-        console.error('Error updating student fees:', err);
-      }
-    });
-
-    // Emit real-time event
-    if (req.io) {
-      req.io.emit('payment', {
-        id: transactionId,
-        amount: amount,
-        paymentOption: type,
-        studentName: req.body.studentName || 'Student',
-        timestamp: new Date().toISOString()
-      });
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    return res.status(201).json({ 
-      success: true, 
-      message: 'Transaction created successfully',
-      transactionId: this.lastID
+    // Client-supplied gateway IDs are kept only as a reference (transactionId); the
+    // razorpay_* columns are reserved for values the server has verified with the gateway.
+    const query = `
+      INSERT INTO payments (studentId, amount, amountPaise, type, status, transactionId, description, allocationStatus, recordedBy)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?, 'unallocated', ?)
+    `;
+
+    db.run(query, [studentId, amountPaise / 100, amountPaise, text(type, 100) || 'online', text(transactionId, 100), text(description, 500), req.user.userId], function(err) {
+      if (err) {
+        console.error('Error creating transaction:', err);
+        return res.status(500).json({ success: false, message: 'Failed to create transaction' });
+      }
+
+      // Emit real-time event
+      if (req.io) {
+        req.io.emit('payment', {
+          id: transactionId,
+          amount: amountPaise / 100,
+          paymentOption: type,
+          status: 'pending',
+          studentName: req.body.studentName || 'Student',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: 'Transaction recorded and awaiting verification',
+        status: 'pending',
+        transactionId: this.lastID
+      });
     });
   });
 });
 
-router.get('/student/:studentId', (req, res) => {
-  const { studentId } = req.params;
+router.get('/student/:studentId', requirePaymentAuth, requireRoles(TRANSACTION_ROLES), (req, res) => {
+  const studentId = resolveStudentScope(req, res, req.params.studentId);
+  if (studentId === null) return;
   
   const query = `
     SELECT 
@@ -341,7 +362,7 @@ router.get('/student/:studentId', (req, res) => {
   });
 });
 
-router.get('/stats', (req, res) => {
+router.get('/stats', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, res) => {
   const query = `
     SELECT 
       COUNT(DISTINCT p.studentId) as totalStudents,

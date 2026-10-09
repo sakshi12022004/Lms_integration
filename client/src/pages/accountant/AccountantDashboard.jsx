@@ -40,11 +40,13 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import OfflineFeeModal from '../../components/OfflineFeeModal';
 
 const AccountantDashboard = () => {
   const { token, API } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
 
   // Listen for payment events from VendorInvoiceManagement
   useEffect(() => {
@@ -391,181 +393,227 @@ const AccountantDashboard = () => {
 
   return (
     <AccountantLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-          <div>
-            <h1 className="text-3xl font-bold font-['DM_Serif_Display',serif] text-white">Accountant Overview</h1>
-            <p className="text-xs uppercase tracking-wider text-[#B99652] font-semibold mt-1">
-              {stats.universityName} • Welcome {user.name}
+      <div className="space-y-6 pb-6">
+        
+        {/* Header Banner */}
+        <div className="bg-[#002366] text-white p-6 rounded-2xl shadow-md border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-semibold uppercase tracking-wider border border-amber-400/30">
+                Financial Operations
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-['Inter',sans-serif]">
+              Accountant Overview
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 font-medium">
+              {stats.universityName} • Welcome back, <span className="text-amber-300 font-semibold">{user.name || 'Accountant'}</span>
             </p>
           </div>
-          <button
-            onClick={loadAccountantData}
-            className="bg-[#B99652] hover:bg-[#a38241] text-white px-4 py-2.5 rounded-none text-xs font-semibold uppercase tracking-wider transition-colors flex items-center gap-2 self-start sm:self-auto shadow-sm"
-          >
-            <RefreshCw size={14} />
-            Refresh
-          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsOfflineModalOpen(true)}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-lg hover:shadow-amber-500/20 transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
+            >
+              💰 Collect Offline Fee
+            </button>
+            <button
+              onClick={loadAccountantData}
+              className="bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-2 border border-white/20 shadow-sm cursor-pointer"
+            >
+              <RefreshCw size={14} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* Error Display */}
         {error && (
-          <div className="p-4 bg-red-500/10 rounded-none border border-red-500/30 text-red-300">
-            <div className="flex items-center gap-3">
+          <div className="p-4 bg-rose-50 dark:bg-rose-950/30 rounded-2xl border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold mb-0.5">Connection Error</h3>
-                <p className="text-xs text-red-400">{error}</p>
-                <button
-                  onClick={loadAccountantData}
-                  className="mt-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-none text-xs font-semibold uppercase tracking-wider transition"
-                >
-                  Try Again
-                </button>
+                <h3 className="text-sm font-bold mb-0.5">Connection Error</h3>
+                <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>
               </div>
+              <button
+                onClick={loadAccountantData}
+                className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition"
+              >
+                Try Again
+              </button>
             </div>
           </div>
         )}
 
-        {/* Stats Grid */}
+        {/* Primary Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Fee Collection Stats */}
-          <div className="bg-[#fffdf4] rounded-none p-5 text-[#1e1b4b] border border-[#ebdcaa] shadow-sm">
+          
+          {/* Fees Collected */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">Fees Collected</span>
-              <div className="p-2 rounded-none bg-[#B99652]/10 text-[#B99652] border border-[#ebdcaa]">
-                <DollarSign size={18} />
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Total Fees Collected</span>
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <DollarSign size={20} />
               </div>
             </div>
-            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">₹{stats.totalFeesCollected.toLocaleString('en-IN')}</h3>
-            <p className="text-xs text-slate-500">Total fees recorded</p>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+              ₹{stats.totalFeesCollected.toLocaleString('en-IN')}
+            </h3>
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">✓ Real-time ledger recording</p>
           </div>
 
-          <div className="bg-[#fffdf4] rounded-none p-5 text-[#1e1b4b] border border-[#ebdcaa] shadow-sm">
+          {/* Students */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">Students</span>
-              <div className="p-2 rounded-none bg-[#B99652]/10 text-[#B99652] border border-[#ebdcaa]">
-                <Users size={18} />
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Active Students</span>
+              <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <Users size={20} />
               </div>
             </div>
-            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">{stats.totalStudents}</h3>
-            <p className="text-xs text-slate-500">Active student accounts</p>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+              {stats.totalStudents}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Enrolled student accounts</p>
           </div>
 
-          <div className="bg-[#fffdf4] rounded-none p-5 text-[#1e1b4b] border border-[#ebdcaa] shadow-sm">
+          {/* Avg Fee */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">Avg Fee/Student</span>
-              <div className="p-2 rounded-none bg-[#B99652]/10 text-[#B99652] border border-[#ebdcaa]">
-                <TrendingUp size={18} />
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Avg Fee / Student</span>
+              <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                <TrendingUp size={20} />
               </div>
             </div>
-            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">₹{stats.averageFeesPerStudent.toLocaleString('en-IN')}</h3>
-            <p className="text-xs text-slate-500">Average collection</p>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+              ₹{stats.averageFeesPerStudent.toLocaleString('en-IN')}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Average collection per seat</p>
           </div>
 
-          {/* Vendor Invoice Stats */}
-          <div className="bg-[#fffdf4] rounded-none p-5 text-[#1e1b4b] border border-[#ebdcaa] shadow-sm">
+          {/* Pending Invoices */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase tracking-wider font-semibold text-slate-500">Pending Invoices</span>
-              <div className="p-2 rounded-none bg-amber-50 text-amber-700 border border-amber-200">
-                <FileText size={18} />
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Pending Invoices</span>
+              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <FileText size={20} />
               </div>
             </div>
-            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">{stats.pendingVendorInvoices}</h3>
-            <p className="text-xs text-slate-500">Awaiting clearance</p>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+              {stats.pendingVendorInvoices}
+            </h3>
+            <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">Awaiting approval clearance</p>
           </div>
         </div>
 
-        {/* Additional Stats Row */}
+        {/* Secondary Financial Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-[#1e1b4b] rounded-none p-5 border border-white/10 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase tracking-wider font-semibold text-white/60">Total Invoices</span>
-              <FileText className="text-[#B99652]" size={20} />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Vendor Invoices</span>
+              <FileText className="text-amber-500" size={20} />
             </div>
-            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-white mb-1">{stats.totalVendorInvoices}</h3>
-            <p className="text-xs text-white/50">All recorded vendor bills</p>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{stats.totalVendorInvoices}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Total vendor bills processed</p>
           </div>
 
-          <div className="bg-[#1e1b4b] rounded-none p-5 border border-white/10 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase tracking-wider font-semibold text-white/60">Total Revenue</span>
-              <DollarSign className="text-emerald-400" size={20} />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Gross Income</span>
+              <DollarSign className="text-emerald-500" size={20} />
             </div>
-            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-white mb-1">₹{stats.totalRevenue.toLocaleString('en-IN')}</h3>
-            <p className="text-xs text-white/50">Gross institutional income</p>
+            <h3 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-1">₹{stats.totalRevenue.toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Total institutional revenue</p>
           </div>
 
-          <div className="bg-[#1e1b4b] rounded-none p-5 border border-white/10 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase tracking-wider font-semibold text-white/60">Total Expenses</span>
-              <TrendingUp className="text-red-400" size={20} />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Total Expenses</span>
+              <TrendingUp className="text-rose-500" size={20} />
             </div>
-            <h3 className="text-2xl font-bold font-['DM_Serif_Display',serif] text-white mb-1">₹{stats.totalExpenses.toLocaleString('en-IN')}</h3>
-            <p className="text-xs text-white/50">Operational expenditures</p>
+            <h3 className="text-xl font-bold text-rose-600 dark:text-rose-400 mb-1">₹{stats.totalExpenses.toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Operational expenditures</p>
           </div>
         </div>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-[#fffdf4] rounded-none p-6 border border-[#ebdcaa] text-[#1e1b4b] shadow-sm">
-            <h3 className="text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-2 flex items-center gap-2">
-              <FileText size={20} className="text-[#B99652]" />
-              Vendor Invoices
-            </h3>
-            <p className="text-xs text-slate-600 mb-4">
-              {stats.pendingVendorInvoices} pending invoices awaiting review & payment
-            </p>
-            <button
-              onClick={() => navigate('/accountant/vendor-invoices')}
-              className="bg-[#B99652] hover:bg-[#a38241] text-white px-4 py-2.5 rounded-none text-xs font-semibold uppercase tracking-wider transition-colors"
-            >
-              Manage Vendor Invoices
-            </button>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:border-amber-500/40 transition-all">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <FileText size={22} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Vendor Invoices Portal</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {stats.pendingVendorInvoices} pending invoices awaiting review & settlement
+                </p>
+              </div>
+            </div>
+            <div className="pt-4">
+              <button
+                onClick={() => navigate('/accountant/vendor-invoices')}
+                className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer"
+              >
+                Manage Vendor Invoices
+              </button>
+            </div>
           </div>
 
-          <div className="bg-[#fffdf4] rounded-none p-6 border border-[#ebdcaa] text-[#1e1b4b] shadow-sm">
-            <h3 className="text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-2 flex items-center gap-2">
-              <DollarSign size={20} className="text-[#B99652]" />
-              Fee Collection
-            </h3>
-            <p className="text-xs text-slate-600 mb-4">
-              Track student fee payments, receipts and status
-            </p>
-            <button
-              onClick={() => navigate('/accountant/fees')}
-              className="bg-[#1e1b4b] hover:bg-[#2b276b] text-white px-4 py-2.5 rounded-none text-xs font-semibold uppercase tracking-wider transition-colors border border-white/10"
-            >
-              View Fee Collection
-            </button>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:border-blue-500/40 transition-all">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                <DollarSign size={22} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Fee Collection Management</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Track student fee structures, dues status, and official tax invoices
+                </p>
+              </div>
+            </div>
+            <div className="pt-4">
+              <button
+                onClick={() => navigate('/accountant/fees')}
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#002366] hover:bg-[#001a4d] text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer"
+              >
+                View Fee Collection
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Charts Section */}
+        {/* Financial Visualizations Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Fee Collection Chart */}
-          <div className="bg-[#1e1b4b] rounded-none p-6 border border-white/10 shadow-sm">
-            <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-white mb-4">Fee Collection by Grade</h3>
-            <ResponsiveContainer width="100%" height={280}>
+          
+          {/* Fee Collection Bar Chart */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center justify-between">
+              <span>Fee Collection by Grade</span>
+              <span className="text-xs font-semibold text-slate-400">Academic Session 2026</span>
+            </h3>
+            <ResponsiveContainer width="100%" height={260}>
               <BarChart data={chartData.feeCollection}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="grade" stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="grade" stroke="#64748b" textAnchor="end" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 0 }}
-                  labelStyle={{ color: '#f8fafc' }}
+                  contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff' }}
                 />
                 <Legend />
-                <Bar dataKey="collected" fill="#B99652" name="Collected" />
-                <Bar dataKey="target" fill="#475569" name="Target" />
+                <Bar dataKey="collected" fill="#B99652" radius={[6, 6, 0, 0]} name="Collected" />
+                <Bar dataKey="target" fill="#cbd5e1" radius={[6, 6, 0, 0]} name="Target" />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Payment Status Chart */}
-          <div className="bg-[#1e1b4b] rounded-none p-6 border border-white/10 shadow-sm">
-            <h3 className="text-lg font-bold font-['DM_Serif_Display',serif] text-white mb-4">Payment Status Breakdown</h3>
-            <ResponsiveContainer width="100%" height={280}>
+          {/* Payment Status Pie Chart */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center justify-between">
+              <span>Payment Status Breakdown</span>
+              <span className="text-xs font-semibold text-slate-400">Real-Time Data</span>
+            </h3>
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie
                   data={chartData.paymentStatus}
@@ -573,44 +621,52 @@ const AccountantDashboard = () => {
                   cy="50%"
                   labelLine={false}
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
+                  outerRadius={85}
                   fill="#B99652"
                   dataKey="value"
                 >
                   {chartData.paymentStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 0 ? '#B99652' : index === 1 ? '#f59e0b' : '#ef4444'} />
+                    <Cell key={`cell-${index}`} fill={index === 0 ? '#10b981' : index === 1 ? '#f59e0b' : '#ef4444'} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 0 }} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Footer with Time Display */}
-        <div className="pt-4 border-t border-white/10 flex flex-wrap justify-between items-center text-xs text-white/50 gap-4">
+        {/* Footer info bar */}
+        <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center text-xs text-slate-500 dark:text-slate-400 gap-4">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <Calendar size={14} className="text-[#B99652]" />
+            <div className="flex items-center gap-1.5 font-medium">
+              <Calendar size={14} className="text-amber-500" />
               <span>{formatDate(currentTime)}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Clock size={14} className="text-[#B99652]" />
+            <div className="flex items-center gap-1.5 font-medium">
+              <Clock size={14} className="text-amber-500" />
               <span>{formatTime(currentTime)}</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 font-medium">
             <div className="flex items-center gap-1.5">
-              <User size={14} className="text-[#B99652]" />
-              <span>{user.name}</span>
+              <User size={14} className="text-amber-500" />
+              <span>{user.name || 'Accountant'}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Building size={14} className="text-[#B99652]" />
+              <Building size={14} className="text-amber-500" />
               <span>{stats.universityName}</span>
             </div>
           </div>
         </div>
       </div>
+
+      <OfflineFeeModal
+        isOpen={isOfflineModalOpen}
+        onClose={() => setIsOfflineModalOpen(false)}
+        onSuccess={() => {
+          loadAccountantData();
+        }}
+      />
     </AccountantLayout>
   );
 };

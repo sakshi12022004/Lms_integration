@@ -178,47 +178,38 @@ const SuperAdminSubscription = () => {
     }
   };
 
-  const handlePlanSelect = (plan) => {
-    if (plan.id === 'free') {
-      activateFreeTrial()
-      return
-    }
+  const [loadingPlan, setLoadingPlan] = useState(null)
 
-    setSelectedPlan(plan.id)
-    initiatePayment(plan)
-  }
+  const handlePlanSelect = async (plan) => {
+    if (loadingPlan) return
+    setLoadingPlan(plan.id)
 
-  const activateFreeTrial = async () => {
     try {
-      const response = await fetch(`${API}/subscriptions/activate-free-trial`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+      if (plan.id === 'free') {
+        const response = await fetch(`${API}/subscriptions/activate-free-trial`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+        const data = await response.json()
+        if (data && data.success) {
+          localStorage.setItem('superadminPlanName', 'Free')
+          localStorage.setItem('superadminSubscriptionStatus', 'active')
+          window.dispatchEvent(new CustomEvent('subscription-refresh'))
+          alert('✅ Free Plan activated successfully!')
+          setTimeout(() => {
+            window.location.href = '/superadmin/dashboard'
+          }, 600)
+        } else {
+          alert(`Error: ${data ? data.message : 'Unknown error'}`)
         }
-      });
-
-      const data = await response.json();
-
-      if (data && data.success) {
-        alert('Free trial activated! You now have 10 days to use the superadmin portal.')
-        // Refresh the page to update the timer
-        window.location.reload()
-      } else {
-        alert(`Error: ${data ? data.message : 'Unknown error'}`)
+        return
       }
-    } catch (error) {
-      console.error('Error activating free trial:', error)
-      alert('Failed to activate free trial')
-    }
-  }
 
-  const initiatePayment = async (plan) => {
-    setLoading(true)
-
-    try {
-      // Create subscription order
-      const orderResponse = await fetch(`${API}/subscriptions/create-order`, {
+      // Standard / Professional direct upgrade
+      const upgradeRes = await fetch(`${API}/subscriptions/test-upgrade`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -227,48 +218,34 @@ const SuperAdminSubscription = () => {
         body: JSON.stringify({
           planId: plan.id,
           planName: plan.name,
-          amount: plan.price
+          durationDays: 365
         })
-      });
+      })
 
+      const upgradeData = await upgradeRes.json()
 
-      // Read raw text first to avoid json() throwing on empty/non-JSON responses
-      const raw = await orderResponse.text();
+      if (upgradeData && upgradeData.success) {
+        localStorage.removeItem('superadminTimerExpired')
+        localStorage.setItem('superadminPlanName', plan.name)
+        localStorage.setItem('superadminSubscriptionStatus', 'active')
+        
+        window.dispatchEvent(new CustomEvent('subscription-refresh'))
+        if (window.refreshSubscription) {
+          window.refreshSubscription()
+        }
 
-      if (!orderResponse.ok) {
-        const statusText = `${orderResponse.status} ${orderResponse.statusText}`;
-        throw new Error(`Create order failed: ${statusText} - ${raw || 'no response body'}`);
+        alert(`🎉 Congratulations! You have successfully upgraded to the ${plan.name} Plan (Active for 1 Year)!`)
+        setTimeout(() => {
+          window.location.href = '/superadmin/dashboard'
+        }, 800)
+      } else {
+        throw new Error(upgradeData.message || 'Failed to upgrade plan')
       }
-
-      if (!raw || raw.trim() === '') {
-        throw new Error('Create order returned empty response');
-      }
-
-      let orderData;
-      try {
-        orderData = JSON.parse(raw);
-      } catch (e) {
-        throw new Error('Invalid JSON from create-order: ' + raw);
-      }
-
-      if (!orderData.success) {
-        throw new Error(orderData.message || 'Failed to create subscription order');
-      }
-
-      // Load Razorpay script if not already loaded
-      if (!window.Razorpay) {
-        await loadRazorpayScript();
-      }
-
-      // Small delay to ensure Razorpay is fully initialized
-      setTimeout(() => {
-        openRazorpayCheckout(plan, orderData.order);
-      }, 1000);
-
     } catch (error) {
-      console.error('Payment initialization error:', error);
-      alert(`Payment failed to initialize: ${error.message}`);
-      setLoading(false);
+      console.error('Subscription error:', error)
+      alert(`Upgrade failed: ${error.message}`)
+    } finally {
+      setLoadingPlan(null)
     }
   }
 
@@ -478,12 +455,14 @@ const SuperAdminSubscription = () => {
         <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-            <Shield style={{ color: '#3B82F6', marginBottom: '16px' }} size={48} />
-            <h1 style={{ fontSize: '36px', fontWeight: 'bold', color: '#111827', marginBottom: '16px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '56px', height: '56px', backgroundColor: 'rgba(185, 150, 82, 0.1)', border: '1px solid #ebdcaa', marginBottom: '16px' }}>
+              <Shield style={{ color: '#B99652' }} size={32} />
+            </div>
+            <h1 style={{ fontSize: '36px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '12px', fontFamily: "'DM Serif Display', serif" }}>
               Choose Your Plan
             </h1>
-            <p style={{ fontSize: '20px', color: '#6B7280', maxWidth: '768px', margin: '0 auto' }}>
-              Select perfect plan for your institution. Start free and upgrade as you grow.
+            <p style={{ fontSize: '16px', color: '#7a705a', maxWidth: '768px', margin: '0 auto', fontWeight: '500' }}>
+              Select the perfect institutional plan. Start free and scale seamlessly across your empire.
             </p>
           </div>
 
@@ -494,76 +473,89 @@ const SuperAdminSubscription = () => {
                 key={plan.id}
                 style={{
                   backgroundColor: 'white',
-                  borderRadius: '16px',
-                  boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-                  padding: '32px',
+                  borderRadius: '0px',
+                  boxShadow: plan.popular 
+                    ? '0 8px 30px rgba(185, 150, 82, 0.18)' 
+                    : '0 4px 20px rgba(185, 150, 82, 0.08)',
+                  padding: '36px 32px',
                   transition: 'all 0.3s ease',
                   position: 'relative',
-                  border: plan.popular ? '2px solid #3B82F6' : 'none',
-                  transform: plan.popular ? 'scale(1.05)' : 'scale(1)'
+                  border: plan.popular ? '2px solid #B99652' : '1.5px solid #ebdcaa',
+                  transform: plan.popular ? 'scale(1.03)' : 'scale(1)'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.15)'
+                  e.currentTarget.style.boxShadow = '0 12px 35px rgba(185, 150, 82, 0.22)'
+                  e.currentTarget.style.borderColor = '#B99652'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)'
+                  e.currentTarget.style.boxShadow = plan.popular 
+                    ? '0 8px 30px rgba(185, 150, 82, 0.18)' 
+                    : '0 4px 20px rgba(185, 150, 82, 0.08)'
+                  e.currentTarget.style.borderColor = plan.popular ? '#B99652' : '#ebdcaa'
                 }}
               >
                 {plan.popular && (
                   <div style={{
                     position: 'absolute',
-                    top: '-16px',
+                    top: '-14px',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    backgroundColor: '#3B82F6',
+                    backgroundColor: '#B99652',
                     color: 'white',
-                    padding: '4px 16px',
-                    borderRadius: '20px',
-                    fontSize: '14px',
-                    fontWeight: '600'
+                    padding: '4px 18px',
+                    borderRadius: '0px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    letterSpacing: '0.5px',
+                    textTransform: 'uppercase',
+                    border: '1px solid #9b7b3e',
+                    boxShadow: '0 2px 8px rgba(185, 150, 82, 0.25)'
                   }}>
                     Most Popular
                   </div>
                 )}
 
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                  <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '8px' }}>
+                  <h3 style={{ fontSize: '26px', fontWeight: 'bold', color: '#1e1b4b', marginBottom: '8px', fontFamily: "'DM Serif Display', serif" }}>
                     {plan.name}
                     {currentSubscription && currentSubscription.status === 'active' &&
                       (currentSubscription.planType === plan.id ||
                         currentSubscription.planName?.toLowerCase().includes(plan.name.toLowerCase())) && (
                         <span style={{
-                          backgroundColor: '#10B981',
-                          color: 'white',
-                          padding: '4px 12px',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          marginLeft: '12px'
+                          backgroundColor: '#fff8e7',
+                          color: '#92400e',
+                          border: '1px solid #fde68a',
+                          padding: '3px 10px',
+                          borderRadius: '0px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          marginLeft: '10px',
+                          display: 'inline-block',
+                          verticalAlign: 'middle'
                         }}>
                           CURRENT PLAN
                         </span>
                       )}
                   </h3>
-                  <p style={{ color: '#6B7280', marginBottom: '24px' }}>{plan.description}</p>
+                  <p style={{ color: '#7a705a', fontSize: '14px', marginBottom: '20px' }}>{plan.description}</p>
 
                   {plan.price ? (
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '36px', fontWeight: 'bold', color: '#111827' }}>
+                      <span style={{ fontSize: '38px', fontWeight: 'bold', color: '#1e1b4b', fontFamily: "'DM Serif Display', serif" }}>
                         ₹{plan.price.toLocaleString('en-IN')}
                       </span>
-                      <span style={{ color: '#6B7280', marginLeft: '8px' }}>/year</span>
+                      <span style={{ color: '#7a705a', marginLeft: '6px', fontSize: '14px', fontWeight: '500' }}>/year</span>
                     </div>
                   ) : (
-                    <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#111827' }}>Free</div>
+                    <div style={{ fontSize: '38px', fontWeight: 'bold', color: '#1e1b4b', fontFamily: "'DM Serif Display', serif" }}>Free</div>
                   )}
                 </div>
 
-                <div style={{ marginBottom: '32px' }}>
+                <div style={{ marginBottom: '32px', paddingTop: '16px', borderTop: '1px solid #ebdcaa' }}>
                   {plan.features.map((feature, index) => (
-                    <div key={index} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-                      <Check style={{ color: '#10B981', marginRight: '12px', marginTop: '2px', flexShrink: 0 }} size={20} />
-                      <span style={{ color: '#374151', fontSize: '16px' }}>{feature}</span>
+                    <div key={index} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '14px' }}>
+                      <Check style={{ color: '#B99652', marginRight: '10px', marginTop: '2px', flexShrink: 0 }} size={18} />
+                      <span style={{ color: '#4a4437', fontSize: '14px', fontWeight: '500' }}>{feature}</span>
                     </div>
                   ))}
                 </div>
@@ -580,12 +572,14 @@ const SuperAdminSubscription = () => {
                     style={{
                       width: '100%',
                       padding: '12px 24px',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      border: '2px solid #EF4444',
-                      backgroundColor: '#FEE2E2',
-                      color: '#DC2626',
+                      borderRadius: '0px',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                      letterSpacing: '0.5px',
+                      textTransform: 'uppercase',
+                      border: '1px solid #ef4444',
+                      backgroundColor: '#fef2f2',
+                      color: '#dc2626',
                       cursor: loading ? 'not-allowed' : 'pointer',
                       opacity: loading ? 0.5 : 1,
                       display: 'flex',
@@ -596,12 +590,12 @@ const SuperAdminSubscription = () => {
                     }}
                     onMouseEnter={(e) => {
                       if (!loading) {
-                        e.currentTarget.style.backgroundColor = '#FCA5A5';
+                        e.currentTarget.style.backgroundColor = '#fee2e2';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!loading) {
-                        e.currentTarget.style.backgroundColor = '#FEE2E2';
+                        e.currentTarget.style.backgroundColor = '#fef2f2';
                       }
                     }}
                   >
@@ -617,37 +611,42 @@ const SuperAdminSubscription = () => {
                 ) : (
                   <button
                     onClick={() => handlePlanSelect(plan)}
-                    disabled={loading}
+                    disabled={Boolean(loadingPlan)}
                     style={{
                       width: '100%',
-                      padding: '12px 24px',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      border: 'none',
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                      opacity: loading ? 0.5 : 1,
-                      backgroundColor: plan.popular ? '#3B82F6' : plan.id === 'free' ? '#F3F4F6' : '#111827',
-                      color: plan.id === 'free' ? '#111827' : 'white',
+                      padding: '13px 24px',
+                      borderRadius: '0px',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                      letterSpacing: '0.5px',
+                      textTransform: 'uppercase',
+                      border: '1px solid #1e1b4b',
+                      cursor: loadingPlan ? 'not-allowed' : 'pointer',
+                      opacity: loadingPlan && loadingPlan !== plan.id ? 0.6 : 1,
+                      backgroundColor: '#1e1b4b',
+                      color: '#ffffff',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      transition: 'all 0.2s ease'
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 6px rgba(30, 27, 75, 0.15)'
                     }}
                     onMouseEnter={(e) => {
-                      if (!loading) {
-                        e.currentTarget.style.backgroundColor = plan.popular ? '#2563EB' : plan.id === 'free' ? '#E5E7EB' : '#1F2937'
+                      if (!loadingPlan) {
+                        e.currentTarget.style.backgroundColor = '#B99652';
+                        e.currentTarget.style.borderColor = '#9b7b3e';
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (!loading) {
-                        e.currentTarget.style.backgroundColor = plan.popular ? '#3B82F6' : plan.id === 'free' ? '#F3F4F6' : '#111827'
+                      if (!loadingPlan) {
+                        e.currentTarget.style.backgroundColor = '#1e1b4b';
+                        e.currentTarget.style.borderColor = '#1e1b4b';
                       }
                     }}
                   >
-                    {loading ? (
+                    {loadingPlan === plan.id ? (
                       <span style={{ display: 'flex', alignItems: 'center' }}>
-                        <svg style={{ animation: 'spin 1s linear infinite', marginRight: '12px', height: '20px', width: '20px' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg style={{ animation: 'spin 1s linear infinite', marginRight: '12px', height: '18px', width: '18px' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12a8 8 0 01-8 8v0a5.291 5.291 0 0010.585z"></path>
                         </svg>

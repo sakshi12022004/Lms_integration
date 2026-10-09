@@ -149,6 +149,8 @@ import MentorCourseDetails from "./pages/mentor/MentorCourseDetails";
 
 import CourseMaterialsUpload from "./pages/mentor/CourseMaterialsUpload";
 
+import ClassFeeStatus from "./pages/mentor/ClassFeeStatus";
+
 
 
 /* ================= STUDENT ================= */
@@ -833,6 +835,22 @@ function App() {
 
           />
 
+          <Route
+
+            path="/mentor/fee-monitoring"
+
+            element={
+
+              <ProtectedRoute requiredRole="mentor">
+
+                <ClassFeeStatus />
+
+              </ProtectedRoute>
+
+            }
+
+          />
+
 
 
           <Route
@@ -1017,6 +1035,24 @@ function App() {
 
           <Route
 
+            path="/accountant/fee-monitoring"
+
+            element={
+
+              <ProtectedRoute requiredRole="accountant">
+
+                <ClassFeeStatus />
+
+              </ProtectedRoute>
+
+            }
+
+          />
+
+
+
+          <Route
+
             path="/accountant/fees"
 
             element={
@@ -1059,7 +1095,23 @@ function App() {
 
               <ProtectedRoute requiredRole="accountant">
 
-                <TestDatabaseExport />
+                <AccountantDatabaseExport />
+
+              </ProtectedRoute>
+
+            }
+
+          />
+
+          <Route
+
+            path="/accountant/reports"
+
+            element={
+
+              <ProtectedRoute requiredRole="accountant">
+
+                <AccountantDatabaseExport />
 
               </ProtectedRoute>
 

@@ -28,7 +28,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Megaphone,
-  UserCheck
+  UserCheck,
+  CreditCard
 } from "lucide-react";
 
 const StudentDashboard = () => {
@@ -635,6 +636,19 @@ const StudentDashboard = () => {
                     <span className="block text-[10px] text-[#7a809c]">Notices</span>
                   </div>
                 </div>
+
+                <Link to="/student/pay-fees" className="col-span-2 flex items-center justify-between p-2.5 border border-[#ebdcaa] bg-[#fffdf4] hover:bg-[#ebdcaa]/30 rounded-none transition-all group shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-none bg-[#B99652]/20 text-[#B99652] flex items-center justify-center flex-none">
+                      <CreditCard className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="block text-xs font-bold text-[#1e1b4b] group-hover:text-[#B99652] leading-tight">Pay Institute Fees</span>
+                      <span className="block text-[10px] text-gray-500">View Dues & Receipts</span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-[#B99652] px-2 py-0.5 border border-[#B99652]/40 bg-white">Pay Now &rarr;</span>
+                </Link>
               </div>
             </section>
 

@@ -39,6 +39,10 @@ const createUniversityWithAdmin = async (req, res) => {
       return res.status(400).json({ message: "Official email is required" });
     }
 
+    if (phone && !/^[0-9]{10}$/.test(String(phone).replace(/\D/g, ''))) {
+      return res.status(400).json({ message: "Phone number must be exactly 10 digits" });
+    }
+
     console.log('🏛️ Creating university with admin:', { 
       universityName: resolvedUniversityName, 
       area: resolvedArea,

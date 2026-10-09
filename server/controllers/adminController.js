@@ -59,6 +59,12 @@ exports.createStudent = async (req, res) => {
       });
     }
 
+    if (phone && !/^[0-9]{10}$/.test(String(phone).replace(/\D/g, ''))) {
+      return res.status(400).json({
+        message: "Phone number must be exactly 10 digits",
+      });
+    }
+
     // Get admin's university for tenant isolation
     const universityId = req.user.universityId || 1;
 
@@ -393,6 +399,12 @@ exports.createTeacher = async (req, res) => {
     if (!name || !email) {
       return res.status(400).json({
         message: "Name and Email are required",
+      });
+    }
+
+    if (phone && !/^[0-9]{10}$/.test(String(phone).replace(/\D/g, ''))) {
+      return res.status(400).json({
+        message: "Phone number must be exactly 10 digits",
       });
     }
 

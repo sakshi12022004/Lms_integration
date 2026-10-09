@@ -276,7 +276,7 @@ const TermsConditionsModal = () => {
                 </label>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
+              <div className="flex justify-end gap-3">
                 <button
                   onClick={closeModal}
                   className="w-full sm:w-auto px-6 py-2.5 border border-[#ebdcaa] text-[#1e1b4b] rounded-none font-semibold text-sm hover:bg-white transition-all"

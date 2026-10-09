@@ -13,6 +13,8 @@ import {
   Calendar,
   User,
   Building,
+  Bell,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '../auth/auth';
 import { useTranslation } from '../context/TranslationContext';
@@ -99,6 +101,11 @@ const AccountantLayout = ({ children }) => {
       icon: <LayoutDashboard size={20} />,
     },
     {
+      path: '/accountant/fee-monitoring',
+      nameKey: 'nav_fee_status',
+      icon: <Bell size={20} />,
+    },
+    {
       path: '/accountant/vendor-invoices',
       nameKey: 'vendor_invoices',
       icon: <FileText size={20} />,
@@ -115,8 +122,8 @@ const AccountantLayout = ({ children }) => {
     },
     {
       path: '/accountant/database-export',
-      nameKey: 'database_export',
-      icon: <Database size={20} />,
+      nameKey: 'reports_and_analysis',
+      icon: <FileSpreadsheet size={20} />,
     },
   ];
 
@@ -311,11 +318,11 @@ const AccountantLayout = ({ children }) => {
         className={`
           transition-all duration-300 flex-1 overflow-hidden
           ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}
-          h-full bg-[#0f172a] text-slate-100
+          h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100
         `}
       >
         {/* ================= HEADER ================= */}
-        <header className="sticky top-0 z-20 bg-[#1e1b4b] border-b border-white/10 shadow-sm">
+        <header className="sticky top-0 z-20 bg-[#002366] text-white border-b border-amber-500/20 shadow-md">
           <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4 lg:hidden">
               <button

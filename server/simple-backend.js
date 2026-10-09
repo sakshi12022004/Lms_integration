@@ -119,6 +119,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Mount superadmin routes
 app.use('/api/superadmin', superadminRoutes);
+app.use('/api/demo-requests', require('./routes/demoRoutes'));
 
 // Test route for university creation without auth
 app.post('/api/test/create-university', async (req, res) => {

@@ -197,138 +197,171 @@ const AccountantDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading dashboard...</p>
+      <AccountantLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-none h-12 w-12 border-b-2 border-[#002366]"></div>
         </div>
-      </div>
+      </AccountantLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <p className="text-white text-lg mb-4">{error}</p>
+      <AccountantLayout>
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <AlertCircle className="h-12 w-12 text-rose-600 mb-3" />
+          <p className="text-slate-800 text-lg font-bold mb-3">{error}</p>
           <button
             onClick={fetchDashboardData}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+            className="bg-[#002366] hover:bg-[#001845] text-white px-5 py-2.5 rounded-none font-semibold text-sm transition"
           >
-            Retry
+            Retry Loading
           </button>
         </div>
-      </div>
+      </AccountantLayout>
     );
   }
 
   return (
     <AccountantLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-white mb-2">Accountant Dashboard</h1>
-            <p className="text-gray-400">Manage finances, invoices, and payments</p>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#ebdcaa] pb-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#002366] tracking-tight">Accountant Executive Dashboard</h1>
+            <p className="text-slate-600 text-sm mt-1">Real-time revenue monitoring, vendor liabilities, and financial audit insights</p>
+          </div>
+          <button
+            onClick={fetchDashboardData}
+            className="bg-[#002366] hover:bg-[#001845] text-white px-4 py-2.5 rounded-none font-semibold text-sm transition-all shadow-xs flex items-center gap-2 self-start sm:self-auto"
+          >
+            <RefreshCw size={16} className="text-[#B99652]" />
+            Refresh Overview
+          </button>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="bg-white rounded-none border border-[#ebdcaa] border-t-4 border-t-[#002366] p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">Total Fees Collected</span>
+              <DollarSign className="h-6 w-6 text-[#002366]" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold text-[#002366]">
+              ₹{stats.totalFeesCollected.toLocaleString('en-IN')}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Direct student & offline payments</p>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white">
-              <div className="flex items-center justify-between mb-4">
-                <DollarSign className="h-8 w-8" />
-                <span className="text-2xl font-bold">₹{stats.totalFeesCollected.toLocaleString('en-IN')}</span>
-              </div>
-              <p className="text-blue-100">Total Fees Collected</p>
+          <div className="bg-white rounded-none border border-[#ebdcaa] border-t-4 border-t-[#B99652] p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">Pending Vendor Invoices</span>
+              <FileText className="h-6 w-6 text-[#B99652]" />
             </div>
-
-            <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-6 text-white">
-              <div className="flex items-center justify-between mb-4">
-                <FileText className="h-8 w-8" />
-                <span className="text-2xl font-bold">{stats.pendingVendorInvoices}</span>
-              </div>
-              <p className="text-purple-100">Pending Invoices</p>
+            <div className="text-2xl sm:text-3xl font-bold text-[#002366]">
+              {stats.pendingVendorInvoices}
             </div>
+            <p className="text-xs text-slate-500 mt-1">Awaiting corporate disbursement</p>
+          </div>
 
-            <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-xl p-6 text-white">
-              <div className="flex items-center justify-between mb-4">
-                <TrendingDown className="h-8 w-8" />
-                <span className="text-2xl font-bold">₹{stats.totalExpenses.toLocaleString('en-IN')}</span>
-              </div>
-              <p className="text-red-100">Total Expenses</p>
+          <div className="bg-white rounded-none border border-[#ebdcaa] border-t-4 border-t-rose-600 p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">Total Settled Expenses</span>
+              <TrendingDown className="h-6 w-6 text-rose-600" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold text-rose-700">
+              ₹{stats.totalExpenses.toLocaleString('en-IN')}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Cleared operational expenses</p>
+          </div>
+        </div>
+
+        {/* Financial Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Revenue Chart */}
+          <div className="bg-white rounded-none border border-[#ebdcaa] p-6 shadow-xs">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-[#002366] flex items-center gap-2">
+                <TrendingUp size={18} className="text-emerald-600" />
+                Revenue Trajectory
+              </h2>
+              <span className="text-xs bg-emerald-50 text-emerald-800 font-bold px-2.5 py-1 rounded-none border border-emerald-200 uppercase">
+                Income Flow
+              </span>
+            </div>
+            <div className="h-64 flex items-center justify-center">
+              {stats.monthlyRevenueData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart 
+                    data={stats.monthlyRevenueData}
+                    margin={{ top: 10, right: 15, left: 0, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1e5c8" />
+                    <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 12 }} />
+                    <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #ebdcaa', borderRadius: '0px' }}
+                      labelStyle={{ color: '#002366', fontWeight: 'bold' }}
+                      formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, 'Revenue']}
+                    />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="#002366" 
+                      strokeWidth={3}
+                      dot={{ fill: '#B99652', r: 5, strokeWidth: 2, stroke: '#002366' }}
+                      name="Revenue (₹)"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center py-8">
+                  <TrendingUp className="h-10 w-10 text-slate-300 mx-auto mb-2" />
+                  <p className="text-slate-600 font-medium text-sm">No revenue data available yet</p>
+                  <p className="text-slate-400 text-xs mt-1">Collections will populate this chart in real-time</p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Financial Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
-              <h2 className="text-xl font-semibold text-white mb-4">Revenue Overview</h2>
-              <div className="h-64 flex items-center justify-center">
-                {stats.monthlyRevenueData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart 
-                      data={stats.monthlyRevenueData}
-                      margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                      <XAxis dataKey="name" stroke="#9CA3AF" />
-                      <YAxis stroke="#9CA3AF" />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
-                        labelStyle={{ color: '#F3F4F6' }}
-                        formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, 'Revenue']}
-                      />
-                      <Legend />
-                      <Line 
-                        type="monotone" 
-                        dataKey="revenue" 
-                        stroke="#10B981" 
-                        strokeWidth={2}
-                        dot={{ fill: '#10B981', r: 4 }}
-                        name="Revenue (₹)"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="text-center">
-                    <TrendingUp className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400">No revenue data available</p>
-                    <p className="text-gray-500 text-sm">Revenue will appear here once payments are recorded</p>
-                  </div>
-                )}
-              </div>
+          {/* Expense Chart */}
+          <div className="bg-white rounded-none border border-[#ebdcaa] p-6 shadow-xs">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+              <h2 className="text-lg font-bold text-[#002366] flex items-center gap-2">
+                <TrendingDown size={18} className="text-rose-600" />
+                Expense Analysis
+              </h2>
+              <span className="text-xs bg-rose-50 text-rose-800 font-bold px-2.5 py-1 rounded-none border border-rose-200 uppercase">
+                Outflow Audit
+              </span>
             </div>
-          </div>
-
-          <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
-              <h2 className="text-xl font-semibold text-white mb-4">Expense Analysis</h2>
-              <div className="h-64 flex items-center justify-center">
-                {stats.monthlyExpenseData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.monthlyExpenseData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                      <XAxis dataKey="name" stroke="#9CA3AF" />
-                      <YAxis stroke="#9CA3AF" />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
-                        labelStyle={{ color: '#F3F4F6' }}
-                        formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, 'Expenses']}
-                      />
-                      <Legend />
-                      <Bar 
-                        dataKey="expenses" 
-                        fill="#EF4444" 
-                        name="Expenses (₹)"
-                        radius={[8, 8, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="text-center">
-                    <TrendingDown className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400">No expense data available</p>
-                    <p className="text-gray-500 text-sm">Expenses will appear here once invoices are paid</p>
+            <div className="h-64 flex items-center justify-center">
+              {stats.monthlyExpenseData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.monthlyExpenseData} margin={{ top: 10, right: 15, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1e5c8" />
+                    <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 12 }} />
+                    <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #ebdcaa', borderRadius: '0px' }}
+                      labelStyle={{ color: '#002366', fontWeight: 'bold' }}
+                      formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, 'Expenses']}
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="expenses" 
+                      fill="#B99652" 
+                      name="Expenses (₹)"
+                      radius={[0, 0, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center py-8">
+                  <TrendingDown className="h-10 w-10 text-slate-300 mx-auto mb-2" />
+                  <p className="text-slate-600 font-medium text-sm">No expense records available yet</p>
+                  <p className="text-slate-400 text-xs mt-1">Paid vendor invoices will populate this graph</p>
                 </div>
               )}
             </div>
