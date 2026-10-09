@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, CheckCircle2, ShieldCheck, Sparkles, Building2, User, Mail, Users, ArrowRight } from 'lucide-react';
+import { X, Calendar, Clock, CheckCircle2, ShieldCheck, Sparkles, Building2, User, Mail, Users, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import axios from 'axios';
+
+const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5002/api';
 
 const BookDemoModal = ({ isOpen, onClose }) => {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [formData, setFormData] = useState({
     fullName: '',
     workEmail: '',
@@ -18,15 +23,34 @@ const BookDemoModal = ({ isOpen, onClose }) => {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (errorMessage) setErrorMessage('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitted(true);
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      const response = await axios.post(`${API_BASE}/demo-requests`, formData);
+      if (response.data && response.data.success) {
+        setIsSubmitted(true);
+      } else {
+        setErrorMessage(response.data?.message || 'Failed to submit demo request.');
+      }
+    } catch (error) {
+      console.error('Error submitting demo request:', error);
+      const msg = error.response?.data?.message || error.message || 'Server connection error. Please try again.';
+      setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleResetAndClose = () => {
     setIsSubmitted(false);
+    setIsLoading(false);
+    setErrorMessage('');
     onClose();
   };
 
@@ -227,13 +251,31 @@ const BookDemoModal = ({ isOpen, onClose }) => {
                     </div>
                   </div>
 
+                  {/* Error Alert if any */}
+                  {errorMessage && (
+                    <div className="p-3 bg-rose-50 border-l-4 border-rose-500 text-rose-700 text-xs flex items-center space-x-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{errorMessage}</span>
+                    </div>
+                  )}
+
                   {/* Submit CTA */}
                   <button
                     type="submit"
-                    className="w-full py-3.5 header-button bg-[#B99652] hover:bg-[#a68443] text-white font-['Poppins'] font-semibold text-[13px] uppercase tracking-[0.5px] border-none rounded-none shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2 mt-2"
+                    disabled={isLoading}
+                    className="w-full py-3.5 header-button bg-[#B99652] hover:bg-[#a68443] disabled:opacity-75 disabled:cursor-not-allowed text-white font-['Poppins'] font-semibold text-[13px] uppercase tracking-[0.5px] border-none rounded-none shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2 mt-2"
                   >
-                    <span>Schedule Live Demo</span>
-                    <ArrowRight className="w-4 h-4" />
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Confirming Schedule...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Schedule Live Demo</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
                   </button>
                 </form>
               ) : (

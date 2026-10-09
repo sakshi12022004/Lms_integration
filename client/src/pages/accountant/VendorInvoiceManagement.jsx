@@ -386,26 +386,26 @@ Payment Status: Successfully Completed
   const getStatusIcon = (status) => {
     switch (status) {
       case 'paid':
-        return <CheckCircle size={16} className="text-green-600" />;
+        return <CheckCircle size={15} className="text-emerald-700" />;
       case 'pending':
-        return <Clock size={16} className="text-yellow-600" />;
+        return <Clock size={15} className="text-amber-700" />;
       case 'overdue':
-        return <AlertCircle size={16} className="text-red-600" />;
+        return <AlertCircle size={15} className="text-rose-700" />;
       default:
-        return <Clock size={16} className="text-gray-600" />;
+        return <Clock size={15} className="text-slate-700" />;
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'paid':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-emerald-50 text-emerald-800 border-emerald-300';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-amber-50 text-amber-800 border-amber-300';
       case 'overdue':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-rose-50 text-rose-800 border-rose-300';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-slate-100 text-slate-800 border-slate-300';
     }
   };
 
@@ -413,7 +413,7 @@ Payment Status: Successfully Completed
     return (
       <AccountantLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+          <div className="animate-spin rounded-none h-12 w-12 border-b-2 border-[#002366]"></div>
         </div>
       </AccountantLayout>
     );
@@ -423,22 +423,22 @@ Payment Status: Successfully Completed
     <AccountantLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#ebdcaa] pb-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">Vendor Invoices</h1>
-            <p className="text-emerald-200">Manage and process vendor payments</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#002366] tracking-tight">Vendor Invoices & Payment Ledger</h1>
+            <p className="text-slate-600 text-sm mt-1">Manage and process corporate vendor payments & audit history</p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setShowPaymentHistory(true)}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2"
+              className="bg-[#002366] hover:bg-[#001845] text-white px-4 py-2.5 rounded-none font-semibold text-sm transition-all shadow-xs flex items-center gap-2"
             >
-              <FileText size={16} />
+              <FileText size={16} className="text-[#B99652]" />
               Payment History
             </button>
             <button
               onClick={fetchInvoices}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2"
+              className="bg-[#B99652] hover:bg-[#a38243] text-white px-4 py-2.5 rounded-none font-semibold text-sm transition-all shadow-xs flex items-center gap-2"
             >
               <RefreshCw size={16} />
               Refresh
@@ -448,63 +448,67 @@ Payment Status: Successfully Completed
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white">
+          <div className="bg-white rounded-none border border-[#ebdcaa] border-t-4 border-t-[#002366] p-5 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <FileText size={24} />
-              <span className="text-2xl font-bold">{invoices.length}</span>
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">Total Invoices</span>
+              <FileText size={20} className="text-[#002366]" />
             </div>
-            <p className="text-blue-100">Total Invoices</p>
+            <div className="text-2xl font-bold text-[#002366]">{invoices.length}</div>
+            <p className="text-xs text-slate-500 mt-1">All processed & pending</p>
           </div>
           
-          <div className="bg-gradient-to-br from-yellow-600 to-yellow-700 rounded-xl p-6 text-white">
+          <div className="bg-white rounded-none border border-[#ebdcaa] border-t-4 border-t-amber-600 p-5 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <Clock size={24} />
-              <span className="text-2xl font-bold">{invoices.filter(inv => inv.status === 'pending').length}</span>
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">Pending</span>
+              <Clock size={20} className="text-amber-600" />
             </div>
-            <p className="text-yellow-100">Pending</p>
+            <div className="text-2xl font-bold text-amber-700">{invoices.filter(inv => inv.status === 'pending').length}</div>
+            <p className="text-xs text-slate-500 mt-1">Awaiting settlement</p>
           </div>
           
-          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-6 text-white">
+          <div className="bg-white rounded-none border border-[#ebdcaa] border-t-4 border-t-emerald-600 p-5 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <CheckCircle size={24} />
-              <span className="text-2xl font-bold">{invoices.filter(inv => inv.status === 'paid').length}</span>
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">Paid Invoices</span>
+              <CheckCircle size={20} className="text-emerald-600" />
             </div>
-            <p className="text-green-100">Paid</p>
+            <div className="text-2xl font-bold text-emerald-700">{invoices.filter(inv => inv.status === 'paid').length}</div>
+            <p className="text-xs text-slate-500 mt-1">Cleared transactions</p>
           </div>
           
-          <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-6 text-white">
+          <div className="bg-white rounded-none border border-[#ebdcaa] border-t-4 border-t-[#B99652] p-5 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <DollarSign size={24} />
-              <span className="text-2xl font-bold">
-                ₹{invoices
-                  .filter(inv => inv.status === 'pending')
-                  .reduce((sum, inv) => sum + (inv.amount || 0), 0)
-                  .toLocaleString('en-IN')}
-              </span>
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">Pending Amount</span>
+              <DollarSign size={20} className="text-[#B99652]" />
             </div>
-            <p className="text-purple-100">Pending Amount</p>
+            <div className="text-2xl font-bold text-[#002366]">
+              ₹{invoices
+                .filter(inv => inv.status === 'pending')
+                .reduce((sum, inv) => sum + (inv.amount || 0), 0)
+                .toLocaleString('en-IN')}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Total outstanding liability</p>
           </div>
         </div>
 
         {/* Search and Filter */}
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-4 bg-white p-4 border border-[#ebdcaa] rounded-none shadow-xs">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
-              placeholder="Search invoices..."
+              placeholder="Search invoices by number, vendor or description..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white/10 border border-emerald-500/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500"
+              className="w-full pl-10 pr-4 py-2 bg-[#fffdf0] border border-[#ebdcaa] rounded-none text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-[#002366]"
             />
           </div>
           
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 bg-white/10 border border-emerald-500/30 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+            className="px-4 py-2 bg-[#fffdf0] border border-[#ebdcaa] rounded-none text-slate-800 text-sm focus:outline-none focus:border-[#002366]"
           >
-            <option value="all">All Status</option>
+            <option value="all">All Statuses</option>
             <option value="pending">Pending</option>
             <option value="paid">Paid</option>
             <option value="overdue">Overdue</option>
@@ -512,65 +516,65 @@ Payment Status: Successfully Completed
         </div>
 
         {/* Invoices Table */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-emerald-500/30 overflow-hidden">
+        <div className="bg-white rounded-none border border-[#ebdcaa] shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-emerald-500/30">
-                  <th className="px-6 py-4 text-left text-emerald-200 font-semibold">Invoice</th>
-                  <th className="px-6 py-4 text-left text-emerald-200 font-semibold">Vendor</th>
-                  <th className="px-6 py-4 text-left text-emerald-200 font-semibold">Amount</th>
-                  <th className="px-6 py-4 text-left text-emerald-200 font-semibold">Due Date</th>
-                  <th className="px-6 py-4 text-left text-emerald-200 font-semibold">Status</th>
-                  <th className="px-6 py-4 text-left text-emerald-200 font-semibold">Actions</th>
+                <tr className="bg-[#fbf6e6] border-b border-[#ebdcaa] text-xs font-bold uppercase tracking-wider text-[#002366]">
+                  <th className="px-6 py-4">Invoice</th>
+                  <th className="px-6 py-4">Vendor</th>
+                  <th className="px-6 py-4">Amount</th>
+                  <th className="px-6 py-4">Due Date</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
                 {filteredInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-gray-400">
-                      <FileText size={48} className="mx-auto mb-4 text-gray-500" />
-                      <p>No invoices found</p>
+                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
+                      <FileText size={48} className="mx-auto mb-3 text-slate-300" />
+                      <p className="font-medium text-slate-600">No invoices found matching criteria</p>
                     </td>
                   </tr>
                 ) : (
                   filteredInvoices.map((invoice) => (
-                    <tr key={invoice.id} className="border-b border-emerald-500/20 hover:bg-white/5">
+                    <tr key={invoice.id} className="hover:bg-[#fffdf0] transition-colors">
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-medium text-white">{invoice.invoiceNumber}</p>
-                          <p className="text-sm text-gray-400">{new Date(invoice.issueDate).toLocaleDateString()}</p>
+                          <p className="font-bold text-[#002366]">{invoice.invoiceNumber}</p>
+                          <p className="text-xs text-slate-500">Issued: {new Date(invoice.issueDate).toLocaleDateString('en-IN')}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <User size={16} className="text-emerald-400" />
-                          <span className="text-white">{invoice.vendorName}</span>
+                          <User size={15} className="text-[#B99652]" />
+                          <span className="font-medium text-slate-800">{invoice.vendorName}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-semibold text-white">₹{invoice.amount?.toLocaleString('en-IN')}</span>
+                        <span className="font-bold text-[#002366]">₹{invoice.amount?.toLocaleString('en-IN')}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Calendar size={16} className="text-gray-400" />
-                          <span className="text-white">{new Date(invoice.dueDate).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-1.5 text-slate-600">
+                          <Calendar size={15} className="text-slate-400" />
+                          <span>{new Date(invoice.dueDate).toLocaleDateString('en-IN')}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(invoice.status)}`}>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none text-xs font-semibold uppercase tracking-wider border ${getStatusColor(invoice.status)}`}>
                           {getStatusIcon(invoice.status)}
                           {invoice.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => {
                               setSelectedInvoice(invoice);
                               setShowPaymentModal(true);
                             }}
-                            className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition"
+                            className="p-2 bg-slate-100 hover:bg-[#002366] hover:text-white text-slate-700 rounded-none transition"
                             title="View Details"
                           >
                             <Eye size={16} />
@@ -580,13 +584,16 @@ Payment Status: Successfully Completed
                             <button
                               onClick={() => handlePayment(invoice.id)}
                               disabled={processingPayment === invoice.id}
-                              className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50"
+                              className="px-3 py-1.5 bg-[#002366] hover:bg-[#001845] text-white text-xs font-semibold rounded-none transition disabled:opacity-50 flex items-center gap-1.5 shadow-xs"
                               title="Process Payment"
                             >
                               {processingPayment === invoice.id ? (
-                                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                                <div className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-none"></div>
                               ) : (
-                                <CreditCard size={16} />
+                                <>
+                                  <CreditCard size={14} className="text-[#B99652]" />
+                                  <span>Pay Now</span>
+                                </>
                               )}
                             </button>
                           )}
@@ -602,69 +609,82 @@ Payment Status: Successfully Completed
 
         {/* Payment Modal */}
         {showPaymentModal && selectedInvoice && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 max-w-md w-full mx-4 border border-emerald-500/30">
-              <h3 className="text-xl font-bold text-white mb-4">Invoice Details</h3>
-              
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Invoice Number:</span>
-                  <span className="text-white font-medium">{selectedInvoice.invoiceNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Vendor:</span>
-                  <span className="text-white font-medium">{selectedInvoice.vendorName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Amount:</span>
-                  <span className="text-emerald-400 font-bold text-lg">₹{selectedInvoice.amount?.toLocaleString('en-IN')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Due Date:</span>
-                  <span className="text-white">{new Date(selectedInvoice.dueDate).toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Status:</span>
-                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(selectedInvoice.status)}`}>
-                        {getStatusIcon(selectedInvoice.status)}
-                        {selectedInvoice.status}
-                      </span>
-                </div>
-              </div>
-              
-              {selectedInvoice.description && (
-                <div className="mb-6">
-                  <p className="text-gray-400 mb-2">Description:</p>
-                  <p className="text-white">{selectedInvoice.description}</p>
-                </div>
-              )}
-              
-              <div className="flex gap-3">
-                <button
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-none border border-[#ebdcaa] max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="bg-[#002366] px-6 py-4 flex items-center justify-between border-b border-[#B99652]">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <FileText size={18} className="text-[#B99652]" />
+                  Invoice Details
+                </h3>
+                <button 
                   onClick={() => setShowPaymentModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition"
+                  className="text-slate-300 hover:text-white font-bold text-xl"
                 >
-                  Close
+                  ✕
                 </button>
-                {selectedInvoice.status === 'pending' && (
-                  <button
-                    onClick={() => handlePayment(selectedInvoice.id)}
-                    disabled={processingPayment === selectedInvoice.id}
-                    className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {processingPayment === selectedInvoice.id ? (
-                      <>
-                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard size={16} />
-                        Process Payment
-                      </>
-                    )}
-                  </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="space-y-3 bg-[#fffdf0] p-4 border border-[#ebdcaa] rounded-none text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-medium">Invoice Number:</span>
+                    <span className="text-[#002366] font-bold">{selectedInvoice.invoiceNumber}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-medium">Vendor Name:</span>
+                    <span className="text-slate-800 font-semibold">{selectedInvoice.vendorName}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-[#ebdcaa] pt-2">
+                    <span className="text-slate-500 font-medium">Invoice Amount:</span>
+                    <span className="text-[#002366] font-bold text-base">₹{selectedInvoice.amount?.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-medium">Due Date:</span>
+                    <span className="text-slate-800">{new Date(selectedInvoice.dueDate).toLocaleDateString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-[#ebdcaa] pt-2">
+                    <span className="text-slate-500 font-medium">Status:</span>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-none text-xs font-bold uppercase tracking-wider border ${getStatusColor(selectedInvoice.status)}`}>
+                      {getStatusIcon(selectedInvoice.status)}
+                      {selectedInvoice.status}
+                    </span>
+                  </div>
+                </div>
+                
+                {selectedInvoice.description && (
+                  <div className="bg-slate-50 p-3 border border-slate-200 rounded-none text-xs">
+                    <p className="text-slate-500 font-bold uppercase tracking-wider mb-1">Description:</p>
+                    <p className="text-slate-700">{selectedInvoice.description}</p>
+                  </div>
                 )}
+                
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowPaymentModal(false)}
+                    className="flex-1 px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-sm rounded-none transition"
+                  >
+                    Close
+                  </button>
+                  {selectedInvoice.status === 'pending' && (
+                    <button
+                      onClick={() => handlePayment(selectedInvoice.id)}
+                      disabled={processingPayment === selectedInvoice.id}
+                      className="flex-1 px-4 py-2.5 bg-[#002366] hover:bg-[#001845] text-white font-semibold text-sm rounded-none transition disabled:opacity-50 flex items-center justify-center gap-2 shadow-xs"
+                    >
+                      {processingPayment === selectedInvoice.id ? (
+                        <>
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-none"></div>
+                          <span>Processing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard size={16} className="text-[#B99652]" />
+                          <span>Process Payment</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -672,51 +692,65 @@ Payment Status: Successfully Completed
 
         {/* Payment History Modal */}
         {showPaymentHistory && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 max-w-4xl w-full mx-4 border border-emerald-500/30 max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-white">Payment History</h3>
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-none border border-[#ebdcaa] max-w-4xl w-full shadow-2xl overflow-hidden max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+              <div className="bg-[#002366] px-6 py-4 flex items-center justify-between border-b border-[#B99652]">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <FileText size={18} className="text-[#B99652]" />
+                  Vendor Payment Audit History
+                </h3>
                 <button
                   onClick={() => setShowPaymentHistory(false)}
-                  className="text-gray-400 hover:text-white transition"
+                  className="text-slate-300 hover:text-white font-bold text-xl"
                 >
                   ✕
                 </button>
               </div>
-              
-              {paymentHistory.length === 0 ? (
-                <div className="text-center py-8">
-                  <FileText size={48} className="mx-auto mb-4 text-gray-500" />
-                  <p className="text-gray-400">No payment history found</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {paymentHistory.map((payment) => (
-                    <div key={payment.id} className="bg-white/10 rounded-lg p-4 border border-emerald-500/20">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-white font-medium">{payment.invoiceNumber}</p>
-                          <p className="text-gray-400 text-sm">{payment.vendorName}</p>
-                          <p className="text-gray-400 text-sm">
-                            {new Date(payment.paymentDate).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-emerald-400 font-bold">₹{payment.amount.toLocaleString('en-IN')}</p>
-                          <p className="text-green-400 text-sm">{payment.status}</p>
-                          <button
-                            onClick={() => handleDownloadInvoice(payment.id)}
-                            className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition flex items-center gap-1"
-                          >
-                            <Download size={14} />
-                            Download Invoice
-                          </button>
+
+              <div className="p-6 overflow-y-auto flex-1">
+                {paymentHistory.length === 0 ? (
+                  <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-none">
+                    <FileText size={48} className="mx-auto mb-3 text-slate-300" />
+                    <p className="text-slate-600 font-medium">No recorded payment history found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {paymentHistory.map((payment) => (
+                      <div key={payment.id} className="bg-[#fffdf0] rounded-none p-4 border border-[#ebdcaa] hover:border-[#002366] transition-all">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-[#002366] text-base">{payment.invoiceNumber}</span>
+                              <span className="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 font-bold uppercase rounded-none border border-emerald-300">
+                                {payment.status}
+                              </span>
+                            </div>
+                            <p className="text-slate-700 text-sm font-semibold mt-0.5">{payment.vendorName}</p>
+                            <p className="text-slate-500 text-xs mt-1">
+                              Paid Date: {new Date(payment.paymentDate).toLocaleDateString('en-IN')}
+                            </p>
+                          </div>
+                          <div className="text-left sm:text-right flex sm:flex-col items-center sm:items-end justify-between gap-2">
+                            <div>
+                              <p className="text-[#002366] font-bold text-lg">₹{payment.amount?.toLocaleString('en-IN')}</p>
+                              {payment.razorpayPaymentId && (
+                                <p className="text-slate-400 text-xs font-mono">Ref: {payment.razorpayPaymentId}</p>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleDownloadInvoice(payment.id)}
+                              className="bg-[#002366] hover:bg-[#001845] text-white px-3 py-1.5 rounded-none text-xs font-semibold transition flex items-center gap-1.5 shadow-xs"
+                            >
+                              <Download size={14} className="text-[#B99652]" />
+                              <span>Download Receipt</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

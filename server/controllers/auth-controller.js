@@ -91,6 +91,7 @@ exports.login = async (req, res) => {
         "mentor@gmail.com": "mentor", 
         "admin@gmail.com": "admin",
         "accountant@demo.com": "accountant",
+        "accountant@test.com": "accountant",
         "storekeeper@demo.com": "storekeeper",
         "superadmin@core5.com": "superadmin",
         "portal@core5.co.in": "superadmin"
@@ -304,11 +305,13 @@ exports.getMe = async (req, res) => {
     }
 
     db.get(`
-      SELECT u.id, u.name, u.email, u.role, u.isApproved,
+      SELECT u.id, u.name, u.email, u.role, u.isApproved, u.university_id,
+             uni.name as university_name, uni.area as university_area,
              CASE WHEN u.role = 'student' THEN s.studentId ELSE NULL END as studentId,
              CASE WHEN u.role = 'student' THEN s.grade ELSE NULL END as grade
       FROM users u 
       LEFT JOIN students s ON u.id = s.userId 
+      LEFT JOIN universities uni ON u.university_id = uni.id
       WHERE u.id = ?
     `, [req.user.userId], (err, user) => {
       if (err) {

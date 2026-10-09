@@ -87,6 +87,11 @@ const VendorProfile = () => {
   };
 
   const handleSave = async () => {
+    if (formData.phone && formData.phone.length !== 10) {
+      alert("Phone number must be exactly 10 digits.");
+      return;
+    }
+
     try {
       const res = await fetch(`${API}/vendor/profile`, {
         method: 'PUT',
@@ -300,8 +305,10 @@ const VendorProfile = () => {
                     {editing ? (
                       <input
                         type="tel"
+                        maxLength={10}
+                        placeholder="10-digit mobile number"
                         value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                        onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     ) : (

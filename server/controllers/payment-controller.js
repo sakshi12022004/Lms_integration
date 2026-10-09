@@ -1,14 +1,30 @@
 const Razorpay = require('razorpay');
 
-// Initialize Razorpay with test credentials
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_S7aUmYSaQyE0h6',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'DFei1Nk0mzEHm3ehq6Va5QhW'
+// Gateway credentials come from the environment only; nothing is hard-coded.
+// Returns null when the gateway is not configured.
+let razorpayClient = null;
+function getRazorpay() {
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) return null;
+  if (!razorpayClient) {
+    razorpayClient = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET
+    });
+  }
+  return razorpayClient;
+}
+
+const gatewayNotConfigured = (res) => res.status(503).json({
+  success: false,
+  message: 'Online payment gateway is not configured'
 });
 
 // Create order
 exports.createOrder = async (req, res) => {
   try {
+    const razorpay = getRazorpay();
+    if (!razorpay) return gatewayNotConfigured(res);
+
     const { amount, currency = 'INR', receipt, classroomId, classroomName, feeType } = req.body;
 
     if (!amount || amount <= 0) {
@@ -48,6 +64,9 @@ exports.createOrder = async (req, res) => {
 // Verify payment
 exports.verifyPayment = async (req, res) => {
   try {
+    const razorpay = getRazorpay();
+    if (!razorpay) return gatewayNotConfigured(res);
+
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -61,7 +80,7 @@ exports.verifyPayment = async (req, res) => {
     const crypto = require('crypto');
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'DFei1Nk0mzEHm3ehq6Va5QhW')
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(body.toString())
       .digest('hex');
 

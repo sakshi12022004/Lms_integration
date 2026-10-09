@@ -44,26 +44,26 @@ const Expenses = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'paid':
-        return 'text-green-500 bg-green-500/10 border-green-500/20';
+        return 'bg-emerald-50 text-emerald-800 border-emerald-300';
       case 'pending':
-        return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
+        return 'bg-[#B99652]/15 text-[#8c6d31] border-[#B99652]/40';
       case 'overdue':
-        return 'text-red-500 bg-red-500/10 border-red-500/20';
+        return 'bg-rose-50 text-rose-800 border-rose-300';
       default:
-        return 'text-gray-500 bg-gray-500/10 border-gray-500/20';
+        return 'bg-slate-100 text-slate-700 border-slate-300';
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
       case 'paid':
-        return <CheckCircle size={16} />;
+        return <CheckCircle size={13} />;
       case 'pending':
-        return <Clock size={16} />;
+        return <Clock size={13} />;
       case 'overdue':
-        return <AlertCircle size={16} />;
+        return <AlertCircle size={13} />;
       default:
-        return <FileText size={16} />;
+        return <FileText size={13} />;
     }
   };
 
@@ -78,13 +78,10 @@ const Expenses = () => {
   if (loading) {
     return (
       <AccountantLayout>
-        <div className="space-y-8">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-2">💰 Expenses</h2>
-            <p className="text-gray-400">Track all school and institutional expenses</p>
-          </div>
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+          <div className="p-12 text-center text-[#002366]">
+            <div className="w-8 h-8 border-3 border-[#B99652] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            Loading institutional expense records...
           </div>
         </div>
       </AccountantLayout>
@@ -94,19 +91,15 @@ const Expenses = () => {
   if (error) {
     return (
       <AccountantLayout>
-        <div className="space-y-8">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-2">💰 Expenses</h2>
-            <p className="text-gray-400">Track all school and institutional expenses</p>
-          </div>
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-400">{error}</p>
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+          <div className="bg-white border border-rose-300 rounded-none p-6 text-center shadow-xs">
+            <AlertCircle className="h-10 w-10 text-rose-600 mx-auto mb-3" />
+            <p className="text-rose-700 font-semibold mb-3">{error}</p>
             <button
               onClick={fetchInvoices}
-              className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="bg-[#002366] hover:bg-[#001845] text-white px-5 py-2 rounded-none font-bold text-xs uppercase tracking-wider transition-all"
             >
-              Retry
+              Retry Loading
             </button>
           </div>
         </div>
@@ -116,108 +109,131 @@ const Expenses = () => {
 
   return (
     <AccountantLayout>
-      <div className="space-y-8">
-        <div className="flex justify-between items-center">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+        
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#ebdcaa]">
           <div>
-            <h2 className="text-3xl font-bold text-white mb-2">💰 Expenses</h2>
-            <p className="text-gray-400">Track all school and institutional expenses</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#002366] tracking-tight">
+              Institutional Expenses & Vendor Outflows
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">
+              Track school operational expenses, vendor invoice payouts, and pending liabilities.
+            </p>
           </div>
-          <button
-            onClick={fetchInvoices}
-            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors"
-          >
-            <RefreshCw size={20} />
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={fetchInvoices}
+              className="bg-white hover:bg-[#fffdf4] text-[#002366] p-2.5 rounded-none border border-[#ebdcaa] shadow-xs transition-all cursor-pointer"
+              title="Refresh Data"
+            >
+              <RefreshCw size={18} />
+            </button>
+          </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-xl p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <TrendingDown className="h-8 w-8" />
-              <span className="text-2xl font-bold">₹{totalExpenses.toLocaleString('en-IN')}</span>
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-2 border-t-rose-600 shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Cleared Expenses</span>
+              <div className="p-2 bg-rose-500/10 text-rose-600 rounded-none border border-rose-500/20">
+                <TrendingDown size={20} />
+              </div>
             </div>
-            <p className="text-red-100">Total Expenses</p>
+            <h3 className="text-2xl font-bold text-rose-700">₹{totalExpenses.toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-slate-500">Paid vendor invoices</p>
           </div>
-          <div className="bg-gradient-to-br from-yellow-600 to-yellow-700 rounded-xl p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <Clock className="h-8 w-8" />
-              <span className="text-2xl font-bold">₹{pendingExpenses.toLocaleString('en-IN')}</span>
+
+          <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-2 border-t-[#B99652] shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Pending Outflows</span>
+              <div className="p-2 bg-[#B99652]/15 text-[#8c6d31] rounded-none border border-[#B99652]/30">
+                <Clock size={20} />
+              </div>
             </div>
-            <p className="text-yellow-100">Pending Expenses</p>
+            <h3 className="text-2xl font-bold text-[#8c6d31]">₹{pendingExpenses.toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-[#8c6d31] font-medium">Awaiting payment</p>
           </div>
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <FileText className="h-8 w-8" />
-              <span className="text-2xl font-bold">{invoices.length}</span>
+
+          <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-2 border-t-[#002366] shadow-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Vendor Invoices</span>
+              <div className="p-2 bg-[#002366]/10 text-[#002366] rounded-none border border-[#002366]/20">
+                <FileText size={20} />
+              </div>
             </div>
-            <p className="text-blue-100">Total Invoices</p>
+            <h3 className="text-2xl font-bold text-slate-900">{invoices.length}</h3>
+            <p className="text-xs text-slate-500">Tracked invoice files</p>
           </div>
         </div>
 
         {/* Invoices Table */}
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl">
-          <div className="p-6 border-b border-slate-700/50">
-            <h3 className="text-xl font-semibold text-white">All Invoices</h3>
+        <div className="bg-white rounded-none border border-[#ebdcaa] shadow-xs overflow-hidden">
+          <div className="bg-[#fbf6e6] p-4 border-b border-[#ebdcaa] flex justify-between items-center">
+            <h3 className="text-base font-bold text-[#002366]">All Vendor Invoices & Operational Expenses</h3>
+            <span className="text-xs font-semibold text-[#8c6d31] uppercase tracking-wider">
+              {invoices.length} Total Records
+            </span>
           </div>
-          
+
           {invoices.length === 0 ? (
-            <div className="p-12 text-center">
-              <FileText size={64} className="mx-auto text-gray-600 mb-4" />
-              <h3 className="text-2xl font-bold text-white mb-2">No Invoices Found</h3>
-              <p className="text-gray-400">No invoices have been created yet.</p>
+            <div className="p-12 text-center text-slate-500">
+              <FileText size={40} className="mx-auto text-slate-400 mb-2" />
+              <p className="text-base font-semibold text-[#002366]">No Invoices Found</p>
+              <p className="text-xs text-slate-400 mt-1">No institutional expense invoices have been registered yet.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-700/50">
-                    <th className="text-left p-4 text-gray-400 font-medium">Invoice #</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Vendor</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Amount</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Due Date</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Status</th>
-                    <th className="text-left p-4 text-gray-400 font-medium">Paid Date</th>
+                  <tr className="bg-[#fbf6e6]/60 text-[#002366] text-xs uppercase tracking-wider font-bold border-b border-[#ebdcaa]">
+                    <th className="px-6 py-4">Invoice #</th>
+                    <th className="px-6 py-4">Vendor & Description</th>
+                    <th className="px-6 py-4">Amount</th>
+                    <th className="px-6 py-4">Due Date</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Paid Date</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-[#ebdcaa]/60 text-sm">
                   {invoices.map((invoice) => (
-                    <tr key={invoice.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <FileText size={16} className="text-gray-400" />
-                          <span className="text-white font-medium">{invoice.invoiceNumber}</span>
+                    <tr key={invoice.id} className="hover:bg-[#fffdf4] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <FileText size={16} className="text-[#B99652]" />
+                          <span className="font-bold text-[#002366]">{invoice.invoiceNumber}</span>
                         </div>
                       </td>
-                      <td className="p-4">
+                      <td className="px-6 py-4">
                         <div>
-                          <p className="text-white">{invoice.vendorName}</p>
-                          <p className="text-gray-400 text-sm">{invoice.description}</p>
+                          <p className="font-bold text-slate-900">{invoice.vendorName}</p>
+                          <p className="text-slate-500 text-xs">{invoice.description}</p>
                         </div>
                       </td>
-                      <td className="p-4">
-                        <span className="text-white font-semibold">₹{invoice.amount.toLocaleString('en-IN')}</span>
+                      <td className="px-6 py-4 font-bold text-slate-900">
+                        ₹{Number(invoice.amount || 0).toLocaleString('en-IN')}
                       </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <Calendar size={16} className="text-gray-400" />
-                          <span className="text-white">{new Date(invoice.dueDate).toLocaleDateString()}</span>
+                      <td className="px-6 py-4 text-slate-600 text-xs font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar size={14} className="text-slate-400" />
+                          <span>{new Date(invoice.dueDate).toLocaleDateString()}</span>
                         </div>
                       </td>
-                      <td className="p-4">
-                        <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(invoice.status)}`}>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-semibold border ${getStatusColor(invoice.status)}`}>
                           {getStatusIcon(invoice.status)}
                           <span className="uppercase">{invoice.status}</span>
                         </span>
                       </td>
-                      <td className="p-4">
+                      <td className="px-6 py-4 text-xs font-medium">
                         {invoice.paidDate ? (
-                          <div className="flex items-center space-x-2">
-                            <CheckCircle size={16} className="text-green-500" />
-                            <span className="text-white">{new Date(invoice.paidDate).toLocaleDateString()}</span>
+                          <div className="flex items-center gap-1.5 text-emerald-700">
+                            <CheckCircle size={14} />
+                            <span>{new Date(invoice.paidDate).toLocaleDateString()}</span>
                           </div>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-slate-400">-</span>
                         )}
                       </td>
                     </tr>

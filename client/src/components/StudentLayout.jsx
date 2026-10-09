@@ -11,6 +11,7 @@ import {
   ClipboardList,
   FileCheck,
   Calendar,
+  CreditCard,
   Bell
 } from 'lucide-react';
 import { useAuth } from "../auth/auth";
@@ -104,13 +105,13 @@ const StudentLayout = ({ children }) => {
       tourId: 'nav-calendar'
     },
     {
-      path: '/announcements',
-      nameKey: 'nav_announcements',
-      icon: <Bell size={20} />,
-      label: 'Announcements',
-      description: 'School Updates',
-      tourId: 'nav-announcements'
-    },
+      path: '/student/pay-fees',
+      nameKey: 'nav_fees',
+      icon: <CreditCard size={20} />,
+      label: 'Fees & Payments',
+      description: 'Fee Dues & Receipts',
+      tourId: 'nav-fees'
+    }
   ];
 
   const currentPage =

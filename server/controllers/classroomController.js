@@ -426,12 +426,14 @@ const saveFeeStructure = async (req, res) => {
   try {
     console.log('SAVE FEE STRUCTURE - Request body:', req.body);
     console.log('SAVE FEE STRUCTURE - User:', req.user);
-    const { category, grade, tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee, dueDate, totalFee } = req.body;
+    const { category, grade, tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee, dueDate, totalFee, installmentOptions } = req.body;
 
     if (!category) {
       console.log('SAVE FEE STRUCTURE - Category missing');
       return res.status(400).json({ message: 'Category is required' });
     }
+
+    const installmentJson = typeof installmentOptions === 'object' ? JSON.stringify(installmentOptions) : (installmentOptions || null);
 
     // Check if fee structure already exists for this category
     const universityId = req.user?.universityId || 1;
@@ -452,8 +454,8 @@ const saveFeeStructure = async (req, res) => {
       // Insert new fee structure
       db.run(`
         INSERT INTO feeStructures 
-        (university_id, category, grade, tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee, totalFee, dueDate)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (university_id, category, grade, tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee, totalFee, dueDate, installmentOptions)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         universityId,
         category,
@@ -466,7 +468,8 @@ const saveFeeStructure = async (req, res) => {
         examinationFee || 0,
         miscellaneousFee || 0,
         totalFee || 0,
-        dueDate
+        dueDate,
+        installmentJson
       ], function(err) {
         if (err) {
           console.error("Error saving fee structure:", err);
@@ -548,7 +551,7 @@ const applyFeeStructureToStudents = (category, feeData) => {
 const updateFeeStructure = async (req, res) => {
   try {
     const { id } = req.params;
-    const { tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee, dueDate, totalFee } = req.body;
+    const { tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee, dueDate, totalFee, installmentOptions } = req.body;
 
     if (!tuitionFee && !transportFee && !computerLabFee && !libraryFee && !sportsFee && !examinationFee && !miscellaneousFee) {
       return res.status(400).json({ message: 'At least one fee field is required' });
@@ -564,10 +567,11 @@ const updateFeeStructure = async (req, res) => {
       (miscellaneousFee || 0)
     );
 
+    const installmentJson = typeof installmentOptions === 'object' ? JSON.stringify(installmentOptions) : (installmentOptions || null);
     const universityId = req.user?.universityId || 1;
     db.run(`
       UPDATE feeStructures 
-      SET tuitionFee = ?, transportFee = ?, computerLabFee = ?, libraryFee = ?, sportsFee = ?, examinationFee = ?, miscellaneousFee = ?, totalFee = ?, dueDate = ?
+      SET tuitionFee = ?, transportFee = ?, computerLabFee = ?, libraryFee = ?, sportsFee = ?, examinationFee = ?, miscellaneousFee = ?, totalFee = ?, dueDate = ?, installmentOptions = ?
       WHERE id = ? AND university_id = ?
     `, [
       tuitionFee || 0,
@@ -579,6 +583,7 @@ const updateFeeStructure = async (req, res) => {
       miscellaneousFee || 0,
       calculatedTotalFee,
       dueDate,
+      installmentJson,
       id,
       universityId
     ], function(err) {
@@ -891,7 +896,8 @@ const getClassroomFeeStructure = async (req, res) => {
             miscellaneousFee,
             totalFee,
             dueDate,
-            category
+            category,
+            installmentOptions
           FROM feeStructures WHERE category = ? AND university_id = ?`,
           [feeCategory, universityId],
           (err, fees) => {
@@ -916,7 +922,8 @@ const getClassroomFeeStructure = async (req, res) => {
               miscellaneousFee: fees?.miscellaneousFee || 200,
               totalFee: fees?.totalFee || 8050,
               dueDate: fees?.dueDate || '2026-01-31',
-              category: fees?.category || feeCategory
+              category: fees?.category || feeCategory,
+              installmentOptions: fees?.installmentOptions || null
             });
           }
         );

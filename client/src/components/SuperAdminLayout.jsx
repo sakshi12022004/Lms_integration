@@ -9,7 +9,8 @@ import {
   Building2,
   Users,
   Plus,
-  UserPlus
+  UserPlus,
+  Calendar
 } from "lucide-react";
 import { useAuth } from "../auth/auth";
 import AnnouncementBell from "./AnnouncementBell";
@@ -192,6 +193,7 @@ const SuperAdminLayout = ({ children }) => {
   const navItems = [
     { path: "/superadmin/dashboard", name: 'Overview', icon: <LayoutDashboard size={20} />, tourId: 'nav-overview' },
     { path: "/superadmin/dashboard?tab=universities", name: 'Institutes', icon: <Building2 size={20} />, tourId: 'nav-institutes' },
+    { path: "/superadmin/dashboard?tab=demoLeads", name: 'Demo Leads', icon: <Calendar size={20} />, tourId: 'nav-demo-leads' },
     { path: "/superadmin/dashboard?tab=createUniversity", name: 'Add Institute', icon: <Plus size={20} />, tourId: 'nav-add-institute' },
     { path: "/superadmin/dashboard?tab=createUser", name: 'Add Staff', icon: <UserPlus size={20} />, tourId: 'nav-add-staff' },
     { path: "/superadmin/dashboard?tab=users", name: 'All Staff', icon: <Users size={20} />, tourId: 'nav-all-staff' },
@@ -482,7 +484,6 @@ const SuperAdminLayout = ({ children }) => {
               >
                 <ChevronRight size={20} />
               </button>
-              <h1 className="text-xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-wide">{currentPage}</h1>
             </div>
             
             <div className="flex items-center gap-4">

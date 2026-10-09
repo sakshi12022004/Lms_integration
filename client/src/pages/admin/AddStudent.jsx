@@ -24,9 +24,17 @@ const AddStudent = () => {
 
   const [photo, setPhoto] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState(false);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === "phone") {
+      const cleanValue = value.replace(/\D/g, "").slice(0, 10);
+      setForm({ ...form, [name]: cleanValue });
+      setPhoneError(cleanValue.length > 0 && cleanValue.length < 10);
+      return;
+    }
+    setForm({ ...form, [name]: value });
   };
 
   const handlePhotoChange = (e) => {
@@ -40,6 +48,12 @@ const AddStudent = () => {
     if (!form.fullName || !form.email) {
       return toast.error(t('name_and_email_required'));
     }
+
+    if (form.phone && form.phone.length !== 10) {
+      setPhoneError(true);
+      return;
+    }
+    setPhoneError(false);
 
     try {
       setLoading(true);
@@ -142,7 +156,7 @@ const AddStudent = () => {
                 <Input data-tour="input-student-name" label={t('full_name')} name="fullName" value={form.fullName} onChange={handleChange} />
                 <Input label={t('parent_name')} name="parentName" value={form.parentName} onChange={handleChange} />
                 <Input label={t('email_address')} name="email" value={form.email} onChange={handleChange} />
-                <Input label={t('phone')} name="phone" value={form.phone} onChange={handleChange} />
+                <Input label={t('phone')} name="phone" type="tel" maxLength={10} placeholder="10-digit mobile number" value={form.phone} onChange={handleChange} error={phoneError ? "Please enter a 10-digit number" : null} />
                 <Input label={t('blood_group')} name="bloodGroup" value={form.bloodGroup} onChange={handleChange} />
                 <Input label={t('date_of_birth')} type="date" name="dob" value={form.dob} onChange={handleChange} />
               </div>
@@ -171,13 +185,16 @@ const AddStudent = () => {
 export default AddStudent;
 
 /* ================= INPUT ================= */
-const Input = ({ label, ...props }) => (
+const Input = ({ label, error, ...props }) => (
   <div>
     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">{label}</label>
     <input
       {...props}
-      className="w-full bg-white border border-[#ebdcaa] rounded-none px-3.5 py-2 text-sm focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]"
+      className={`w-full bg-white border ${error ? 'border-rose-400 focus:border-rose-500' : 'border-[#ebdcaa] focus:border-[#B99652]'} rounded-none px-3.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#B99652]`}
     />
+    {error && (
+      <p className="text-[11px] text-rose-600 font-medium mt-1">{error}</p>
+    )}
   </div>
 );
 

@@ -291,6 +291,9 @@ app.use("/api/payments", require("./routes/payment-routes"));
 /* Subscriptions */
 app.use("/api/subscriptions", require("./routes/subscription-routes"));
 
+/* Book a Demo Requests */
+app.use("/api/demo-requests", require("./routes/demoRoutes"));
+
 /* Plan Inheritance System */
 app.use("/api/plan-inheritance", require("./routes/plan-inheritance-routes"));
 
