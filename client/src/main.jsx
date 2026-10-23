@@ -5,6 +5,7 @@ import './config/sessionRequests'
 import { AuthProvider } from './auth/auth'
 import 'react-toastify/dist/ReactToastify.css'
 import './index.css'
+import './i18n'
 import App from './App.jsx'
 import { TranslationProvider } from './context/TranslationContext'
 

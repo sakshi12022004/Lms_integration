@@ -37,13 +37,13 @@ const Register = () => {
       const { token, user } = response.data;
       loginUser(token, user);
 
-      toast.success('Registration successful! Redirecting...');
+      toast.success(t('forms:register_success'));
       setTimeout(() => {
         navigate('/student/dashboard');
       }, 1500);
 
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Registration failed. Please try again.');
+      toast.error(err.response?.data?.message || t('forms:register_failed'));
     } finally {
       setIsLoading(false);
     }
@@ -66,7 +66,7 @@ const Register = () => {
             />
           </Link>
           <p className="mt-2 text-center text-xs text-slate-500 font-medium">
-            Create your account to start learning
+            {t('forms:register_tagline')}
           </p>
         </div>
 
@@ -75,10 +75,10 @@ const Register = () => {
           <div className="bg-white py-8 px-6 shadow-xl rounded-none sm:px-10 border border-slate-200/80">
             <div className="mb-6 text-center">
               <h2 className="text-2xl font-serif-heading font-light text-[#1d528f] tracking-tight">
-                Join Core5 Academy
+                {t('forms:register_title')}
               </h2>
               <p className="mt-1 text-xs text-slate-500">
-                Enter your details to register as a student
+                {t('forms:register_subtitle')}
               </p>
             </div>
 
@@ -86,7 +86,7 @@ const Register = () => {
               {/* Name Field */}
               <div>
                 <label htmlFor="name" className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Full Name *
+                  {t('forms:register_full_name')} *
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -99,7 +99,7 @@ const Register = () => {
                     value={formData.name}
                     onChange={handleChange}
                     className="w-full pl-10 pr-4 py-3 rounded-none border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all shadow-xs"
-                    placeholder="John Doe"
+                    placeholder={t('forms:register_name_placeholder')}
                     required
                   />
                 </div>
@@ -108,7 +108,7 @@ const Register = () => {
               {/* Email Field */}
               <div>
                 <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Email Address *
+                  {t('forms:register_email')} *
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -130,7 +130,7 @@ const Register = () => {
               {/* Password Field */}
               <div>
                 <label htmlFor="password" className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Password *
+                  {t('forms:register_password')} *
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -148,7 +148,7 @@ const Register = () => {
                   />
                 </div>
                 <p className="mt-1 text-[11px] text-slate-400">
-                  Must be at least 8 characters long
+                  {t('forms:register_password_hint')}
                 </p>
               </div>
 
@@ -168,10 +168,10 @@ const Register = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      <span>Creating Account...</span>
+                      <span>{t('forms:register_creating')}</span>
                     </div>
                   ) : (
-                    <span>Create Student Account</span>
+                    <span>{t('forms:register_submit')}</span>
                   )}
                 </button>
               </div>
@@ -179,9 +179,9 @@ const Register = () => {
 
             {/* Footer / Login Link */}
             <div className="text-center pt-6 border-t border-slate-100 mt-6 text-xs text-slate-500">
-              Already have an account?{' '}
+              {t('forms:register_have_account')}{' '}
               <Link to="/login" className="text-amber-600 font-bold hover:underline">
-                Sign In to Account
+                {t('forms:register_sign_in_link')}
               </Link>
             </div>
           </div>

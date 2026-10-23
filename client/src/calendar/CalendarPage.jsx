@@ -13,19 +13,13 @@ import QuotaLimitModal from "../components/QuotaLimitModal";
 import { useNavigate } from 'react-router-dom';
 import "./calendar.css";
 import { API_ORIGIN } from '../config/api';
+import { useTranslation } from "../context/TranslationContext";
 
 const CalendarPage = ({ role }) => {
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [error, setError] = useState(null);
-  const calendarRef = useRef(null);
-
-  // Opened from a notification (?eventId=...): show the month of that event
-  useEffect(() => {
-    const eventId = new URLSearchParams(window.location.search).get("eventId");
-    const event = eventId ? events.find((e) => String(e.id) === String(eventId)) : null;
-    if (event && calendarRef.current) calendarRef.current.getApi().gotoDate(event.start);
-  }, [events]);
+  const { t, currentLanguage, isRTL } = useTranslation();
 
   const token =
     localStorage.getItem("token") ||
@@ -38,7 +32,7 @@ const CalendarPage = ({ role }) => {
   const fetchEvents = useCallback(async () => {
     try {
       if (!token) {
-        setError("Please login first");
+        setError(t('dashboard:cal_login_first'));
         return;
       }
 
@@ -69,7 +63,7 @@ const CalendarPage = ({ role }) => {
       console.log(`✅ Fetched ${formatted.length} calendar events`);
     } catch (err) {
       console.error("Fetch events error", err);
-      setError(err.response?.data?.message || "Failed to load events");
+      setError(err.response?.data?.message || t('dashboard:cal_load_failed'));
     }
   }, [token]);
 
@@ -125,13 +119,13 @@ const CalendarPage = ({ role }) => {
           {isCheckingAccess ? (
             <div className="flex-1 flex flex-col items-center justify-center p-10 bg-white rounded-2xl border border-[#ebdcaa]/60 shadow-sm text-center">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#002366] mb-4"></div>
-              <p className="text-base font-bold text-gray-800">Checking calendar access...</p>
-              <p className="text-xs text-gray-500 mt-1">Please wait while we verify your subscription.</p>
+              <p className="text-base font-bold text-gray-800">{t('dashboard:cal_checking_access')}</p>
+              <p className="text-xs text-gray-500 mt-1">{t('dashboard:cal_verifying_subscription')}</p>
             </div>
           ) : showQuotaModal ? (
             <div className="flex-1 flex flex-col items-center justify-center p-10 bg-white rounded-2xl border border-[#ebdcaa]/60 shadow-sm text-center">
-              <p className="text-base font-bold text-gray-800">Access to the calendar is restricted on your current plan.</p>
-              <p className="text-xs text-gray-500 mt-1">Please upgrade your plan to use this feature.</p>
+              <p className="text-base font-bold text-gray-800">{t('dashboard:cal_restricted')}</p>
+              <p className="text-xs text-gray-500 mt-1">{t('dashboard:cal_upgrade_plan')}</p>
             </div>
           ) : (
             <div className="bg-white rounded-none shadow-sm border border-[#ebdcaa]/60 p-4 md:p-6 flex-1 flex flex-col overflow-hidden">
@@ -143,6 +137,14 @@ const CalendarPage = ({ role }) => {
                   left: "prev,next today",
                   center: "title",
                   right: "dayGridMonth,timeGridWeek,timeGridDay",
+                }}
+                locale={currentLanguage}
+                direction={isRTL ? "rtl" : "ltr"}
+                buttonText={{
+                  today: t('common:today'),
+                  month: t('common:month'),
+                  week: t('common:week'),
+                  day: t('common:day'),
                 }}
                 events={events}
                 eventClick={(info) => setSelectedEvent(info.event)}

@@ -148,8 +148,19 @@ function createLmsOnboardingRouter({ express, dbPath, env = process.env, llmProv
     const { sourceColumn, key, label, dataType, expectedVersion, ...rest } = body(req);
     rejectExtra(rest);
     if (typeof sourceColumn !== 'string' || !sourceColumn) throw new ValidationError('"sourceColumn" is required.', [], { code: 'INVALID_REQUEST' });
-    const idea = await jobService.getNewFieldIdea(req.params.jobId, sourceColumn); // 404 / 409 before any write
-    const definition = { key: key !== undefined ? key : idea.key, label: label !== undefined ? label : idea.label, dataType: dataType !== undefined ? dataType : idea.dataType };
+    let idea = null;
+    try {
+      idea = await jobService.getNewFieldIdea(req.params.jobId, sourceColumn); // 404 / 409 before any write
+    } catch (e) {
+      if (e?.code !== 'NEW_FIELD_NOT_FOUND') throw e;
+    }
+    const defaultKey = sourceColumn.toLowerCase().trim().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+    const safeKey = /^[a-z]/.test(defaultKey) ? defaultKey : `f_${defaultKey}`;
+    const definition = {
+      key: key !== undefined ? key : (idea?.key || safeKey),
+      label: label !== undefined ? label : (idea?.label || sourceColumn),
+      dataType: dataType !== undefined ? dataType : (idea?.dataType || 'text'),
+    };
     const { store, close } = openCustomFieldStore({ dbPath, actor: req.actor, schema });
     try {
       const ensured = store.ensureField(definition); // validates again; one transaction; this school only
@@ -186,6 +197,11 @@ function createLmsOnboardingRouter({ express, dbPath, env = process.env, llmProv
     rejectExtra(body(req));
     const { store, close } = openCustomFieldStore({ dbPath, actor: req.actor, schema });
     try { res.json({ field: store.retireField(req.params.key) }); } finally { close(); }
+  }));
+  router.post('/custom-fields/:key/unretire', wrap(async (req, res) => {
+    rejectExtra(body(req));
+    const { store, close } = openCustomFieldStore({ dbPath, actor: req.actor, schema });
+    try { res.json({ field: store.unretireField(req.params.key) }); } finally { close(); }
   }));
   router.get('/students/:studentRef/custom-fields', wrap(async (req, res) => {
     const { store, close } = openCustomFieldStore({ dbPath, actor: req.actor, schema });

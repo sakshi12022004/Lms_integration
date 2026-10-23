@@ -5,16 +5,10 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Loader2,
-  UserCheck,
-  ShieldCheck,
-  BookOpen,
-  Package,
-  Calculator,
-  GraduationCap,
-  Sparkles
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '../auth/auth';
+import { useTranslation } from '../context/TranslationContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -22,16 +16,9 @@ import studentReadingImg from '../assets/student_reading.jpg';
 import core5Logo from '../assets/core5-final-rbg.png';
 import { API_BASE } from '../config/api';
 
-const roles = [
-  { id: 'student', name: 'Student', icon: UserCheck },
-  { id: 'mentor', name: 'Mentor', icon: BookOpen },
-  { id: 'admin', name: 'Admin', icon: ShieldCheck },
-  { id: 'storekeeper', name: 'Storekeeper', icon: Package },
-  { id: 'accountant', name: 'Accountant', icon: Calculator }
-];
-
 const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
   const { loginUser, API } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [activeRole, setActiveRole] = useState(initialRole);
@@ -56,7 +43,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
-      setError('Please fill in both email and password.');
+      setError(t('fill_both_email_password'));
       return;
     }
 
@@ -76,7 +63,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
       if (response.data && response.data.token) {
         const { token, user } = response.data;
         loginUser(token, user);
-        toast.success(`Welcome back, ${user.name || 'User'}!`);
+        toast.success(t('welcome_back_user', { name: user.name || t('student') }));
         onClose();
 
         // Redirect based on role
@@ -105,12 +92,30 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
             navigate('/');
         }
       } else {
-        setError('Invalid server response. Please try again.');
+        setError(t('login_failed'));
       }
     } catch (err) {
       console.error('Login error:', err);
-      const msg = err.response?.data?.message || err.response?.data?.error || 'Failed to login. Please check your credentials.';
-      setError(msg);
+      if (err.response?.status === 429) {
+        const retryAfterHeader = err.response.headers?.['retry-after'];
+        const retrySec = parseInt(retryAfterHeader, 10) || 
+                         (typeof err.response.data?.remainingTime === 'number' ? err.response.data.remainingTime : null);
+        let rateLimitMsg = t('too_many_login_attempts');
+        if (retrySec && retrySec > 0) {
+          if (retrySec >= 60) {
+            const mins = Math.ceil(retrySec / 60);
+            rateLimitMsg = t('too_many_login_attempts_minutes', { minutes: mins });
+          } else {
+            rateLimitMsg = t('too_many_login_attempts_seconds', { seconds: retrySec });
+          }
+        } else if (err.response.data?.message) {
+          rateLimitMsg = err.response.data.message;
+        }
+        setError(rateLimitMsg);
+      } else {
+        const msg = err.response?.data?.message || err.response?.data?.error || t('login_failed');
+        setError(msg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +134,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
         <button
           onClick={onClose}
           className="absolute top-4 right-4 z-20 p-2 rounded-none bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors"
-          aria-label="Close Modal"
+          aria-label={t('close')}
         >
           <X className="w-5 h-5" />
         </button>
@@ -167,15 +172,15 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
 
               <div className="absolute bottom-3 left-3 right-3 text-center bg-white/95 backdrop-blur-md py-2 px-3 rounded-none shadow-lg border border-[#ebdcaa]/60">
-                <p className="text-xs font-bold text-[#1e1b4b]">Empowering Modern Learners</p>
-                <p className="text-[10px] text-slate-600 font-medium">Access assigned courses anytime</p>
+                <p className="text-xs font-bold text-[#1e1b4b]">{t('direct_institutional_access')}</p>
+                <p className="text-[10px] text-slate-600 font-medium">{t('quick_login_title')}</p>
               </div>
             </div>
           </div>
 
           {/* Bottom Footer Quote */}
           <div className="relative z-10 text-xs text-white/80 font-medium leading-relaxed border-t border-white/15 pt-3">
-            <span>Transforming learning experiences across universities.</span>
+            <span>{t('core5_academy')}</span>
           </div>
         </div>
 
@@ -185,11 +190,8 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
           {/* Form Header */}
           <div className="mb-6">
             <h2 className="text-2xl md:text-3xl font-['DM_Serif_Display',serif] font-bold text-[#1e1b4b] tracking-tight">
-              Log In to Your Account
+              {t('quick_login_title')}
             </h2>
-            <p className="text-slate-500 text-xs md:text-sm mt-1">
-              Enter your credentials to access your dashboard
-            </p>
           </div>
 
           {/* Form */}
@@ -204,7 +206,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
             {/* Email Field */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Email or Username
+                {t('email_label')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -215,7 +217,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder={`${activeRole}@core5.edu`}
+                  placeholder={t('email_placeholder')}
                   className="w-full pl-10 pr-4 py-3 rounded-none border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all shadow-xs"
                 />
               </div>
@@ -225,10 +227,10 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Password
+                  {t('password_label')}
                 </label>
                 <a href="/login" className="text-xs text-amber-600 hover:underline font-semibold">
-                  Forgot Password?
+                  {t('forgot_password')}
                 </a>
               </div>
               <div className="relative">
@@ -240,7 +242,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="••••••••"
+                  placeholder={t('password_placeholder')}
                   className="w-full pl-10 pr-10 py-3 rounded-none border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all shadow-xs"
                 />
                 <button
@@ -263,23 +265,23 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
                 className="w-4 h-4 rounded-none border-slate-300 text-amber-600 focus:ring-amber-500"
               />
               <label htmlFor="remember" className="text-xs text-slate-600 font-medium select-none">
-                Remember me
+                {t('remember_me')}
               </label>
             </div>
 
-            {/* Sign In Primary Button (Header-Button Specification) */}
+            {/* Sign In Primary Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 px-4 header-button bg-[#B99652] hover:bg-[#a68443] text-white font-['Poppins'] font-semibold text-[13px] uppercase tracking-[0.5px] border-none rounded-none shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-70"
+              className="w-full py-3.5 px-4 header-button bg-[#B99652] hover:bg-[#a68443] text-white font-['Poppins'] font-semibold text-[13px] uppercase tracking-[0.5px] border-none rounded-none shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-70 cursor-pointer"
             >
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Signing In...</span>
+                  <span>{t('signing_in')}</span>
                 </>
               ) : (
-                <span>Sign In to {activeRole.charAt(0).toUpperCase() + activeRole.slice(1)} Portal</span>
+                <span>{t('sign_in_portal_btn')}</span>
               )}
             </button>
 
@@ -295,14 +297,14 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
               </svg>
-              <span>Sign in with Google</span>
+              <span>{t('sign_in_with_google', 'Sign in with Google')}</span>
             </button>
 
             {/* Footer */}
             <div className="text-center pt-1 text-xs text-slate-500">
-              Don't have an account?{' '}
+              {t('dont_have_account', "Don't have an account?")}{' '}
               <a href="/register" className="text-[#F05A36] font-bold hover:underline">
-                Sign Up
+                {t('sign_up_link', 'Sign Up')}
               </a>
             </div>
 

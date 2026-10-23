@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { ShieldCheck, CheckCircle, FileText, Lock } from 'lucide-react';
+import { useTranslation } from '../context/TranslationContext';
 
 const ControlledTermsModal = ({ isOpen, onAccept }) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   const ModalContent = () => {
@@ -25,13 +27,22 @@ const ControlledTermsModal = ({ isOpen, onAccept }) => {
       <div className="fixed inset-0 bg-[#1e1b4b]/60 z-50 flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="terms-dialog-title">
         <div className="bg-[#fffdf4] border border-[#ebdcaa] rounded-none max-w-3xl w-full max-h-[94vh] sm:max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
           {/* Header */}
-          <div className="bg-white border-b border-[#ebdcaa] border-t-4 border-t-[#B99652] px-5 sm:px-7 py-4 flex justify-between items-center gap-4 flex-shrink-0">
-            <div>
-              <h2 id="terms-dialog-title" className="text-xl sm:text-2xl font-['DM_Serif_Display',serif] text-[#1e1b4b]">Terms & Conditions</h2>
-              <p className="text-xs sm:text-sm text-slate-600 mt-0.5">Please review and accept to continue to your dashboard.</p>
+          <div className="bg-[#002366] text-white px-6 sm:px-8 py-5 flex justify-between items-center gap-4 flex-shrink-0 border-b border-[#B99652]/40">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="w-11 h-11 bg-[#B99652]/20 border border-[#B99652] text-[#B99652] flex items-center justify-center flex-shrink-0 rounded-none">
+                <ShieldCheck size={22} />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-wide text-white">
+                  {t('terms_and_conditions_title') !== 'terms_and_conditions_title' ? t('terms_and_conditions_title') : 'Core5 LMS — Terms & Conditions'}
+                </h2>
+                <p className="text-[11px] sm:text-xs text-[#d9bf85] font-medium mt-0.5 uppercase tracking-[0.14em]">
+                  {t('terms_agreement_subtitle') !== 'terms_agreement_subtitle' ? t('terms_agreement_subtitle') : 'Institutional Master Service & Usage Agreement'}
+                </p>
+              </div>
             </div>
-            <div className="p-2">
-              {/* No close button - user must accept */}
+            <div className="hidden sm:block px-3 py-1.5 border border-[#B99652] bg-[#B99652]/15 text-[#e6cf9c] text-[11px] font-semibold tracking-[0.14em] uppercase whitespace-nowrap rounded-none">
+              {t('mandatory_review') !== 'mandatory_review' ? t('mandatory_review') : 'Mandatory Review'}
             </div>
           </div>
           <div className="h-[2px] flex-shrink-0 bg-gradient-to-r from-[#B99652]/20 via-[#B99652] to-[#B99652]/20" />
@@ -209,7 +220,7 @@ const ControlledTermsModal = ({ isOpen, onAccept }) => {
                 }`}
               >
                 <CheckCircle size={18} />
-                Accept & Continue to Dashboard
+                {t('accept_and_continue') !== 'accept_and_continue' ? t('accept_and_continue') : 'Accept & Continue to Dashboard'}
               </button>
             </div>
           </div>

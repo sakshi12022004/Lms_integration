@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import StudentLayout from "../../components/StudentLayout";
 import { 
   CreditCard, 
@@ -16,35 +16,33 @@ import {
   Wallet,
   ChevronRight,
   FileCheck2,
-  Lock
+  Lock,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from "../../auth/auth";
 import { generateInvoicePdf } from "../../accountant/invoice";
-import { emitTransaction, useTransactionStore, transactionStore } from "../../store/transactionStore";
 import { useTranslation } from '../../context/TranslationContext';
 import { toast } from 'react-toastify';
-
-// Razorpay test configuration
-const RAZORPAY_KEY_ID = (import.meta.env.VITE_RAZORPAY_KEY_ID || '');
 
 const PayFees = () => {
   const { user, token, API } = useAuth();
   const { t } = useTranslation();
-  const { transactions } = useTransactionStore();
 
+  const [installmentSummary, setInstallmentSummary] = useState(null);
   const [feeStructure, setFeeStructure] = useState(null);
   const [classroom, setClassroom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
-  const [selectedInstallmentIdx, setSelectedInstallmentIdx] = useState(0);
-  const [paymentOption, setPaymentOption] = useState('full');
+  const [selectedStageNum, setSelectedStageNum] = useState(1);
+  const [paymentOptionLabel, setPaymentOptionLabel] = useState('');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [dbPayments, setDbPayments] = useState([]);
+  const [pendingVerification, setPendingVerification] = useState(null);
 
-  // Default fee structure fallback if API has no specific records
+  // Fallback fee structure if not loaded yet
   const defaultFeeStructure = {
     id: 1,
     category: 'Standard Curriculum',
@@ -60,111 +58,133 @@ const PayFees = () => {
     dueDate: '2026-11-30',
     installmentOptions: [
       {
-        id: 'plan_full',
+        id: 'full',
         name: '1-Time Full Clearance (100%)',
         installmentsCount: 1,
         splitType: 'equal',
         isActive: true,
         installments: [{ number: 1, label: 'Full Payment', percentage: 100, dueDate: '2026-11-30' }]
-      },
-      {
-        id: 'plan_semesters',
-        name: '2 Semester Terms (50% + 50%)',
-        installmentsCount: 2,
-        splitType: 'equal',
-        isActive: true,
-        installments: [
-          { number: 1, label: 'Term 1 Installment', percentage: 50, dueDate: '2026-11-30' },
-          { number: 2, label: 'Term 2 Installment', percentage: 50, dueDate: '2027-04-30' }
-        ]
       }
     ]
   };
 
-  const fetchDbPayments = async (studentId) => {
+  const fetchPaymentsHistory = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/accountant/student-payments-history?studentId=${studentId}`, {
+      const res = await fetch(`${API}/accountant/student-payments-history`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
-        const data = await res.json();
-        if (data.success && Array.isArray(data.payments)) {
-          setDbPayments(data.payments);
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setDbPayments(json.data);
         }
       }
     } catch (err) {
-      console.warn('Could not fetch student DB payments:', err);
+      console.warn('Could not fetch student payment history:', err);
     }
-  };
+  }, [API, token]);
+
+  const fetchInstallmentStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/accountant/student-installment-status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setInstallmentSummary(json.data);
+          if (json.data.feeStructure) {
+            setFeeStructure(json.data.feeStructure);
+          }
+          if (json.data.activeSchedule) {
+            setSelectedPlanId(json.data.activeSchedule.planId);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch student installment status:', err);
+    }
+  }, [API, token]);
+
+  const initializeStudentFees = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // 1. Fetch live installment summary & payment history
+      await Promise.all([
+        fetchInstallmentStatus(),
+        fetchPaymentsHistory()
+      ]);
+
+      // 2. Fetch student's assigned classroom
+      try {
+        const classroomResp = await fetch(`${API}/classrooms/student-classrooms`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (classroomResp.ok) {
+          const classroomData = await classroomResp.json();
+          const myClass = Array.isArray(classroomData) && classroomData.length > 0 ? classroomData[0] : null;
+          setClassroom(myClass);
+        }
+      } catch (err) {
+        console.warn('Could not fetch student classroom:', err);
+      }
+
+      // 3. Fetch fee structures for plan options
+      try {
+        const resp = await fetch(`${API}/classrooms/fee-structures`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (resp.ok) {
+          const structures = await resp.json();
+          if (Array.isArray(structures) && structures.length > 0) {
+            setFeeStructure(prev => prev || structures[0]);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch fee structures:', err);
+      }
+
+    } catch (error) {
+      console.error('Error initializing student fees:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [API, token, fetchInstallmentStatus, fetchPaymentsHistory]);
 
   useEffect(() => {
-    const initializeStudentFees = async () => {
-      try {
-        setLoading(true);
+    if (token) {
+      initializeStudentFees();
+    }
+  }, [token, initializeStudentFees]);
 
-        if (user?.id) {
-          await transactionStore.loadTransactions(user.id);
-          await fetchDbPayments(user.id);
-        }
-
-        let studentGrade = null;
-
-        // 1. Fetch student's assigned classroom
-        try {
-          const classroomResp = await fetch(`${API}/classrooms/student-classrooms`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (classroomResp.ok) {
-            const classroomData = await classroomResp.json();
-            const myClass = Array.isArray(classroomData) && classroomData.length > 0 ? classroomData[0] : null;
-            setClassroom(myClass);
-            if (myClass?.grade) {
-              studentGrade = parseInt(myClass.grade);
-            }
-          }
-        } catch (err) {
-          console.warn('Could not fetch student classroom:', err);
-        }
-
-        // 2. Fetch fee structures
-        try {
-          const resp = await fetch(`${API}/classrooms/fee-structures`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (resp.ok) {
-            const structures = await resp.json();
-            if (Array.isArray(structures) && structures.length > 0) {
-              // Match student's applicable category (Primary for 1-4, Secondary for 5-12)
-              const matchedCategory = (studentGrade && studentGrade >= 1 && studentGrade <= 4) ? 'Primary' : 'Secondary';
-              const matched = structures.find(s => s.category?.toLowerCase() === matchedCategory.toLowerCase()) || structures[0];
-              setFeeStructure(matched);
-            } else {
-              setFeeStructure(defaultFeeStructure);
-            }
-          } else {
-            setFeeStructure(defaultFeeStructure);
-          }
-        } catch (err) {
-          setFeeStructure(defaultFeeStructure);
-        }
-
-      } catch (error) {
-        console.error('Error initializing fees:', error);
-        setFeeStructure(defaultFeeStructure);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeStudentFees();
-  }, [user?.id, token, API]);
-
-  // Financial calculations
-  const currentStructure = feeStructure || defaultFeeStructure;
-  const totalFee = currentStructure.totalFee || 8050;
+  const currentStructure = feeStructure || installmentSummary?.feeStructure || defaultFeeStructure;
+  const totalFee = installmentSummary?.activeSchedule?.totalFee || currentStructure.totalFee || 8050;
+  const lifetimePaid = installmentSummary?.lifetimePaid ?? dbPayments.filter(p => p.status === 'success' || p.status === 'paid').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const remainingTotal = Math.max(0, totalFee - lifetimePaid);
+  const isFullyPaid = remainingTotal === 0 && lifetimePaid > 0;
+  const isCollectionBlocked = installmentSummary?.collectionBlocked || false;
 
   // Parse active plans configured by Admin
   const getActiveInstallmentPlans = () => {
+    if (installmentSummary?.activeSchedule) {
+      return [{
+        id: installmentSummary.activeSchedule.planId,
+        name: installmentSummary.activeSchedule.planName,
+        isLocked: true,
+        installments: installmentSummary.stages.map(s => ({
+          number: s.stageNumber,
+          label: s.label,
+          percentage: s.percentage,
+          expectedAmount: s.expectedAmount,
+          paidAmount: s.paidAmount,
+          remainingAmount: s.remainingAmount,
+          status: s.status,
+          dueDate: s.dueDate
+        }))
+      }];
+    }
+
     const rawOptions = currentStructure?.installmentOptions;
     if (!rawOptions) return defaultFeeStructure.installmentOptions;
     try {
@@ -172,33 +192,6 @@ const PayFees = () => {
       if (Array.isArray(parsed) && parsed.length > 0) {
         const activeOnly = parsed.filter(p => p.isActive !== false);
         return activeOnly.length > 0 ? activeOnly : parsed;
-      }
-      if (typeof parsed === 'object') {
-        const legacyPlans = [];
-        if (parsed.enableFullPayment ?? true) {
-          legacyPlans.push({
-            id: 'plan_full',
-            name: '1-Time Full Clearance (100%)',
-            installmentsCount: 1,
-            splitType: 'equal',
-            isActive: true,
-            installments: [{ number: 1, label: 'Full Payment', percentage: 100, dueDate: currentStructure.dueDate || '2026-11-30' }]
-          });
-        }
-        if (parsed.enableSemesterTerms ?? true) {
-          legacyPlans.push({
-            id: 'plan_semesters',
-            name: '2 Semester Terms (50% + 50%)',
-            installmentsCount: 2,
-            splitType: 'equal',
-            isActive: true,
-            installments: [
-              { number: 1, label: 'Term 1 Installment', percentage: 50, dueDate: currentStructure.dueDate || '2026-11-30' },
-              { number: 2, label: 'Term 2 Installment', percentage: 50, dueDate: '2027-04-30' }
-            ]
-          });
-        }
-        return legacyPlans.length > 0 ? legacyPlans : defaultFeeStructure.installmentOptions;
       }
     } catch (e) {
       console.warn('Error parsing active installment plans:', e);
@@ -209,95 +202,50 @@ const PayFees = () => {
   const activePlans = getActiveInstallmentPlans();
   const currentSelectedPlan = activePlans.find(p => p.id === selectedPlanId) || activePlans[0] || null;
 
-  // Merge store transactions and DB offline/online payments
-  const allPayments = [
-    ...dbPayments.map(p => ({
-      id: p.id ? `DB_${p.id}` : `TXN_${Date.now()}`,
-      transactionId: p.transaction_id || `TXN_${p.id}`,
-      amount: Number(p.amount) || 0,
-      paymentDate: p.payment_date || new Date(p.created_at || Date.now()).toLocaleDateString('en-GB'),
-      paymentTime: p.payment_time || '',
-      type: p.payment_mode ? p.payment_mode.toUpperCase() : 'OFFLINE CASH',
-      paymentOption: p.term_type || 'Installment',
-      status: p.status || 'success',
-      source: 'OFFLINE_ACCOUNTANT'
-    })),
-    ...transactions.map(t => ({
-      ...t,
-      source: 'ONLINE_PORTAL'
-    }))
-  ];
-
-  // Avoid duplicate transaction entries by transactionId
-  const uniquePaymentsMap = new Map();
-  allPayments.forEach(p => {
-    const key = p.transactionId || p.id;
-    if (!uniquePaymentsMap.has(key)) {
-      uniquePaymentsMap.set(key, p);
-    }
-  });
-  const combinedTransactions = Array.from(uniquePaymentsMap.values());
-
-  const paidAmount = combinedTransactions.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
-  const pendingAmount = Math.max(0, totalFee - paidAmount);
-  const isFullyPaid = pendingAmount === 0 && paidAmount > 0;
-
-  // Open Payment with selected plan & installment
-  const openPlanPayment = (plan, instIndex = 0) => {
-    setSelectedPlanId(plan.id);
-    setSelectedInstallmentIdx(instIndex);
-    const targetInst = plan.installments[instIndex] || plan.installments[0];
-    const instAmount = Math.round((totalFee * (Number(targetInst?.percentage) || 100)) / 100);
-    const finalAmount = Math.min(pendingAmount > 0 ? pendingAmount : totalFee, instAmount);
-    
-    setPaymentOption(`${plan.name} (${targetInst?.label || 'Inst 1'})`);
-    setPaymentAmount(finalAmount.toString());
-    setPaymentError('');
-    setShowPaymentModal(true);
-  };
-
-  // "Pay Fees Online": start with the first plan the school offers, or the full balance
-  const openPayment = () => {
-    const plan = activePlans[0];
-    if (plan && plan.installments?.length) {
-      openPlanPayment(plan, 0);
+  // Open Payment modal for specific stage
+  const openPlanPayment = (plan, stageNumber = 1) => {
+    if (isCollectionBlocked) {
+      toast.error(t('dashboard:pf_blocked_toast'));
       return;
     }
-    setPaymentOption('Full Payment');
-    setPaymentAmount(String(pendingAmount > 0 ? pendingAmount : totalFee));
+
+    setSelectedPlanId(plan.id);
+    setSelectedStageNum(stageNumber);
+
+    let stageAmount = totalFee;
+    let stageLabel = t('dashboard:pf_full_payment');
+
+    if (installmentSummary?.stages && installmentSummary.stages.length > 0) {
+      const match = installmentSummary.stages.find(s => s.stageNumber === stageNumber);
+      if (match) {
+        stageAmount = match.remainingAmount;
+        stageLabel = match.label || t('dashboard:pf_stage', { n: match.stageNumber });
+      }
+    } else if (plan.installments && plan.installments.length > 0) {
+      const inst = plan.installments.find(i => (i.number || 1) === stageNumber) || plan.installments[0];
+      const pct = Number(inst.percentage) || 100;
+      stageAmount = Math.round((totalFee * pct) / 100);
+      stageLabel = inst.label === 'Full Payment' ? t('dashboard:pf_full_payment') : (inst.label || t('dashboard:pf_stage', { n: inst.number || 1 }));
+    }
+
+    setPaymentOptionLabel(`${plan.name} (${stageLabel})`);
+    setPaymentAmount(stageAmount.toString());
     setPaymentError('');
     setShowPaymentModal(true);
   };
 
-  const handleSelectPlanInModal = (planId) => {
-    setSelectedPlanId(planId);
-    setSelectedInstallmentIdx(0);
-    const targetPlan = activePlans.find(p => p.id === planId);
-    if (targetPlan && targetPlan.installments.length > 0) {
-      const targetInst = targetPlan.installments[0];
-      const instAmount = Math.round((totalFee * (Number(targetInst?.percentage) || 100)) / 100);
-      const finalAmount = Math.min(pendingAmount > 0 ? pendingAmount : totalFee, instAmount);
-      setPaymentOption(`${targetPlan.name} (${targetInst?.label || 'Inst 1'})`);
-      setPaymentAmount(finalAmount.toString());
-    }
-  };
-
-  const handleSelectInstallmentInModal = (plan, instIdx) => {
-    setSelectedInstallmentIdx(instIdx);
-    const targetInst = plan.installments[instIdx];
-    if (targetInst) {
-      const instAmount = Math.round((totalFee * (Number(targetInst.percentage) || 100)) / 100);
-      const finalAmount = Math.min(pendingAmount > 0 ? pendingAmount : totalFee, instAmount);
-      setPaymentOption(`${plan.name} (${targetInst.label})`);
-      setPaymentAmount(finalAmount.toString());
-    }
-  };
-
-  // Razorpay Checkout Execution
+  // Execute secure server-side order creation & Razorpay Checkout
   const handleProcessPayment = async () => {
+    if (paymentLoading) return; // Prevent duplicate submissions
+
+    if (isCollectionBlocked) {
+      setPaymentError(t('dashboard:pf_blocked_pending'));
+      return;
+    }
+
     const numAmount = Number(paymentAmount);
     if (!numAmount || numAmount <= 0) {
-      setPaymentError('Invalid payment amount calculated');
+      setPaymentError(t('dashboard:pf_invalid_amount'));
       return;
     }
 
@@ -307,40 +255,53 @@ const PayFees = () => {
     const authHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 
     try {
-      // The server creates the order. Nothing is recorded as paid from this page: a payment
-      // counts only after the server has confirmed it with the gateway (verify-payment).
-      const orderRes = await fetch(`${API}/payments/create-order`, {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({ amount: numAmount, feeType: paymentOption })
-      });
-      const orderData = await orderRes.json().catch(() => ({}));
-      if (orderRes.status === 503) {
-        setPaymentError('Online payment is not available yet. Please pay at the school office.');
-        return;
-      }
-      if (!orderRes.ok || !orderData.success || !orderData.order?.id) {
-        throw new Error(orderData.message || 'The payment could not be started.');
-      }
-
+      // 1. Ensure Razorpay SDK script is loaded
       if (!window.Razorpay) {
         await new Promise((resolve, reject) => {
           const script = document.createElement('script');
           script.src = 'https://checkout.razorpay.com/v1/checkout.js';
           script.async = true;
           script.onload = resolve;
-          script.onerror = () => reject(new Error('The payment window could not be loaded. Check your connection and try again.'));
+          script.onerror = () => reject(new Error('Failed to load Razorpay payment SDK'));
           document.body.appendChild(script);
         });
       }
 
+      // 2. Server-side Order Creation via POST /api/payments/create-order
+      const orderPayload = {
+        feeStructureId: currentStructure.id,
+        planId: selectedPlanId || 'full',
+        installmentStage: selectedStageNum,
+        amount: numAmount
+      };
+
+      const orderRes = await fetch(`${API}/payments/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(orderPayload)
+      });
+
+      const orderData = await orderRes.json();
+
+      if (!orderRes.ok || !orderData.success) {
+        const errorMsg = orderData.message || 'Failed to create payment order.';
+        setPaymentError(errorMsg);
+        toast.error(errorMsg);
+        setPaymentLoading(false);
+        return;
+      }
+
+      // 3. Open Razorpay Checkout using server-returned orderId and public keyId
       const options = {
-        key: RAZORPAY_KEY_ID,
-        order_id: orderData.order.id,
-        amount: orderData.order.amount,
-        currency: orderData.order.currency || 'INR',
+        key: orderData.keyId,
+        amount: Math.round(Number(orderData.amount) * 100), // in paise
+        currency: orderData.currency || 'INR',
         name: 'Core5 Academy of Excellence',
-        description: `Fee Payment - ${user?.name || 'Student'} (${paymentOption})`,
+        description: `Fee Payment - Stage ${orderData.stageNumber} (${orderData.planName})`,
+        order_id: orderData.orderId,
         image: '/core5-final-rbg.png',
         prefill: {
           name: user?.name || '',
@@ -350,43 +311,117 @@ const PayFees = () => {
         theme: {
           color: '#002366'
         },
+        modal: {
+          ondismiss: function () {
+            setPaymentLoading(false);
+            toast.info(t('dashboard:pf_checkout_dismissed'));
+          }
+        },
         handler: async function (response) {
+          // 4. Submit to server-side verification: POST /api/payments/verify-payment
+          setPaymentLoading(true);
           try {
+            const verifyPayload = {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            };
+
             const verifyRes = await fetch(`${API}/payments/verify-payment`, {
               method: 'POST',
-              headers: authHeaders,
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              })
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify(verifyPayload)
             });
-            const verifyData = await verifyRes.json().catch(() => ({}));
-            if (!verifyRes.ok || !verifyData.success) {
-              throw new Error(verifyData.message || 'The payment could not be confirmed.');
+
+            const verifyData = await verifyRes.json();
+
+            if (verifyRes.ok && verifyData.success) {
+              toast.success(t('dashboard:pf_verified_receipt', { receipt: verifyData.receiptNo }));
+              setShowPaymentModal(false);
+              setPendingVerification(null);
+              // Refresh state from server
+              await initializeStudentFees();
+            } else {
+              const msg = verifyData.message || t('dashboard:pf_verification_failed');
+              setPaymentError(msg);
+              toast.error(msg);
+              if (verifyRes.status === 409) {
+                setPendingVerification({
+                  orderId: response.razorpay_order_id,
+                  paymentId: response.razorpay_payment_id,
+                  signature: response.razorpay_signature,
+                  message: msg
+                });
+              }
             }
-            setShowPaymentModal(false);
-            toast.success(`Payment of ₹${numAmount.toLocaleString('en-IN')} received.`);
-            if (user?.id) fetchDbPayments(user.id);
-          } catch (err) {
-            console.error('Payment confirmation error:', err);
-            setPaymentError(`${err.message} If money was taken, contact the school office with payment ID ${response.razorpay_payment_id}.`);
-            toast.error('Payment could not be confirmed');
+          } catch (verifyErr) {
+            console.error('Payment verification network error:', verifyErr);
+            const msg = t('dashboard:pf_verification_timeout');
+            setPaymentError(msg);
+            toast.warning(msg);
+            setPendingVerification({
+              orderId: response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              message: msg
+            });
+          } finally {
+            setPaymentLoading(false);
           }
         }
       };
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (resp) {
-        setPaymentError(resp.error.description || 'Payment was cancelled or failed.');
-        toast.error('Payment cancelled or failed');
+        setPaymentLoading(false);
+        const failMsg = resp.error?.description || t('dashboard:pf_gateway_failed');
+        setPaymentError(failMsg);
+        toast.error(failMsg);
       });
       rzp.open();
 
     } catch (err) {
-      console.error('Payment start error:', err);
-      setPaymentError(err.message || 'The payment could not be started.');
-      toast.error('Payment could not be started');
+      console.error('Payment processing error:', err);
+      setPaymentError(err.message || t('dashboard:pf_initiate_failed'));
+      toast.error(err.message || t('dashboard:pf_initiate_failed'));
+      setPaymentLoading(false);
+    }
+  };
+
+  // Safe retry for pending verification
+  const handleRetryVerification = async () => {
+    if (!pendingVerification || paymentLoading) return;
+    setPaymentLoading(true);
+
+    try {
+      const verifyRes = await fetch(`${API}/payments/verify-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          razorpay_order_id: pendingVerification.orderId,
+          razorpay_payment_id: pendingVerification.paymentId,
+          razorpay_signature: pendingVerification.signature
+        })
+      });
+
+      const verifyData = await verifyRes.json();
+
+      if (verifyRes.ok && verifyData.success) {
+        toast.success(t('dashboard:pf_verified_receipt', { receipt: verifyData.receiptNo }));
+        setPendingVerification(null);
+        setShowPaymentModal(false);
+        await initializeStudentFees();
+      } else {
+        toast.error(verifyData.message || t('dashboard:pf_retry_failed'));
+      }
+    } catch (err) {
+      toast.error(t('dashboard:pf_retry_network'));
     } finally {
       setPaymentLoading(false);
     }
@@ -404,14 +439,11 @@ const PayFees = () => {
         { label: 'Transport / Transit Allowance', amount: currentStructure.transportFee || 1000 }
       ].filter(item => item.amount > 0);
 
-      // Dynamically resolve student's enrolled college/institution
       const studentCollege = (
         user?.university_name ||
         user?.university ||
         classroom?.university ||
-        classroom?.schoolName ||
-        localStorage.getItem('selectedUniversity') ||
-        'Academic Institute of Higher Education'
+        'Core5 Academy of Excellence'
       ).trim();
 
       const studentIdFormatted = user?.studentId || (user?.id ? `STU-${String(user.id).padStart(4, '0')}` : 'STU-1001');
@@ -421,8 +453,8 @@ const PayFees = () => {
 
       const doc = generateInvoicePdf({
         schoolName: studentCollege,
-        instituteAddress: user?.university_area ? `${user.university_area} Campus` : 'Main University Campus, Academic Block',
-        instituteContact: 'Authorized Online Portal • Email: finance@university.edu',
+        instituteAddress: 'Main University Campus, Academic Block',
+        instituteContact: 'Authorized Online Portal • Email: finance@core5academy.edu',
         student: {
           id: studentIdFormatted,
           name: user?.name || 'Enrolled Student',
@@ -431,23 +463,23 @@ const PayFees = () => {
           email: user?.email || ''
         },
         feeBreakdown: breakdownItems,
-        transactionId: txn.transactionId || txn.id || `TXN_${Date.now()}`,
+        transactionId: txn.receiptNo || txn.transactionId || txn.id || `TXN_${Date.now()}`,
         paymentDate: txn.paymentDate || new Date().toLocaleDateString('en-GB'),
         transactionAmount: Number(txn.amount) || totalFee,
-        paymentOption: txn.paymentOption || 'Full Payment',
-        paymentMode: txn.source === 'OFFLINE_ACCOUNTANT' ? 'Accountant Cash / Counter Receipt' : 'Razorpay Online'
+        paymentOption: txn.description || txn.type || 'Fee Installment',
+        paymentMode: txn.type || 'Razorpay Online'
       });
       
       const safeCollegeSlug = studentCollege.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 15);
       const safeNameSlug = (user?.name || 'Student').replace(/\s+/g, '_');
-      const safeTxnSlug = (txn.transactionId || txn.id || 'Receipt').slice(-8);
+      const safeTxnSlug = (txn.receiptNo || txn.transactionId || txn.id || 'Receipt').slice(-8);
       const fileName = `Fee-Receipt-${safeCollegeSlug}-${safeNameSlug}-${safeTxnSlug}.pdf`;
       
       doc.save(fileName);
-      toast.success(`Official invoice for ${studentCollege} downloaded!`);
+      toast.success(t('dashboard:pf_invoice_downloaded'));
     } catch (err) {
       console.error('Invoice generation error:', err);
-      toast.error('Failed to generate PDF invoice');
+      toast.error(t('dashboard:pf_invoice_failed'));
     }
   };
 
@@ -456,45 +488,40 @@ const PayFees = () => {
       <div className="h-full overflow-y-auto bg-[#f8fafc] p-4 sm:p-6 lg:p-8 custom-scrollbar">
         <div className="max-w-6xl mx-auto space-y-6">
 
-          {/* ================= HERO HEADER ================= */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-7 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-blue-50 text-[#2563eb] text-xs font-bold rounded-full border border-blue-100">
-                  Student Finance
-                </span>
-                <span className="text-xs text-slate-500 font-medium">
-                  Academic Year 2026–2027
-                </span>
+          {/* Legacy Reconciliation Alert if blocked */}
+          {isCollectionBlocked && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 text-amber-900">
+              <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={20} />
+              <div className="space-y-1 text-xs">
+                <p className="font-bold text-sm text-amber-950">{t('dashboard:pf_blocked_title')}</p>
+                <p>
+                  {t('dashboard:pf_blocked_body', { amount: `₹${(installmentSummary?.unallocatedPaid || 0).toLocaleString('en-IN')}` })}
+                </p>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-                Fees & Payments Portal
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-2xl">
-                View your enrolled curriculum fee breakdown, select official payment options, and download verified digital GST receipts.
-              </p>
             </div>
+          )}
 
-            <div className="flex items-center gap-3">
+          {/* Pending Verification Notice */}
+          {pendingVerification && (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 sm:p-5 flex items-start justify-between gap-3.5 text-blue-900">
+              <div className="flex items-start gap-3 text-xs">
+                <Clock className="text-blue-600 shrink-0 mt-0.5" size={20} />
+                <div>
+                  <p className="font-bold text-sm text-blue-950">{t('dashboard:pf_verification_pending')}</p>
+                  <p className="text-blue-800 mt-0.5">{pendingVerification.message}</p>
+                  <p className="text-slate-500 font-mono text-[11px] mt-1">{t('dashboard:pf_payment_id', { id: pendingVerification.paymentId })}</p>
+                </div>
+              </div>
               <button
-                onClick={() => {
-                  if (isFullyPaid) {
-                    toast.info('All curriculum fees for Academic Year 2026–2027 are fully paid!');
-                  } else {
-                    openPayment('full');
-                  }
-                }}
-                className={`flex items-center justify-center gap-2 px-6 py-3 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all cursor-pointer hover:shadow-md ${
-                  isFullyPaid 
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
-                    : 'bg-[#2563eb] hover:bg-[#1d4ed8] text-white'
-                }`}
+                onClick={handleRetryVerification}
+                disabled={paymentLoading}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                {isFullyPaid ? <CheckCircle2 size={16} /> : <Wallet size={16} />}
-                {isFullyPaid ? 'Fees Fully Cleared' : 'Pay Fees Online'}
+                {paymentLoading ? <RefreshCw size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                {t('dashboard:pf_retry_verification')}
               </button>
             </div>
-          </div>
+          )}
 
           {/* ================= 3 KEY METRIC CARDS ================= */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -502,7 +529,7 @@ const PayFees = () => {
             {/* Total Annual Fee */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs relative overflow-hidden">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Curriculum Fee</span>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t('total_curriculum_fee')}</span>
                 <div className="w-10 h-10 bg-blue-50 text-[#2563eb] rounded-xl flex items-center justify-center">
                   <Building2 size={18} />
                 </div>
@@ -513,7 +540,7 @@ const PayFees = () => {
                 </span>
                 <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                  Program: <span className="font-semibold text-slate-700">{classroom?.name || 'Class 2026 - Standard'}</span>
+                  {t('dashboard:pf_program')} <span className="font-semibold text-slate-700">{classroom?.name || t('dashboard:pf_default_class')}</span>
                 </p>
               </div>
             </div>
@@ -521,19 +548,19 @@ const PayFees = () => {
             {/* Paid Amount */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs relative overflow-hidden">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Paid to Date</span>
+                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">{t('paid_to_date')}</span>
                 <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
                   <CheckCircle2 size={18} />
                 </div>
               </div>
               <div className="mt-4">
                 <span className="text-3xl font-bold text-emerald-600">
-                  ₹{paidAmount.toLocaleString('en-IN')}
+                  ₹{lifetimePaid.toLocaleString('en-IN')}
                 </span>
                 <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${isFullyPaid ? 'bg-emerald-500' : paidAmount > 0 ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                  <span className={`w-2 h-2 rounded-full ${isFullyPaid ? 'bg-emerald-500' : lifetimePaid > 0 ? 'bg-amber-500' : 'bg-slate-300'}`} />
                   <span className="font-semibold text-slate-700">
-                    {isFullyPaid ? 'Fee Fully Cleared' : paidAmount > 0 ? 'Partially Paid' : 'No Payments Recorded'}
+                    {isFullyPaid ? t('dashboard:pf_fully_cleared') : lifetimePaid > 0 ? t('dashboard:pf_partially_paid') : t('dashboard:pf_no_payments')}
                   </span>
                 </p>
               </div>
@@ -541,27 +568,27 @@ const PayFees = () => {
 
             {/* Remaining Balance */}
             <div className={`border rounded-2xl p-6 shadow-xs relative overflow-hidden ${
-              pendingAmount > 0 ? 'bg-white border-slate-200/80' : 'bg-emerald-50/50 border-emerald-100'
+              remainingTotal > 0 ? 'bg-white border-slate-200/80' : 'bg-emerald-50/50 border-emerald-100'
             }`}>
               <div className="flex items-center justify-between">
-                <span className={`text-xs font-bold uppercase tracking-wider ${pendingAmount > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
-                  Remaining Balance
+                <span className={`text-xs font-bold uppercase tracking-wider ${remainingTotal > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  {t('outstanding_balance')}
                 </span>
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  pendingAmount > 0 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-100 text-emerald-700'
+                  remainingTotal > 0 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-100 text-emerald-700'
                 }`}>
-                  {pendingAmount > 0 ? <Clock size={18} /> : <ShieldCheck size={18} />}
+                  {remainingTotal > 0 ? <Clock size={18} /> : <ShieldCheck size={18} />}
                 </div>
               </div>
               <div className="mt-4">
                 <span className={`text-3xl font-bold ${
-                  pendingAmount > 0 ? 'text-slate-900' : 'text-emerald-700'
+                  remainingTotal > 0 ? 'text-slate-900' : 'text-emerald-700'
                 }`}>
-                  ₹{pendingAmount.toLocaleString('en-IN')}
+                  ₹{remainingTotal.toLocaleString('en-IN')}
                 </span>
                 <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-1.5">
                   <Calendar size={13} className="text-slate-400" />
-                  Due Date: <span className="font-semibold text-slate-700">{currentStructure.dueDate || '30 Nov 2026'}</span>
+                  {t('dashboard:pf_due_date')} <span className="font-semibold text-slate-700">{currentStructure.dueDate || '30 Nov 2026'}</span>
                 </p>
               </div>
             </div>
@@ -579,11 +606,11 @@ const PayFees = () => {
                     <Receipt size={17} />
                   </div>
                   <h2 className="text-base font-bold text-slate-900">
-                    Curriculum Fee Structure Breakdown
+                    {t('dashboard:pf_breakdown_title')}
                   </h2>
                 </div>
                 <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-100">
-                  Itemized Charges
+                  {t('dashboard:pf_itemized_charges')}
                 </span>
               </div>
 
@@ -591,47 +618,47 @@ const PayFees = () => {
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-400 uppercase tracking-wider text-[10px]">
-                      <th className="py-3 font-bold">Fee Component</th>
-                      <th className="py-3 font-bold">Frequency</th>
-                      <th className="py-3 font-bold text-right">Amount</th>
+                      <th className="py-3 font-bold">{t('dashboard:pf_fee_component')}</th>
+                      <th className="py-3 font-bold">{t('dashboard:pf_frequency')}</th>
+                      <th className="py-3 font-bold text-right">{t('dashboard:pf_amount')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 text-slate-600">
                     <tr className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 font-medium text-slate-800">Tuition & Academic Instruction</td>
-                      <td className="py-3.5 text-slate-500">Annual</td>
+                      <td className="py-3.5 font-medium text-slate-800">{t('dashboard:pf_item_tuition')}</td>
+                      <td className="py-3.5 text-slate-500">{t('dashboard:pf_annual')}</td>
                       <td className="py-3.5 text-right font-bold text-slate-900">₹{(currentStructure.tuitionFee || 5000).toLocaleString('en-IN')}</td>
                     </tr>
                     <tr className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 font-medium text-slate-800">Computer Lab & Tech Infrastructure</td>
-                      <td className="py-3.5 text-slate-500">Annual</td>
+                      <td className="py-3.5 font-medium text-slate-800">{t('dashboard:pf_item_lab')}</td>
+                      <td className="py-3.5 text-slate-500">{t('dashboard:pf_annual')}</td>
                       <td className="py-3.5 text-right font-bold text-slate-900">₹{(currentStructure.computerLabFee || 800).toLocaleString('en-IN')}</td>
                     </tr>
                     <tr className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 font-medium text-slate-800">Digital Library & Knowledge Resources</td>
-                      <td className="py-3.5 text-slate-500">Annual</td>
+                      <td className="py-3.5 font-medium text-slate-800">{t('dashboard:pf_item_library')}</td>
+                      <td className="py-3.5 text-slate-500">{t('dashboard:pf_annual')}</td>
                       <td className="py-3.5 text-right font-bold text-slate-900">₹{(currentStructure.libraryFee || 500).toLocaleString('en-IN')}</td>
                     </tr>
                     <tr className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 font-medium text-slate-800">Examination, Quizzes & Certification</td>
-                      <td className="py-3.5 text-slate-500">Per Term</td>
+                      <td className="py-3.5 font-medium text-slate-800">{t('dashboard:pf_item_exam')}</td>
+                      <td className="py-3.5 text-slate-500">{t('dashboard:pf_per_term')}</td>
                       <td className="py-3.5 text-right font-bold text-slate-900">₹{(currentStructure.examinationFee || 450).toLocaleString('en-IN')}</td>
                     </tr>
                     <tr className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 font-medium text-slate-800">Sports, Fitness & Campus Facilities</td>
-                      <td className="py-3.5 text-slate-500">Annual</td>
+                      <td className="py-3.5 font-medium text-slate-800">{t('dashboard:pf_item_sports')}</td>
+                      <td className="py-3.5 text-slate-500">{t('dashboard:pf_annual')}</td>
                       <td className="py-3.5 text-right font-bold text-slate-900">₹{(currentStructure.sportsFee || 300).toLocaleString('en-IN')}</td>
                     </tr>
                     <tr className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 font-medium text-slate-800">Transport & Logistics Support</td>
-                      <td className="py-3.5 text-slate-500">Optional</td>
+                      <td className="py-3.5 font-medium text-slate-800">{t('dashboard:pf_item_transport')}</td>
+                      <td className="py-3.5 text-slate-500">{t('dashboard:pf_optional')}</td>
                       <td className="py-3.5 text-right font-bold text-slate-900">₹{(currentStructure.transportFee || 1000).toLocaleString('en-IN')}</td>
                     </tr>
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-slate-100 bg-slate-50/80 font-bold text-sm text-slate-900">
-                      <td className="py-3.5 px-3 rounded-l-xl">Total Fee Package</td>
-                      <td className="py-3.5 text-slate-500 text-xs font-normal">All-inclusive</td>
+                      <td className="py-3.5 px-3 rounded-l-xl">{t('dashboard:pf_total_package')}</td>
+                      <td className="py-3.5 text-slate-500 text-xs font-normal">{t('dashboard:pf_all_inclusive')}</td>
                       <td className="py-3.5 px-3 text-right text-[#2563eb] text-base rounded-r-xl font-extrabold">
                         ₹{totalFee.toLocaleString('en-IN')}
                       </td>
@@ -641,78 +668,98 @@ const PayFees = () => {
               </div>
             </div>
 
-            {/* RIGHT: Quick Payment Options (5 Cols) */}
+            {/* RIGHT: Active Installment Plans & Stage Breakdown (5 Cols) */}
             <div className="lg:col-span-5 flex flex-col justify-between bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white rounded-2xl p-6 sm:p-7 shadow-xs relative overflow-hidden">
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-blue-400">
                   <Sparkles size={15} />
-                  <span className="text-xs font-bold uppercase tracking-wider">Fast & Secure Checkout</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">{t('dashboard:pf_installment_schedule')}</span>
                 </div>
 
                 <h3 className="text-xl font-bold tracking-tight">
-                  Choose Payment Plan
+                  {installmentSummary?.activeSchedule ? t('dashboard:pf_active_plan') : t('dashboard:pf_choose_plan')}
                 </h3>
 
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Select an official payment plan below configured by the institute administration. All installment amounts are strictly calculated.
+                  {installmentSummary?.activeSchedule
+                    ? t('dashboard:pf_schedule_active', { plan: installmentSummary.activeSchedule.planName })
+                    : t('dashboard:pf_select_plan_hint')}
                 </p>
 
-                {/* Dynamic Active Plan selection cards */}
+                {/* Plan & Stage cards */}
                 <div className="space-y-3 pt-2 max-h-96 overflow-y-auto pr-1">
-                  {activePlans.map((plan, pIdx) => {
-                    const firstInst = plan.installments[0];
-                    const firstAmount = Math.round((totalFee * (Number(firstInst?.percentage) || 100)) / 100);
-
-                    return (
-                      <div 
-                        key={plan.id || pIdx}
-                        onClick={() => openPlanPayment(plan, 0)}
-                        className="p-3.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-blue-400 cursor-pointer transition-all space-y-2 group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-bold flex items-center justify-center">
-                              {pIdx + 1}
-                            </span>
-                            <span className="text-xs font-bold text-white group-hover:text-blue-300 transition-colors">
-                              {plan.name}
-                            </span>
-                          </div>
-                          <ArrowUpRight size={16} className="text-blue-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0" />
-                        </div>
-
-                        <div className="flex items-center justify-between text-[11px] text-slate-300 pl-7">
-                          <span>
-                            {plan.installmentsCount} {plan.installmentsCount === 1 ? 'Clearance' : 'Installments'} ({plan.splitType === 'equal' ? 'Equal' : 'Custom %'})
+                  {activePlans.map((plan, pIdx) => (
+                    <div 
+                      key={plan.id || pIdx}
+                      className="p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-bold flex items-center justify-center">
+                            {pIdx + 1}
                           </span>
-                          <span className="font-bold text-emerald-400">
-                            ₹{firstAmount.toLocaleString('en-IN')} {plan.installmentsCount > 1 ? `(${firstInst?.label || 'Inst 1'})` : ''}
+                          <span className="text-xs font-bold text-white">
+                            {plan.name}
                           </span>
                         </div>
-
-                        {/* Installment breakdown pills */}
-                        <div className="flex flex-wrap gap-1 pl-7 pt-1">
-                          {plan.installments.map((inst, i) => {
-                            const amt = Math.round((totalFee * Number(inst.percentage)) / 100);
-                            return (
-                              <span key={i} className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-slate-300">
-                                {inst.label || `Inst ${inst.number}`}: ₹{amt.toLocaleString('en-IN')} ({inst.percentage}%)
-                              </span>
-                            );
-                          })}
-                        </div>
+                        {installmentSummary?.activeSchedule && (
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                            {t('common:active')}
+                          </span>
+                        )}
                       </div>
-                    );
-                  })}
+
+                      {/* Stage cards with remaining balance and Pay buttons */}
+                      <div className="space-y-2 pt-1">
+                        {plan.installments.map((inst, i) => {
+                          const stageNum = inst.number || i + 1;
+                          const stageRemaining = inst.remainingAmount !== undefined ? inst.remainingAmount : Math.round((totalFee * (Number(inst.percentage) || 100)) / 100);
+                          const isCleared = stageRemaining === 0;
+
+                          return (
+                            <div
+                              key={i}
+                              className="p-2.5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-between text-xs"
+                            >
+                              <div>
+                                <span className="font-bold text-slate-200 block text-[11px]">{inst.label === 'Full Payment' ? t('dashboard:pf_full_payment') : (inst.label || t('dashboard:pf_stage', { n: stageNum }))}</span>
+                                <span className="text-[10px] text-slate-400">
+                                  {t('dashboard:pf_expected')} ₹{(inst.expectedAmount || stageRemaining).toLocaleString('en-IN')} {inst.percentage ? `(${inst.percentage}%)` : ''}
+                                </span>
+                              </div>
+
+                              <div className="text-right flex items-center gap-2">
+                                <div>
+                                  <span className={`block font-bold text-xs ${isCleared ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                    {isCleared ? t('dashboard:pf_cleared') : `₹${stageRemaining.toLocaleString('en-IN')}`}
+                                  </span>
+                                  {inst.dueDate && <span className="block text-[9px] text-slate-400">{inst.dueDate}</span>}
+                                </div>
+
+                                {!isCleared && !isCollectionBlocked && (
+                                  <button
+                                    onClick={() => openPlanPayment(plan, stageNum)}
+                                    className="px-3 py-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold text-[11px] rounded-lg shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                                  >
+                                    {t('dashboard:pf_pay')} <ChevronRight size={12} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               <div className="pt-6 border-t border-white/10 mt-6 flex items-center justify-between text-[11px] text-slate-400">
                 <span className="flex items-center gap-1.5">
                   <ShieldCheck size={14} className="text-emerald-400" />
-                  256-bit Encrypted Checkout
+                  {t('dashboard:pf_encrypted')}
                 </span>
-                <span>GST Tax Compliant</span>
+                <span>{t('dashboard:pf_gst')}</span>
               </div>
             </div>
 
@@ -726,46 +773,40 @@ const PayFees = () => {
                   <FileCheck2 size={17} />
                 </div>
                 <h2 className="text-base font-bold text-slate-900">
-                  Payment History & Official Tax Invoices
+                  {t('dashboard:pf_history_title')}
                 </h2>
               </div>
               <span className="text-xs text-slate-500 font-medium">
-                {combinedTransactions.length} Verified Transaction(s)
+                {t('dashboard:pf_verified_records', { n: dbPayments.length })}
               </span>
             </div>
 
-            {combinedTransactions.length === 0 ? (
+            {dbPayments.length === 0 ? (
               <div className="text-center py-10 px-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
                 <Receipt size={32} className="mx-auto text-slate-400 mb-2" />
-                <p className="text-sm font-semibold text-slate-700">No payment records found yet</p>
+                <p className="text-sm font-semibold text-slate-700">{t('dashboard:pf_no_records')}</p>
                 <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                  When you make a payment online or via cash to the accountant, your receipt and tax invoice will appear here for instant download.
+                  {t('dashboard:pf_no_records_body')}
                 </p>
-                <button
-                  onClick={() => openPayment('full')}
-                  className="mt-4 px-5 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold rounded-xl shadow-xs transition-all"
-                >
-                  Make First Payment
-                </button>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-400 uppercase tracking-wider text-[10px]">
-                      <th className="py-3 font-bold">Date & Time</th>
-                      <th className="py-3 font-bold">Transaction Reference</th>
-                      <th className="py-3 font-bold">Payment Mode</th>
-                      <th className="py-3 font-bold">Amount Paid</th>
-                      <th className="py-3 font-bold">Status</th>
-                      <th className="py-3 font-bold text-right">Tax Invoice</th>
+                      <th className="py-3 font-bold">{t('dashboard:pf_date_time')}</th>
+                      <th className="py-3 font-bold">{t('dashboard:pf_txn_receipt')}</th>
+                      <th className="py-3 font-bold">{t('dashboard:pf_payment_mode')}</th>
+                      <th className="py-3 font-bold">{t('dashboard:pf_amount_paid')}</th>
+                      <th className="py-3 font-bold">{t('common:status')}</th>
+                      <th className="py-3 font-bold text-right">{t('dashboard:pf_receipt')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 text-slate-600">
-                    {combinedTransactions.map((tx, idx) => (
+                    {dbPayments.map((tx, idx) => (
                       <tr key={tx.id || idx} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3.5 font-medium text-slate-900">
-                          {tx.paymentDate || 'Today'}
+                          {tx.paymentDate || t('common:today')}
                           <span className="block text-[10px] text-slate-400">{tx.paymentTime || ''}</span>
                         </td>
                         <td className="py-3.5 font-mono text-[11px] text-slate-800 font-semibold">
@@ -773,7 +814,7 @@ const PayFees = () => {
                         </td>
                         <td className="py-3.5 capitalize text-slate-600">
                           <span className="inline-flex items-center gap-1 font-medium">
-                            {tx.source === 'OFFLINE_ACCOUNTANT' ? '🏦 Accountant Cash/Receipt' : '💳 Razorpay Online'}
+                            {tx.type || t('dashboard:pf_online_razorpay')}
                           </span>
                         </td>
                         <td className="py-3.5 font-bold text-slate-900">
@@ -782,16 +823,16 @@ const PayFees = () => {
                         <td className="py-3.5">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded-full">
                             <CheckCircle2 size={12} />
-                            Verified
+                            {t('dashboard:pf_verified')}
                           </span>
                         </td>
                         <td className="py-3.5 text-right">
                           <button
                             onClick={() => handleDownloadInvoice(tx)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg shadow-2xs transition-all hover:border-slate-300"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg shadow-2xs transition-all hover:border-slate-300 cursor-pointer"
                           >
                             <Download size={13} className="text-[#2563eb]" />
-                            PDF Invoice
+                            {t('dashboard:pf_pdf_receipt')}
                           </button>
                         </td>
                       </tr>
@@ -812,99 +853,26 @@ const PayFees = () => {
             
             <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
               <div>
-                <span className="text-[10px] font-bold text-[#2563eb] uppercase tracking-wider">Checkout</span>
+                <span className="text-[10px] font-bold text-[#2563eb] uppercase tracking-wider">{t('dashboard:pf_checkout')}</span>
                 <h3 className="text-lg font-bold text-slate-900">
-                  Fee Payment Gateway
+                  {t('dashboard:pf_gateway_title')}
                 </h3>
               </div>
               <button 
                 onClick={() => setShowPaymentModal(false)}
-                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer"
+                disabled={paymentLoading}
+                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer disabled:opacity-50"
               >
                 ✕
               </button>
             </div>
 
-            {/* Dynamic Plan Selection */}
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-700">Select Active Payment Plan</label>
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {activePlans.map((plan) => {
-                  const isSelected = (currentSelectedPlan?.id === plan.id);
-                  const firstAmt = Math.round((totalFee * (Number(plan.installments[0]?.percentage) || 100)) / 100);
-
-                  return (
-                    <div
-                      key={plan.id}
-                      onClick={() => handleSelectPlanInModal(plan.id)}
-                      className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between ${
-                        isSelected
-                          ? 'border-[#2563eb] bg-blue-50/70 text-[#2563eb] shadow-2xs'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <input
-                          type="radio"
-                          name="selectedPlanRadio"
-                          checked={isSelected}
-                          onChange={() => handleSelectPlanInModal(plan.id)}
-                          className="accent-[#2563eb] w-4 h-4 cursor-pointer"
-                        />
-                        <div>
-                          <span className="font-bold block text-slate-900">{plan.name}</span>
-                          <span className="text-[10px] text-slate-500">
-                            {plan.installmentsCount} {plan.installmentsCount === 1 ? 'installment' : 'installments'} ({plan.splitType === 'equal' ? 'Equal' : 'Custom'})
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-bold text-slate-900">₹{firstAmt.toLocaleString('en-IN')}</span>
-                        <span className="block text-[10px] text-slate-400">Inst 1 amount</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* If Selected Plan has multiple installments, let student pick installment */}
-            {currentSelectedPlan && currentSelectedPlan.installments.length > 1 && (
-              <div className="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                  Select Installment Stage to Pay:
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {currentSelectedPlan.installments.map((inst, iIdx) => {
-                    const instAmt = Math.round((totalFee * Number(inst.percentage)) / 100);
-                    const isInstSelected = selectedInstallmentIdx === iIdx;
-                    return (
-                      <button
-                        type="button"
-                        key={iIdx}
-                        onClick={() => handleSelectInstallmentInModal(currentSelectedPlan, iIdx)}
-                        className={`p-2 rounded-lg border text-left text-xs transition-all cursor-pointer ${
-                          isInstSelected 
-                            ? 'border-[#2563eb] bg-blue-100 text-[#2563eb] font-bold'
-                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                        }`}
-                      >
-                        <span className="block font-semibold text-[11px] truncate">{inst.label || `Inst ${inst.number}`}</span>
-                        <span className="block text-[10px] text-emerald-700 font-bold">₹{instAmt.toLocaleString('en-IN')}</span>
-                        {inst.dueDate && <span className="block text-[9px] text-slate-400">{inst.dueDate}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Amount input - READ ONLY & LOCKED */}
+            {/* Locked Amount Calculation */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-700">Calculated Amount (Locked)</label>
-                <span className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
-                  <Lock size={11} /> Official Amount Locked
+                <label className="block text-xs font-semibold text-slate-700">{t('dashboard:pf_stage_balance')}</label>
+                <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-1">
+                  <Lock size={11} /> {t('dashboard:pf_server_amount')}
                 </span>
               </div>
               <div className="relative">
@@ -914,7 +882,6 @@ const PayFees = () => {
                   value={paymentAmount}
                   readOnly
                   disabled
-                  placeholder="Official Amount"
                   className="w-full bg-slate-100 border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-sm font-bold text-slate-900 outline-none cursor-not-allowed select-none"
                 />
               </div>
@@ -923,19 +890,19 @@ const PayFees = () => {
               )}
             </div>
 
-            {/* Student metadata */}
+            {/* Student & Stage metadata */}
             <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1.5 text-slate-600">
               <div className="flex justify-between">
-                <span>Student Name:</span>
-                <span className="font-semibold text-slate-800">{user?.name || 'Enrolled Student'}</span>
+                <span>{t('dashboard:pf_student_name')}</span>
+                <span className="font-semibold text-slate-800">{user?.name || t('dashboard:pf_enrolled_student')}</span>
               </div>
               <div className="flex justify-between">
-                <span>Program / Class:</span>
-                <span className="font-semibold text-slate-800">{classroom?.name || 'Academic 2026'}</span>
+                <span>{t('dashboard:pf_program_class')}</span>
+                <span className="font-semibold text-slate-800">{classroom?.name || t('dashboard:pf_default_class')}</span>
               </div>
               <div className="flex justify-between">
-                <span>Selected Plan:</span>
-                <span className="font-semibold text-[#2563eb]">{paymentOption}</span>
+                <span>{t('dashboard:pf_payment_stage')}</span>
+                <span className="font-semibold text-[#2563eb]">{paymentOptionLabel}</span>
               </div>
             </div>
 
@@ -943,10 +910,11 @@ const PayFees = () => {
             <div className="flex gap-2.5 pt-2">
               <button
                 type="button"
+                disabled={paymentLoading}
                 onClick={() => setShowPaymentModal(false)}
-                className="flex-1 py-3 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
+                className="flex-1 py-3 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition-all cursor-pointer disabled:opacity-50"
               >
-                Cancel
+                {t('common:cancel')}
               </button>
               <button
                 type="button"
@@ -959,7 +927,7 @@ const PayFees = () => {
                 ) : (
                   <ShieldCheck size={14} />
                 )}
-                {paymentLoading ? 'Processing...' : `Pay ₹${Number(paymentAmount || 0).toLocaleString('en-IN')}`}
+                {paymentLoading ? t('dashboard:pf_connecting') : `${t('dashboard:pf_pay')} ₹${Number(paymentAmount || 0).toLocaleString('en-IN')}`}
               </button>
             </div>
 

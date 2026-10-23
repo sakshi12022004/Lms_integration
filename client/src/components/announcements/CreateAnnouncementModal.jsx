@@ -71,12 +71,12 @@ const CreateAnnouncementModal = ({
 
               if (announcementRes.ok) {
                 const allAnnouncements = await announcementRes.json();
-                
+
                 // Count only announcements created by this mentor
                 const mentorAnnouncements = allAnnouncements.filter(
                   ann => ann.createdByRole === 'mentor'
                 );
-                
+
                 const currentCount = mentorAnnouncements.length;
 
                 // Check if limit is reached

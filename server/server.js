@@ -87,7 +87,7 @@ app.use(
     origin: allowedCorsOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-User-ID", "Cache-Control", "Accept"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-User-ID", "Cache-Control", "Accept", "X-Language"],
     exposedHeaders: ["Content-Length", "Content-Type", "Content-Disposition"],
     preflightContinue: false,
     optionsSuccessStatus: 204,

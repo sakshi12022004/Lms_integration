@@ -54,7 +54,18 @@ class SqliteCustomFieldStore {
         .get(this.actor.universityId, key);
       if (existing) {
         if (existing.retired_at !== null && existing.retired_at !== undefined) {
-          throw new ValidationError(`The field "${key}" exists but is retired. Use another key.`, [], { code: 'FIELD_RETIRED', statusCode: 409 });
+          // Reactivate the retired field so the school can use it again!
+          const sameType = existing.data_type === dataType;
+          const nextType = sameType ? existing.data_type : dataType;
+          if (!sameType) {
+            const used = this.conn.prepare('SELECT COUNT(*) AS n FROM soa_custom_field_values WHERE field_id = ? AND university_id = ?').get(existing.id, this.actor.universityId).n;
+            if (used > 0) {
+              throw new ValidationError(`This retired field holds values of type "${existing.data_type}". Keep type "${existing.data_type}" or use another key.`, [], { code: 'FIELD_KEY_CONFLICT', statusCode: 409 });
+            }
+          }
+          this.conn.prepare('UPDATE soa_custom_fields SET retired_at = NULL, retired_by = NULL, label = ?, data_type = ?, updated_at = ? WHERE id = ? AND university_id = ?')
+            .run(label.trim(), nextType, this.now(), existing.id, this.actor.universityId);
+          return { field: { id: existing.id, key, label: label.trim(), dataType: nextType }, created: false };
         }
         if (existing.data_type !== dataType) {
           throw new ValidationError(`This school already has a field "${key}" of type ${existing.data_type}.`, [], { code: 'FIELD_KEY_CONFLICT', statusCode: 409 });
@@ -94,7 +105,7 @@ class SqliteCustomFieldStore {
 
   /**
    * Admin edit: { label?, dataType? }. The key never changes (values stay attached). A type change is
-   * refused once the field holds a value (no silent conversion); a retired field cannot be edited.
+   * refused once the field holds a value (no silent conversion).
    */
   updateField(key, changes) {
     this.requireReady();
@@ -106,7 +117,6 @@ class SqliteCustomFieldStore {
     return this.transaction(() => {
       this.verifyActor();
       const row = this.findOwn(key);
-      if (row.retired_at !== null) throw new ValidationError('A retired field cannot be edited.', [], { code: 'FIELD_RETIRED', statusCode: 409 });
       if (changes.dataType !== undefined && changes.dataType !== row.data_type) {
         const used = this.conn.prepare('SELECT COUNT(*) AS n FROM soa_custom_field_values WHERE field_id = ? AND university_id = ?').get(row.id, this.actor.universityId).n;
         if (used > 0) {
@@ -128,6 +138,20 @@ class SqliteCustomFieldStore {
       if (row.retired_at === null) {
         this.conn.prepare('UPDATE soa_custom_fields SET retired_at = ?, retired_by = ? WHERE id = ? AND university_id = ? AND retired_at IS NULL')
           .run(this.now(), this.actor.userId, row.id, this.actor.universityId);
+      }
+      return this.listFields().find((f) => f.id === row.id);
+    });
+  }
+
+  /** Reactivate / unretire a retired field so it can be used in new imports again. */
+  unretireField(key) {
+    this.requireReady();
+    return this.transaction(() => {
+      this.verifyActor();
+      const row = this.findOwn(key);
+      if (row.retired_at !== null) {
+        this.conn.prepare('UPDATE soa_custom_fields SET retired_at = NULL, retired_by = NULL, updated_at = ? WHERE id = ? AND university_id = ? AND retired_at IS NOT NULL')
+          .run(this.now(), row.id, this.actor.universityId);
       }
       return this.listFields().find((f) => f.id === row.id);
     });

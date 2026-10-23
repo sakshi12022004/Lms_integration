@@ -1,5 +1,6 @@
 import React from 'react';
 import { Compass } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import guideBotRuntime from './GuideBotRuntime';
 
 /**
@@ -14,6 +15,8 @@ import guideBotRuntime from './GuideBotRuntime';
  * @param {{ tourId: string }} props - tourId is required.
  */
 const GuideBotLauncher = ({ tourId }) => {
+  const { t } = useTranslation('tours');
+
   const handleClick = () => {
     guideBotRuntime.start(tourId);
   };
@@ -22,11 +25,11 @@ const GuideBotLauncher = ({ tourId }) => {
     <button
       type="button"
       onClick={handleClick}
-      aria-label="Start GuideBot walkthrough"
-      className="inline-flex items-center gap-2 h-11 pl-3.5 pr-4 rounded-full text-[13px] font-semibold text-white bg-[#B99652] shadow-[0_4px_14px_rgba(185,150,82,0.35)] ring-1 ring-white/10 hover:bg-[#a38241] hover:shadow-[0_8px_20px_rgba(185,150,82,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[0_2px_8px_rgba(185,150,82,0.35)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#B99652] transition-all duration-200"
+      aria-label={t('start_walkthrough', 'Start GuideBot walkthrough')}
+      className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold text-white bg-[#B99652] shadow-[0_2px_8px_rgba(185,150,82,0.25)] hover:bg-[#a38241] hover:shadow-[0_4px_12px_rgba(185,150,82,0.35)] active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#B99652] transition-all duration-200 shrink-0 cursor-pointer"
     >
-      <Compass size={17} strokeWidth={2.25} className="shrink-0" />
-      GuideBot
+      <Compass size={15} strokeWidth={2.2} className="shrink-0" />
+      <span>{t('guidebot_btn', 'GuideBot')}</span>
     </button>
   );
 };

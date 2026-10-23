@@ -30,7 +30,10 @@ const Announcements = () => {
     return () => { cancelled = true; };
   }, [API, token]);
 
+  // Same per-user read receipt the AnnouncementBell uses. Never PUT the
+  // announcement record itself: that would edit it for every recipient.
   const markAsRead = async (id) => {
+    if (id === undefined || id === null) return;
     try {
       await fetch(`${API}/announcements/${id}/read`, { method: "PUT", headers: { Authorization: `Bearer ${token}` } });
     } catch (err) {
@@ -76,7 +79,7 @@ const Announcements = () => {
             <h3 className="font-semibold text-lg">{a.title}</h3>
             <p className="text-gray-700 mt-1">{a.content || a.message}</p>
             <p className="text-xs text-gray-400 mt-2">
-              {new Date(a.createdAt).toLocaleString()}
+              {new Date(a.createdAt || a.created_at).toLocaleString()}
             </p>
           </div>
         ))}

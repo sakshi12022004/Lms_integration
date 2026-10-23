@@ -22,7 +22,9 @@ import { useTranslation } from "../context/TranslationContext";
 import AnnouncementBell from "./AnnouncementBell";
 import LoginFooter from './LoginFooter';
 import GuideBotLauncher from '../guidebot/runtime/GuideBotLauncher';
+import LMSChatbot from './Chatbot/LMSChatbot';
 import whiteLogo from '../assets/core5-final-rbg.png';
+import UniversalLanguageSelector from './UniversalLanguageSelector';
 
 const AdminLayout = ({ children }) => {
   const location = useLocation();
@@ -61,7 +63,7 @@ const AdminLayout = ({ children }) => {
 
     /* ===== CLASSROOMS (JUST BELOW ADD TEACHER) ===== */
     { path: "/admin/classrooms", nameKey: 'nav_classrooms', name: 'Classrooms', icon: <School size={20} />, tourId: 'nav-classrooms' },
-    { path: "/admin/student-import", nameKey: 'nav_student_import', name: 'Import Students', icon: <FileSpreadsheet size={20} />, tourId: 'nav-student-import' },
+    { path: "/admin/student-import", nameKey: 'nav_student_import', name: 'Import Students (AI Suggested Mapping)', icon: <FileSpreadsheet size={20} />, tourId: 'nav-student-import' },
   ];
 
   const getItemLabel = (item) => {
@@ -251,8 +253,12 @@ const AdminLayout = ({ children }) => {
               <h1 className="text-lg sm:text-xl font-['DM_Serif_Display',serif] truncate text-[#1e1b4b] tracking-wide">{currentPage}</h1>
             </div>
 
-            {/* Announcement Bell */}
-            <AnnouncementBell />
+            {/* Right Header Actions */}
+            <div className="flex items-center gap-3">
+              <UniversalLanguageSelector variant="compact" />
+              <GuideBotLauncher tourId="admin-overview-v1" />
+              <AnnouncementBell />
+            </div>
           </div>
         </header>
 
@@ -310,14 +316,12 @@ const AdminLayout = ({ children }) => {
         {/* Page Content */}
         <div className="flex-1 overflow-y-auto scrollable-content p-3 sm:p-4 md:p-6">{children}</div>
       </main>
-      
-      {/* GuideBot Launcher — one shared instance for both desktop and mobile */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <GuideBotLauncher tourId="admin-overview-v1" />
-      </div>
 
       {/* Footer */}
       <LoginFooter />
+
+      {/* Admin Chatbot */}
+      <LMSChatbot role="admin" />
     </div>
   );
 };

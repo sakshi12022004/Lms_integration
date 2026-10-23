@@ -129,12 +129,14 @@ const StudentAttendance = () => {
               <thead>
                 <tr className="bg-[#fffdf4] border-b border-[#ebdcaa]">
                   <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">
-                    <Calendar className="inline mr-2 text-[#B99652]" size={15} /> Date
+                    <Calendar className="inline mr-2 text-[#B99652]" size={15} /> {t('date') !== 'date' ? t('date') : 'Date'}
                   </th>
                   <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">
-                    <BookOpen className="inline mr-2 text-[#B99652]" size={15} /> Classroom
+                    <BookOpen className="inline mr-2 text-[#B99652]" size={15} /> {t('classrooms') !== 'classrooms' ? t('classrooms') : 'Classroom'}
                   </th>
-                  <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">Status</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-[#1e1b4b]">
+                    {t('status') !== 'status' ? t('status') : 'Status'}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -144,7 +146,7 @@ const StudentAttendance = () => {
                       {new Date(record.date).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-3.5 text-sm font-medium text-slate-700">
-                      {record.classroomName || `Classroom ${record.classroomId}`}
+                      {record.classroomName || `${t('classrooms')} ${record.classroomId}`}
                     </td>
                     <td className="px-6 py-3.5 text-sm">
                       <span className={`px-3 py-1 rounded-none text-xs font-semibold uppercase tracking-wider ${
@@ -152,7 +154,7 @@ const StudentAttendance = () => {
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           : 'bg-red-50 text-red-700 border border-red-200'
                       }`}>
-                        {(record.status || '').toLowerCase() === 'present' ? '✓ Present' : '✗ Absent'}
+                        {(record.status || '').toLowerCase() === 'present' ? `✓ ${t('present')}` : `✗ ${t('absent')}`}
                       </span>
                     </td>
                   </tr>
@@ -163,8 +165,8 @@ const StudentAttendance = () => {
         ) : (
           <div data-tour="attendance-records-log" className="bg-[#fffdf4]/40 border-2 border-dashed border-[#ebdcaa] rounded-none p-12 text-center">
             <TrendingUp className="mx-auto mb-3 text-[#B99652]/60" size={44} />
-            <p className="font-['DM_Serif_Display',serif] text-xl text-[#1e1b4b]">No attendance records yet</p>
-            <p className="text-xs text-slate-500 mt-1">Your attendance marks from mentors will appear here.</p>
+            <p className="font-['DM_Serif_Display',serif] text-xl text-[#1e1b4b]">{t('no_attendance_records')}</p>
+            <p className="text-xs text-slate-500 mt-1">{t('attendance_marks_will_appear', 'Your attendance marks from mentors will appear here.')}</p>
           </div>
         )}
       </div>

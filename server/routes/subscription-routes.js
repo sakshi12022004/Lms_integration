@@ -19,7 +19,7 @@ router.use(authMiddleware);
 router.get('/current', getCurrentSubscription);
 
 // Check feature access (Calendar, Export, etc.)
-router.get('/check-feature-access', checkFeatureAccess);
+router.get('/check-feature-access', authMiddleware, checkFeatureAccess);
 
 // Create subscription order
 router.post('/create-order', rateLimiters.createOrder, createSubscriptionOrder);

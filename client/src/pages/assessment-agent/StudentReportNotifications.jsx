@@ -5,6 +5,7 @@ import { Bell, Download, Eye, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { downloadReportPdf } from "./reportPdf";
 import { evidenceLabel } from "./AiPerformanceReport";
+import { useTranslation } from "../../context/TranslationContext";
 
 /*
  * AI Assessment Agent (migration 008) - the student's "New Performance Report" notifications.
@@ -13,6 +14,7 @@ import { evidenceLabel } from "./AiPerformanceReport";
  * browser builds the PDF with the same reportPdf.js the teacher uses. No AI call anywhere here.
  */
 export default function StudentReportNotifications({ base, auth }) {
+  const { t } = useTranslation();
   const [reports, setReports] = useState([]);
   const [downloading, setDownloading] = useState(null);
   const lock = useRef(false); // a double-click downloads once
@@ -34,7 +36,7 @@ export default function StudentReportNotifications({ base, auth }) {
       downloadReportPdf({ student: report.student, scope: report.scope, ai: report.ai, evidenceLabel });
       setReports((list) => list.map((x) => (x.id === r.id ? { ...x, read: true } : x)));
     } catch (err) {
-      toast.error(err?.response?.data?.error?.message || "The report could not be downloaded.");
+      toast.error(err?.response?.data?.error?.message || t('dashboard:srn_download_failed'));
     } finally {
       lock.current = false;
       setDownloading(null);
@@ -51,11 +53,11 @@ export default function StudentReportNotifications({ base, auth }) {
             <div>
               <div className="font-semibold flex items-center gap-2">
                 {r.title}
-                {!r.read && <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">New</span>}
+                {!r.read && <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">{t('dashboard:srn_new')}</span>}
               </div>
               <div className="text-sm text-gray-600">{r.message}</div>
               <div className="text-xs text-gray-500 mt-0.5">
-                {r.teacherName ? `From ${r.teacherName} · ` : ""}{r.focusLabel} · {new Date(r.sharedAt).toLocaleString()}
+                {r.teacherName ? `${t('dashboard:srn_from', { name: r.teacherName })} · ` : ""}{r.focusLabel} · {new Date(r.sharedAt).toLocaleString()}
               </div>
             </div>
           </div>
@@ -66,7 +68,7 @@ export default function StudentReportNotifications({ base, auth }) {
           </Link>
           <button type="button" onClick={() => download(r)} disabled={downloading !== null}
             className="shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-semibold disabled:opacity-60" data-testid="aia-report-download">
-            {downloading === r.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} Download Report
+            {downloading === r.id ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} {t('dashboard:srn_download_report')}
           </button>
           </div>
         </div>

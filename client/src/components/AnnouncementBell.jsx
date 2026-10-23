@@ -5,10 +5,11 @@ import { io } from "socket.io-client";
 import { useNavigate } from "react-router-dom";
 import { notificationTarget } from "../utils/notificationRoutes";
 import ChatbotButton from "./ChatbotButton";
+import { useTranslation } from "react-i18next";
 
 const AnnouncementBell = () => {
   const { token, API, user } = useAuth();
-  const navigate = useNavigate();
+  const { t } = useTranslation(['forms', 'common']);
 
   const [open, setOpen] = useState(false);
   const [announcements, setAnnouncements] = useState([]);
@@ -187,7 +188,9 @@ const AnnouncementBell = () => {
 
     fetchStudentCourses();
 
-    const socketUrl = API.replace('/api', '');
+    const socketUrl = API.replace(/\/api\/?$/, '');
+    // Pass the backend URL explicitly; io({...}) alone connects to the page
+    // origin (the Vite dev server), which has no Socket.IO endpoint.
     socketRef.current = io(socketUrl, {
       auth: { token },
     });
@@ -335,13 +338,13 @@ const AnnouncementBell = () => {
       {open && (
         <div className="absolute right-0 mt-2 w-80 bg-white border rounded-lg shadow-lg z-50">
           <div className="p-3 font-semibold border-b">
-            Notifications
+            {t('announcements_title', 'Announcements')}
           </div>
 
           <div className="max-h-72 overflow-y-auto">
             {announcements.length === 0 ? (
               <p className="p-3 text-sm text-gray-500">
-                No notifications
+                {t('no_announcements_available', 'No announcements')}
               </p>
             ) : (
               announcements.map((a) => {
@@ -355,7 +358,7 @@ const AnnouncementBell = () => {
                 const readByStrings = (Array.isArray(readBy) ? readBy : []).map(String);
                 const isUnread = !readByStrings.includes(String(user?.id));
 
-                const target = notificationTarget(a, user?.role);
+                const isFeeAlert = a.title?.includes('Fee') || a.content?.toLowerCase()?.includes('fee') || a.content?.toLowerCase()?.includes('due');
 
                 return (
                   <div
@@ -367,14 +370,31 @@ const AnnouncementBell = () => {
                     onClick={target ? () => openNotification(a) : undefined}
                     onKeyDown={target ? (e) => { if (e.key === "Enter") openNotification(a); } : undefined}
                     className={`p-3 border-b last:border-0 ${
-                      isUnread ? "bg-gray-50" : ""
-                    } ${target ? "cursor-pointer hover:bg-[#fffdf4]" : ""}`}
+                      isUnread ? (isFeeAlert ? "bg-amber-50/60" : "bg-gray-50") : ""
+                    }`}
                   >
-                    <p className="font-medium">{a.title}</p>
-                    <p className="text-sm text-gray-600">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-slate-800 text-sm">{a.title}</p>
+                      {a.priority === 'high' && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded-none shrink-0">
+                          {t('urgent', 'Urgent')}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                       {a.content || a.message}
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    {isFeeAlert && (
+                      <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                        <a
+                          href="/student/pay-fees"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#002366] hover:bg-[#001744] text-white text-xs font-bold uppercase tracking-wider transition-all"
+                        >
+                          💳 {t('pay_dues_now', 'Pay Dues Now')}
+                        </a>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-slate-400 mt-1.5">
                       {new Date(a.createdAt).toLocaleString()}
                     </p>
                   </div>

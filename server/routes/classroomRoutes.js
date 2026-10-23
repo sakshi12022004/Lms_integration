@@ -13,6 +13,10 @@ router.param("id", (req, res, next, id) =>
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 const { checkClassroomQuota } = require("../middleware/quotaMiddleware");
+const { requirePaymentAuth, requireRoles, requireTenant } = require("../middleware/paymentAuth");
+const { calculateStudentInstallmentSummary } = require("../services/installmentService");
+const { isBusyError } = require("../services/paymentDb");
+const { normalizeReminderNote, formatRupees } = require("../services/feeReminderEmail");
 
 const {
   getAllClassrooms,
@@ -159,65 +163,122 @@ router.delete(
 );
 
 /**
- * GET /api/classrooms/teacher/students-fees
- * Fetch students assigned to teacher classrooms along with real-time fee details
+ * Fee position of one student, taken from the same installment summary the student fee page
+ * and offline collection use (fee structure of the student's own university, active schedule,
+ * successful payments). Nothing is assumed: when no fee can be resolved the amounts are null
+ * and the row says so.
  */
-router.get("/teacher/students-fees", authMiddleware, roleMiddleware(["mentor"]), (req, res) => {
+async function buildStudentFeeRow(db, student) {
+  const base = {
+    id: student.id,
+    name: student.name || `Student #${student.id}`,
+    email: student.email || "",
+    phone: null,
+    className: student.classNames || null
+  };
+
+  let summary;
+  try {
+    summary = await calculateStudentInstallmentSummary(db, student.id);
+  } catch (error) {
+    // A busy database is temporary, not a manual-review case: let the caller answer 503 (retry later)
+    if (isBusyError(error)) throw error;
+    // e.g. MULTIPLE_ACTIVE_SCHEDULES: report it for manual review, never guess an amount
+    return {
+      ...base, feeConfigured: false, feeStructureId: null, totalFee: null, paidAmount: null,
+      remainingBalance: null, dueDate: null, collectionBlocked: null, collectionBlockedReason: null,
+      status: "Needs Review", statusCode: error.code || "FEE_STATUS_UNAVAILABLE"
+    };
+  }
+
+  const totalFeePaise = summary.activeSchedule
+    ? summary.activeSchedule.totalFeePaise
+    : (summary.feeStructure ? summary.feeStructure.totalFeePaise : null);
+  const feeConfigured = Number.isInteger(totalFeePaise) && totalFeePaise > 0;
+  const paidPaise = summary.lifetimePaidPaise;
+  const remainingPaise = feeConfigured ? Math.max(0, totalFeePaise - paidPaise) : null;
+
+  let status = "Fee Not Configured";
+  if (feeConfigured) {
+    status = remainingPaise === 0 ? "Paid" : (paidPaise > 0 ? "Partial" : "Pending");
+  }
+
+  return {
+    ...base,
+    feeConfigured,
+    feeStructureId: summary.activeSchedule ? summary.activeSchedule.feeStructureId : (summary.feeStructure ? summary.feeStructure.id : null),
+    totalFee: feeConfigured ? totalFeePaise / 100 : null,
+    paidAmount: paidPaise / 100,
+    remainingBalance: feeConfigured ? remainingPaise / 100 : null,
+    dueDate: summary.feeStructure ? summary.feeStructure.dueDate || null : null,
+    collectionBlocked: summary.collectionBlocked,
+    collectionBlockedReason: summary.collectionBlockedReason,
+    status,
+    statusCode: feeConfigured ? null : "FEE_NOT_CONFIGURED"
+  };
+}
+
+const FEE_MONITOR_ROLES = ["accountant", "admin", "mentor"];
+
+/**
+ * GET /api/classrooms/teacher/students-fees
+ * Fee position of the students the caller may monitor: accountants and admins see their whole
+ * university; a mentor sees the students of the classrooms they are class teacher of.
+ * University comes from the caller's users row (requireRoles); there is no default university.
+ */
+router.get("/teacher/students-fees", requirePaymentAuth, requireRoles(FEE_MONITOR_ROLES), requireTenant, (req, res) => {
   try {
     const db = req.tenant?.database || require("../config/database-switch");
-    const isTeacher = req.user.role !== "admin";
+    const universityId = req.user.universityId;
+    const isMentor = req.user.role === "mentor";
 
-    // A teacher sees the students of the classrooms they work in; an admin the whole school.
-    const teacherFilter = isTeacher
-      ? `AND EXISTS (
-           SELECT 1 FROM student_classroom_assignment sca JOIN classrooms c ON c.id = sca.classroomId
-           WHERE sca.studentId = u.id AND (
-             CAST(c.classTeacher AS INTEGER) = ? OR c.classTeacherId = ?
-             OR EXISTS (SELECT 1 FROM classroomAssignments ca WHERE ca.classroomId = c.id AND ca.teacherId = ? AND ca.role = 'class_teacher')
-             OR EXISTS (SELECT 1 FROM courses co WHERE co.mentorId = ? AND (co.classroomId = c.id OR EXISTS (SELECT 1 FROM course_classrooms cocc WHERE cocc.courseId = co.id AND cocc.classroomId = c.id)))
-           ))`
-      : "";
-    const params = [req.user.universityId, ...(isTeacher ? Array(4).fill(req.user.userId) : [])];
+    // One row per student (GROUP BY), however many classrooms they belong to
+    const sql = `
+      SELECT u.id, u.name, u.email, GROUP_CONCAT(DISTINCT c.name) AS classNames
+      FROM users u
+      LEFT JOIN student_classroom_assignment sca ON sca.studentId = u.id
+      LEFT JOIN classrooms c ON c.id = sca.classroomId AND c.university_id = u.university_id
+      WHERE u.role = 'student' AND u.university_id = ?
+        ${isMentor ? `AND EXISTS (
+          SELECT 1 FROM student_classroom_assignment msca
+          JOIN classrooms mc ON mc.id = msca.classroomId
+          WHERE msca.studentId = u.id AND mc.classTeacher = ? AND mc.university_id = ?)` : ""}
+      GROUP BY u.id
+      ORDER BY u.name ASC`;
+    const params = isMentor ? [universityId, req.user.userId, universityId] : [universityId];
 
-    db.all(
-      `SELECT u.id, u.name, u.email,
-              (SELECT c.name FROM student_classroom_assignment sca JOIN classrooms c ON c.id = sca.classroomId
-               WHERE sca.studentId = u.id ORDER BY sca.id LIMIT 1) AS className,
-              (SELECT SUM(p.amount) FROM payments p WHERE p.studentId = u.id AND p.status IN ('success', 'paid')) AS paidAmount
-       FROM users u
-       WHERE u.role = 'student' AND u.university_id = ? ${teacherFilter}
-       ORDER BY u.name ASC`,
-      params,
-      (err, students) => {
+    db.all(sql, params, async (err, rows) => {
+      // This callback is outside the try/catch above, so every failure must be answered here
+      try {
         if (err) {
-          console.error("Error fetching teacher student fees:", err.message);
+          console.error("Error fetching students for fee monitoring:", err.message);
           return res.status(500).json({ success: false, message: "Database query error" });
         }
 
-        const DEFAULT_TOTAL_FEE = 15000;
-        const DEFAULT_DUE_DATE = '2026-10-31';
+        const students = [];
+        for (const row of rows || []) {
+          students.push(await buildStudentFeeRow(db, row));
+        }
+        const feeConfigured = students.filter(s => s.feeConfigured).length;
 
         res.status(200).json({
           success: true,
-          students: (students || []).map((s) => {
-            const paidAmount = s.paidAmount || 0;
-            const remainingBalance = Math.max(0, DEFAULT_TOTAL_FEE - paidAmount);
-            return {
-              id: s.id,
-              name: s.name || `Student #${s.id}`,
-              email: s.email,
-              phone: 'N/A',
-              className: s.className || 'N/A',
-              totalFee: DEFAULT_TOTAL_FEE,
-              paidAmount,
-              remainingBalance,
-              status: remainingBalance === 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending',
-              dueDate: DEFAULT_DUE_DATE
-            };
-          })
+          students,
+          summary: {
+            totalStudents: students.length,
+            feeConfigured,
+            feeNotConfigured: students.length - feeConfigured
+          }
         });
+      } catch (error) {
+        if (isBusyError(error)) {
+          if (!res.headersSent) res.status(503).json({ success: false, code: "BUSY", message: "The system is busy. Please try again." });
+          return;
+        }
+        console.error("Error building fee monitoring rows:", error.message);
+        if (!res.headersSent) res.status(500).json({ success: false, message: "Server error" });
       }
-    );
+    });
   } catch (error) {
     console.error("Error in /teacher/students-fees:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
@@ -225,62 +286,131 @@ router.get("/teacher/students-fees", authMiddleware, roleMiddleware(["mentor"]),
 });
 
 /**
- * POST /api/classrooms/send-fee-reminder
- * Send Fee Reminder (In-App Announcement + Email Notification)
+ * Minimum time between two fee reminders for the same student. Enforced on the server by an
+ * atomic insert-if-absent on the reminder announcement, so concurrent requests cannot both pass.
  */
-router.post("/send-fee-reminder", authMiddleware, roleMiddleware(["mentor"]), async (req, res) => {
+const FEE_REMINDER_COOLDOWN_HOURS = 24;
+const FEE_REMINDER_TITLE_PREFIX = "⚠️ Fee Payment Reminder";
+
+const dbGet = (db, sql, params) => new Promise((resolve, reject) => db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row))));
+const dbRun = (db, sql, params) => new Promise((resolve, reject) => db.run(sql, params, function (err) {
+  if (err) return reject(err);
+  resolve({ changes: this.changes, lastID: this.lastID });
+}));
+
+/**
+ * POST /api/classrooms/send-fee-reminder
+ * Sends one fee reminder (targeted in-app announcement + email) for a student of the caller's university.
+ * The client sends only { studentId, message? }. Recipient, name, classes, amount and due date all come
+ * from the server: the verified student record and the same fee row the fee-monitoring list shows.
+ */
+router.post("/send-fee-reminder", requirePaymentAuth, requireRoles(FEE_MONITOR_ROLES), requireTenant, async (req, res) => {
   try {
-    const { studentId, classroomName, amount, dueDate, message: customNote } = req.body || {};
     const db = req.tenant?.database || require("../config/database-switch");
-    const emailService = require("../services/emailService");
+    const caller = req.user; // signed token; role and university re-read from the users table
+    const body = req.body && typeof req.body === "object" ? req.body : {};
 
-    if (!studentId) {
-      return res.status(400).json({ success: false, message: "Student is required." });
+    // Only studentId and the optional note are read; every other submitted field is ignored
+    const studentId = /^[1-9]\d{0,14}$/.test(String(body.studentId ?? "").trim()) ? Number(body.studentId) : null;
+    if (studentId === null) {
+      return res.status(400).json({ success: false, code: "INVALID_STUDENT_ID", message: "A valid student ID is required." });
     }
-    // The student must be one the caller may work with (own school; for a teacher, own students)
-    if (!(await callerMayAccess(req, "user", studentId))) {
-      return res.status(404).json({ success: false, message: "Student not found." });
-    }
-
-    const student = await new Promise((resolve, reject) => {
-      db.get("SELECT id, name, email FROM users WHERE id = ? AND role = 'student'", [studentId], (err, row) =>
-        err ? reject(err) : resolve(row)
-      );
-    });
-    if (!student) {
-      return res.status(404).json({ success: false, message: "Student not found." });
+    const noteCheck = normalizeReminderNote(body.message);
+    if (!noteCheck.ok) {
+      return res.status(400).json({ success: false, code: "INVALID_NOTE", message: noteCheck.message });
     }
 
-    // 1. In-app notification, visible to this student only
-    const notifTitle = `Fee Payment Reminder: ${classroomName || 'Classroom'}`;
-    const notifContent = `Dear ${student.name || 'Student'}, your pending fee amount of ₹${Number(amount || 0).toLocaleString('en-IN')} is due on ${dueDate || 'soon'}. Please make the payment at your earliest convenience.`;
-    db.run(
-      `INSERT INTO announcements (university_id, title, content, createdByUser, createdByRole, publishFor, recipientUserId)
-       VALUES (?, ?, ?, ?, ?, 'student', ?)`,
-      [req.user.universityId, notifTitle, notifContent, req.user.userId, req.user.role, student.id],
-      (err) => {
-        if (err) console.error("Error creating fee reminder notification:", err.message);
+    const student = await dbGet(db, "SELECT id, name, email, role, university_id FROM users WHERE id = ?", [studentId]);
+    if (!student || student.role !== "student") {
+      return res.status(404).json({ success: false, code: "STUDENT_NOT_FOUND", message: "Student not found." });
+    }
+    if (Number(student.university_id) !== caller.universityId) {
+      return res.status(403).json({ success: false, code: "CROSS_TENANT_FORBIDDEN", message: "Access denied: This student does not belong to your university." });
+    }
+
+    if (caller.role === "mentor") {
+      const teachesStudent = await dbGet(db,
+        `SELECT 1 AS ok FROM student_classroom_assignment sca
+         JOIN classrooms c ON c.id = sca.classroomId
+         WHERE sca.studentId = ? AND c.classTeacher = ? AND c.university_id = ? LIMIT 1`,
+        [studentId, caller.userId, caller.universityId]);
+      if (!teachesStudent) {
+        return res.status(403).json({ success: false, code: "NOT_CLASS_TEACHER", message: "Access denied: You are not the class teacher of this student." });
       }
-    );
+    }
 
-    // 2. Email to the address on the student's record
-    const emailRes = await emailService.sendFeeReminderEmail({
+    const classes = await dbGet(db,
+      `SELECT GROUP_CONCAT(DISTINCT c.name) AS classNames
+       FROM student_classroom_assignment sca JOIN classrooms c ON c.id = sca.classroomId
+       WHERE sca.studentId = ? AND c.university_id = ?`,
+      [studentId, caller.universityId]);
+
+    // Same fee row the fee-monitoring list shows (installment summary); no separate balance calculation
+    const fee = await buildStudentFeeRow(db, { id: student.id, name: student.name, email: student.email, classNames: classes ? classes.classNames : null });
+    if (fee.status === "Needs Review") {
+      return res.status(409).json({ success: false, code: fee.statusCode, message: "This student's fee status needs manual review; no reminder was sent." });
+    }
+    if (!fee.feeConfigured) {
+      return res.status(409).json({ success: false, code: "FEE_NOT_CONFIGURED", message: "No fee structure is configured for this student; no reminder was sent." });
+    }
+    if (fee.collectionBlocked) {
+      return res.status(409).json({ success: false, code: "LEGACY_RECONCILIATION_REQUIRED", message: "Earlier payments of this student are awaiting reconciliation; no reminder was sent." });
+    }
+    if (!(fee.remainingBalance > 0)) {
+      return res.status(409).json({ success: false, code: "NO_OUTSTANDING_BALANCE", message: "This student has no outstanding balance; no reminder was sent." });
+    }
+
+    // Claim the reminder: one statement inserts the targeted announcement only if none was created for
+    // this student within the cooldown window, so two simultaneous requests cannot both succeed
+    const title = `${FEE_REMINDER_TITLE_PREFIX}: ${fee.className || "Academic Fees"}`;
+    const content = `Dear ${student.name}, your outstanding fee balance is ${formatRupees(fee.remainingBalance)}${fee.dueDate ? `, due on ${fee.dueDate}` : ""}. Please make the payment at your earliest convenience or contact the accounts office.`;
+    const claim = await dbRun(db,
+      `INSERT INTO announcements (university_id, title, content, createdByUser, createdByRole, publishFor, priority, targetUserId, createdAt, updatedAt)
+       SELECT ?, ?, ?, ?, ?, 'students', 'high', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+       WHERE NOT EXISTS (
+         SELECT 1 FROM announcements
+         WHERE targetUserId = ? AND university_id = ? AND title LIKE ? AND createdAt >= datetime('now', ?)
+       )`,
+      [caller.universityId, title, content, caller.userId, caller.role, studentId,
+       studentId, caller.universityId, `${FEE_REMINDER_TITLE_PREFIX}%`, `-${FEE_REMINDER_COOLDOWN_HOURS} hours`]);
+    if (claim.changes === 0) {
+      return res.status(429).json({ success: false, code: "REMINDER_RECENTLY_SENT", message: `A fee reminder was already sent to this student in the last ${FEE_REMINDER_COOLDOWN_HOURS} hours.` });
+    }
+
+    const emailService = require("../services/emailService");
+    const emailResult = await emailService.sendFeeReminderEmail({
       studentEmail: student.email,
       studentName: student.name,
-      classroomName,
-      amount,
-      dueDate,
-      customNote
+      classroomName: fee.className,
+      amount: fee.remainingBalance,
+      dueDate: fee.dueDate,
+      customNote: noteCheck.note
     });
+    const emailStatus = !emailResult || !emailResult.success ? "failed" : (emailResult.mock ? "not_configured" : "sent");
+    console.log(`🔔 Fee reminder for student ${studentId}: announcement ${claim.lastID}, email ${emailStatus}`);
 
+    const messages = {
+      sent: "Fee reminder sent by email and in-app notification.",
+      not_configured: "In-app reminder created. Email is not configured on this server, so no email was sent.",
+      failed: "In-app reminder created, but the email could not be sent."
+    };
     res.status(200).json({
       success: true,
-      message: `Fee reminder sent to ${student.name || 'the student'}.`,
-      emailInfo: { success: Boolean(emailRes && emailRes.success) }
+      message: messages[emailStatus],
+      reminder: {
+        studentId,
+        amount: fee.remainingBalance,
+        dueDate: fee.dueDate,
+        announcementId: claim.lastID,
+        emailStatus
+      }
     });
   } catch (error) {
-    console.error("Error in /send-fee-reminder:", error.message);
-    res.status(500).json({ success: false, message: "Server error sending fee reminder." });
+    if (error && typeof error.code === "string" && error.code.startsWith("SQLITE_BUSY")) {
+      return res.status(503).json({ success: false, code: "BUSY", message: "The system is busy. Please try again." });
+    }
+    console.error("Error in /send-fee-reminder:", error && error.message);
+    if (!res.headersSent) res.status(500).json({ success: false, message: "Server error sending fee reminder." });
   }
 });
 

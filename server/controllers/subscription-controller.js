@@ -1067,63 +1067,6 @@ const checkFeatureAccess = async (req, res) => {
   }
 };
 
-// Debug endpoint for testing checkFeatureAccess logic
-const debugFeatureAccess = async (req, res) => {
-  try {
-    if (!req.user || !req.user.userId) {
-      return res.status(401).json({ success: false, message: 'Authentication required' });
-    }
-
-    console.log(`? [DEBUG] debugFeatureAccess called for user: ${req.user.userId}, role: ${req.user.role}`);
-
-    // Test the role check
-    const isPortalAdmin = req.user?.role === 'portal_admin';
-    const isSuperAdmin = req.user?.role === 'superadmin';
-    const isEither = isPortalAdmin || isSuperAdmin;
-
-    console.log(`? [DEBUG] Role checks: portal_admin=${isPortalAdmin}, superadmin=${isSuperAdmin}, either=${isEither}`);
-
-    // Test the findSubscriptionById function
-    const superadminFormat = `superadmin-${req.user.userId}`;
-    const directFormat = req.user.userId.toString();
-
-    console.log(`? [DEBUG] Testing formats: ${superadminFormat}, ${directFormat}`);
-
-    let subscription1 = await findSubscriptionById(req, superadminFormat);
-    let subscription2 = await findSubscriptionById(req, directFormat);
-
-    console.log(`? [DEBUG] Subscription lookup results:`, {
-      superadminFormat: subscription1 ? { id: subscription1.id, plan: subscription1.planName } : null,
-      directFormat: subscription2 ? { id: subscription2.id, plan: subscription2.planName } : null
-    });
-
-    res.json({
-      success: true,
-      debug: {
-        userId: req.user.userId,
-        role: req.user.role,
-        isPortalAdmin,
-        isSuperAdmin,
-        isEither,
-        formats: {
-          superadminFormat,
-          directFormat
-        },
-        subscriptions: {
-          superadminFormat: subscription1 ? { id: subscription1.id, plan: subscription1.planName } : null,
-          directFormat: subscription2 ? { id: subscription2.id, plan: subscription2.planName } : null
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Error in debugFeatureAccess:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Debug error',
-    });
-  }
-};
-
 // Export the propagatePlanToUniversities function for testing
 module.exports = {
   setPaymentGatewayForTests,
@@ -1134,7 +1077,6 @@ module.exports = {
   cancelSubscription,
   checkFeatureAccess,
   testUpgradeSubscription,
-  debugFeatureAccess,
   findSubscriptionById,
   saveSubscriptionObject,
   getFeaturesForPlan,

@@ -311,6 +311,9 @@ const Login = () => {
         if (status === 401) {
           setGlobalError('Incorrect email or password. Please try again.');
           setErrorType('invalid_credentials');
+          if (err.response.data?.attemptInfo) {
+            setAttemptInfo(err.response.data.attemptInfo);
+          }
           // Keep email field, clear password field
           setFormData(prev => ({ ...prev, password: '' }));
           setLoginAttempts(prev => prev + 1);
@@ -318,7 +321,23 @@ const Login = () => {
           setGlobalError(errorMessage);
           setErrorType('validation_error');
         } else if (status === 429) {
-          setGlobalError('Too many login attempts. Please wait a moment and try again.');
+          const retryAfterHeader = err.response.headers?.['retry-after'];
+          const retrySec = parseInt(retryAfterHeader, 10) || 
+                           (typeof err.response.data?.remainingTime === 'number' ? err.response.data.remainingTime : null);
+          let rateLimitMsg = 'Too many login attempts. Please wait a moment and try again.';
+          if (retrySec && retrySec > 0) {
+            setIsBlocked(true);
+            setBlockTimeRemaining(retrySec);
+            if (retrySec >= 60) {
+              const mins = Math.ceil(retrySec / 60);
+              rateLimitMsg = `Too many login attempts. Please try again in ${mins} minute${mins > 1 ? 's' : ''}.`;
+            } else {
+              rateLimitMsg = `Too many login attempts. Please try again in ${retrySec} second${retrySec > 1 ? 's' : ''}.`;
+            }
+          } else if (err.response.data?.message) {
+            rateLimitMsg = err.response.data.message;
+          }
+          setGlobalError(rateLimitMsg);
           setErrorType('rate_limited');
         } else {
           setGlobalError(errorMessage);

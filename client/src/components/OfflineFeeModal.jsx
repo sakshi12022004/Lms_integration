@@ -4,12 +4,14 @@ import { toast } from 'react-toastify';
 import { X, DollarSign, User, CreditCard, Calendar, FileText, CheckCircle, Search, Download, Clock } from 'lucide-react';
 import { generateInvoicePdf } from '../accountant/invoice';
 import { API_ORIGIN } from '../config/api';
+import { useTranslation } from '../context/TranslationContext';
 
 // One key per collection attempt, so a retried submit can never record the payment twice
 const newIdempotencyKey = () =>
   `offline-${window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
 
 export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
+  const { t } = useTranslation();
   const [students, setStudents] = useState([]);
   const [feeStructures, setFeeStructures] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
@@ -222,12 +224,13 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-[#002366] text-white border-b border-[#B99652] shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-white tracking-wide">Record Offline Fee Payment</h2>
-            <p className="text-xs text-[#ebdcaa]">Collect Cash, Cheque, DD, or Bank Transfer Dues with Admin Installment Plans</p>
+            <h2 className="text-lg font-bold text-white tracking-wide">{t('record_offline_fee_collection')}</h2>
+            <p className="text-xs text-[#ebdcaa]">{t('record_offline_fee_desc')}</p>
           </div>
           <button 
             onClick={onClose}
             className="text-slate-300 hover:text-white font-bold text-xl transition-colors cursor-pointer"
+            aria-label={t('close')}
           >
             ✕
           </button>
@@ -243,27 +246,27 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
               </div>
               
               <div>
-                <h3 className="text-2xl font-bold text-[#002366]">Payment Successfully Recorded!</h3>
+                <h3 className="text-2xl font-bold text-[#002366]">{t('transaction_recorded_successfully')}</h3>
                 <p className="text-sm text-slate-600 mt-1">
-                  Receipt <span className="font-bold text-[#002366]">#{recordedTx.transactionId || referenceNo}</span> has been logged into database.
+                  {t('receipt_number_colon')} <span className="font-bold text-[#002366]">#{recordedTx.transactionId || referenceNo}</span>
                 </p>
               </div>
 
               <div className="bg-[#fffdf0] p-4 rounded-none border border-[#ebdcaa] text-left space-y-2.5 text-sm">
                 <div className="flex justify-between border-b border-[#ebdcaa]/60 pb-2">
-                  <span className="text-slate-500 font-medium">Student:</span>
+                  <span className="text-slate-500 font-medium">{t('student_colon')}</span>
                   <span className="font-bold text-slate-800">{selectedStudent?.name} ({selectedStudent?.email})</span>
                 </div>
                 <div className="flex justify-between border-b border-[#ebdcaa]/60 pb-2">
-                  <span className="text-slate-500 font-medium">Amount Collected:</span>
+                  <span className="text-slate-500 font-medium">{t('amount_collected_colon')}</span>
                   <span className="font-bold text-[#002366] text-base">₹{Number(amount).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between border-b border-[#ebdcaa]/60 pb-2">
-                  <span className="text-slate-500 font-medium">Payment Mode:</span>
+                  <span className="text-slate-500 font-medium">{t('payment_method')}:</span>
                   <span className="font-semibold text-slate-800">{paymentMethod}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500 font-medium">Collection Date:</span>
+                  <span className="text-slate-500 font-medium">{t('collection_date')}:</span>
                   <span className="font-medium text-slate-800">{paymentDate}</span>
                 </div>
               </div>
@@ -274,13 +277,13 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
                   className="flex items-center gap-2 px-5 py-2.5 bg-[#002366] hover:bg-[#001845] text-white font-semibold rounded-none shadow-xs transition-all cursor-pointer border border-[#002366]"
                 >
                   <Download size={18} className="text-[#B99652]" />
-                  <span>Download Tax Invoice PDF</span>
+                  <span>{t('download_tax_invoice_pdf')}</span>
                 </button>
                 <button
                   onClick={onClose}
                   className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-none transition-all cursor-pointer"
                 >
-                  Close Window
+                  {t('close')}
                 </button>
               </div>
             </div>
@@ -291,13 +294,13 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
               {/* Student Picker */}
               <div>
                 <label className="block text-xs font-bold text-[#002366] uppercase tracking-wider mb-1.5">
-                  Select Student <span className="text-rose-600">*</span>
+                  {t('select_student', 'Select Student')} <span className="text-rose-600">*</span>
                 </label>
                 <div className="relative mb-2">
                   <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Type student name or email to filter..."
+                    placeholder={t('search_student_name_id', 'Type student name or email to filter...')}
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
                     className="w-full pl-9 pr-4 py-2 border border-[#ebdcaa] rounded-none bg-[#fffdf0] text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#002366]"
@@ -309,7 +312,7 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
                   required
                   className="w-full px-4 py-2 border border-[#ebdcaa] rounded-none bg-[#fffdf0] text-slate-800 text-sm focus:outline-none focus:border-[#002366] shadow-xs"
                 >
-                  <option value="">-- Choose Student from List ({filteredStudents.length} available) --</option>
+                  <option value="">-- {t('select_student', 'Choose Student from List')} ({filteredStudents.length}) --</option>
                   {filteredStudents.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.className || `Grade ${s.grade || '1'}`} • {s.email || `ID: ${s.id}`})
@@ -323,18 +326,18 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
                 <div className="bg-slate-50 border border-[#ebdcaa] p-4 rounded-none space-y-3">
                   <div className="flex items-center justify-between border-b border-[#ebdcaa]/60 pb-2">
                     <div>
-                      <span className="text-[10px] font-bold text-[#002366] uppercase tracking-wider">Applicable Structure</span>
-                      <p className="text-xs font-bold text-slate-800">{applicableStructure.category} Fee Structure</p>
+                      <span className="text-[10px] font-bold text-[#002366] uppercase tracking-wider">{t('applicable_structure', 'Applicable Structure')}</span>
+                      <p className="text-xs font-bold text-slate-800">{applicableStructure.category} {t('fee_structure_title', 'Fee Structure')}</p>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Official Fee</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('total_curriculum_fee', 'Total Official Fee')}</span>
                       <p className="text-sm font-extrabold text-[#002366]">₹{Number(applicableStructure.totalFee || 8050).toLocaleString('en-IN')}</p>
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-[#002366] uppercase tracking-wider mb-2">
-                      Choose Payment Plan:
+                      {t('choose_payment_plan', 'Choose Payment Plan:')}
                     </label>
                     <div className="space-y-2">
                       {/* Full Single Payment Option */}
@@ -346,7 +349,7 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
                             checked={paymentPlanType === 'full'} 
                             onChange={() => { setPaymentPlanType('full'); setSelectedStageIdx(0); }}
                           />
-                          <span>1-Time Full Payment (100%)</span>
+                          <span>{t('full_payment_single', '1-Time Full Payment (100%)')}</span>
                         </div>
                         <span className="font-bold text-[#002366]">₹{Number(applicableStructure.totalFee || 8050).toLocaleString('en-IN')}</span>
                       </label>
@@ -362,10 +365,10 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
                                 checked={paymentPlanType === plan.id} 
                                 onChange={() => { setPaymentPlanType(plan.id); setSelectedStageIdx(0); }}
                               />
-                              <span>{plan.name} ({plan.installmentsCount} Installments)</span>
+                              <span>{plan.name} ({plan.installmentsCount} {t('installments_plural', 'Installments')})</span>
                             </div>
                             <span className="text-[10px] bg-blue-50 text-blue-800 px-2 py-0.5 border border-blue-200 font-bold">
-                              {plan.splitType === 'equal' ? 'Equal Split' : 'Custom %'}
+                              {plan.splitType === 'equal' ? t('equal_split', 'Equal Split') : t('custom_split', 'Custom %')}
                             </span>
                           </label>
 
@@ -382,11 +385,11 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
                                     className={`p-2 text-left border text-xs cursor-pointer transition ${isSelected ? 'bg-[#002366] text-white border-[#002366]' : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100'}`}
                                   >
                                     <div className="flex justify-between items-center">
-                                      <span className="font-bold">Stage {stage.number || sIdx + 1} ({stage.percentage}%)</span>
+                                      <span className="font-bold">{t('installment_single', 'Stage')} {stage.number || sIdx + 1} ({stage.percentage}%)</span>
                                       <span className={isSelected ? 'text-[#ebdcaa] font-bold' : 'text-[#002366] font-bold'}>₹{stgAmt.toLocaleString('en-IN')}</span>
                                     </div>
                                     <div className={`text-[9px] mt-0.5 ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
-                                      Due: {stage.dueDate || 'Standard'}
+                                      {t('due_date', 'Due')}: {stage.dueDate || 'Standard'}
                                     </div>
                                   </button>
                                 );
@@ -404,7 +407,7 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-[#002366] uppercase tracking-wider mb-1.5">
-                    Amount Received (₹) <span className="text-rose-600">*</span>
+                    {t('amount_rupees', 'Amount Received (₹)')} <span className="text-rose-600">*</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-2 text-slate-600 font-bold">₹</span>
@@ -422,18 +425,18 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
 
                 <div>
                   <label className="block text-xs font-bold text-[#002366] uppercase tracking-wider mb-1.5">
-                    Payment Mode <span className="text-rose-600">*</span>
+                    {t('payment_method', 'Payment Mode')} <span className="text-rose-600">*</span>
                   </label>
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     className="w-full px-4 py-2 border border-[#ebdcaa] rounded-none bg-[#fffdf0] text-slate-800 text-sm focus:outline-none focus:border-[#002366]"
                   >
-                    <option value="Cash">Cash Collection 💵</option>
-                    <option value="Cheque">Cheque Deposit 📝</option>
-                    <option value="Bank Transfer">Bank Transfer (NEFT/RTGS) 🏛️</option>
-                    <option value="Demand Draft">Demand Draft (DD) 📜</option>
-                    <option value="UPI">Counter UPI / QR Code 📱</option>
+                    <option value="Cash">{t('cash', 'Cash Collection')} 💵</option>
+                    <option value="Cheque">{t('cheque', 'Cheque Deposit')} 📝</option>
+                    <option value="Bank Transfer">{t('bank_transfer_neft', 'Bank Transfer (NEFT/RTGS)')} 🏛️</option>
+                    <option value="Demand Draft">{t('demand_draft', 'Demand Draft (DD)')} 📜</option>
+                    <option value="UPI">{t('upi_qr', 'Counter UPI / QR Code')} 📱</option>
                   </select>
                 </div>
               </div>
@@ -442,7 +445,7 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-[#002366] uppercase tracking-wider mb-1.5">
-                    Receipt / Transaction No.
+                    {t('reference_no', 'Receipt / Transaction No.')}
                   </label>
                   <input
                     type="text"
@@ -455,7 +458,7 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
 
                 <div>
                   <label className="block text-xs font-bold text-[#002366] uppercase tracking-wider mb-1.5">
-                    Collection Date
+                    {t('collection_date', 'Collection Date')}
                   </label>
                   <input
                     type="date"
@@ -469,13 +472,13 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
               {/* Remarks */}
               <div>
                 <label className="block text-xs font-bold text-[#002366] uppercase tracking-wider mb-1.5">
-                  Notes / Plan Reference
+                  {t('remarks_note', 'Notes / Plan Reference')}
                 </label>
                 <textarea
                   rows={2}
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="e.g. Stage 1 collected at main accounts counter."
+                  placeholder={t('remarks_placeholder', 'e.g. Stage 1 collected at main accounts counter.')}
                   className="w-full px-4 py-2 border border-[#ebdcaa] rounded-none bg-[#fffdf0] text-slate-800 text-sm focus:outline-none focus:border-[#002366]"
                 />
               </div>
@@ -487,7 +490,7 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
                   onClick={onClose}
                   className="px-5 py-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 text-sm font-semibold rounded-none transition-all cursor-pointer"
                 >
-                  Cancel
+                  {t('cancel', 'Cancel')}
                 </button>
                 <button
                   type="submit"
@@ -497,12 +500,12 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
                   {isSubmitting ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-none animate-spin" />
-                      <span>Recording Payment...</span>
+                      <span>{t('recording_payment', 'Recording Payment...')}</span>
                     </>
                   ) : (
                     <>
                       <CheckCircle size={16} className="text-[#B99652]" />
-                      <span>Submit & Generate Receipt</span>
+                      <span>{t('record_offline_payment', 'Submit & Generate Receipt')}</span>
                     </>
                   )}
                 </button>

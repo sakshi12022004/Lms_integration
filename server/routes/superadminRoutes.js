@@ -36,6 +36,7 @@ const readCookie = (req, name) => {
     .find((part) => part.startsWith(`${name}=`));
   return pair ? decodeURIComponent(pair.slice(name.length + 1)) : null;
 };
+
 const { checkSchoolsQuota } = require("../middleware/quotaMiddleware");
 const { rateLimiters } = require("../middleware/rateLimiter");
 
@@ -276,6 +277,7 @@ router.post("/refresh-token", (req, res) => {
 router.post(
   "/create-university",
   portalAuthMiddleware,
+  requireSuperadmin,
   createUniversityWithAdmin
 );
 
@@ -283,6 +285,7 @@ router.post(
 router.post(
   "/create-user",
   portalAuthMiddleware,
+  requireSuperadmin,
   createUser
 );
 
@@ -290,6 +293,7 @@ router.post(
 router.get(
   "/universities",
   portalAuthMiddleware,
+  requireSuperadmin,
   getAllUniversities
 );
 
@@ -297,6 +301,7 @@ router.get(
 router.get(
   "/users",
   portalAuthMiddleware,
+  requireSuperadmin,
   getAllUsers
 );
 
@@ -304,6 +309,7 @@ router.get(
 router.put(
   "/users/:id",
   portalAuthMiddleware,
+  requireSuperadmin,
   updateUser
 );
 
@@ -311,6 +317,7 @@ router.put(
 router.delete(
   "/users/:id",
   portalAuthMiddleware,
+  requireSuperadmin,
   deleteUser
 );
 
@@ -318,6 +325,7 @@ router.delete(
 router.delete(
   "/universities/:id",
   portalAuthMiddleware,
+  requireSuperadmin,
   deleteUniversity
 );
 

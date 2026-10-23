@@ -430,8 +430,8 @@ const UserList = () => {
             {usersToShow.length === 0 && (
               <div className="text-center py-12 bg-white">
                 <User className="mx-auto text-[#ebdcaa]" size={48} />
-                <p className="mt-4 text-base font-semibold text-[#1e1b4b]">No users found</p>
-                <p className="text-xs text-slate-500 mt-1">Try different search terms or role filters</p>
+                <p className="mt-4 text-base font-semibold text-[#1e1b4b]">{t('no_users_found')}</p>
+                <p className="text-xs text-slate-500 mt-1">{t('try_different_search_or_filters')}</p>
               </div>
             )}
 
@@ -440,21 +440,21 @@ const UserList = () => {
               <div className="border-t border-[#ebdcaa] bg-[#fffdf4] p-4">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                   <p className="text-xs uppercase tracking-wider font-semibold text-slate-500">
-                    Showing {startIndex + 1}-{Math.min(startIndex + perPage, sortedUsers.length)} of {sortedUsers.length}
+                    {t('showing_count', { from: startIndex + 1, to: Math.min(startIndex + perPage, sortedUsers.length), total: sortedUsers.length })}
                   </p>
                   <div className="flex items-center space-x-1">
                     <button
                       onClick={() => setPage(page - 1)}
                       disabled={page === 1}
-                      className="px-3 py-1.5 border border-[#ebdcaa] bg-white rounded-none text-xs font-semibold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+                      className="px-3 py-1.5 border border-[#ebdcaa] bg-white rounded-none text-xs font-semibold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 cursor-pointer"
                     >
-                      Previous
+                      {t('previous')}
                     </button>
                     {[1, 2, 3].map(num => (
                       <button
                         key={num}
                         onClick={() => setPage(num)}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-none ${
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-none cursor-pointer ${
                           page === num
                             ? 'bg-[#B99652] text-white border border-[#B99652]'
                             : 'border border-[#ebdcaa] bg-white text-[#1e1b4b] hover:bg-slate-50'
@@ -466,9 +466,9 @@ const UserList = () => {
                     <button
                       onClick={() => setPage(page + 1)}
                       disabled={page === totalPages}
-                      className="px-3 py-1.5 border border-[#ebdcaa] bg-white rounded-none text-xs font-semibold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+                      className="px-3 py-1.5 border border-[#ebdcaa] bg-white rounded-none text-xs font-semibold uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 cursor-pointer"
                     >
-                      Next
+                      {t('next')}
                     </button>
                   </div>
                 </div>

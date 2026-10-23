@@ -208,11 +208,13 @@ function initializeTables() {
       priority TEXT DEFAULT 'normal',
       attachments TEXT,
       readBy TEXT DEFAULT '[]',
+      targetUserId INTEGER,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (university_id) REFERENCES universities(id),
       FOREIGN KEY (courseId) REFERENCES courses(id),
-      FOREIGN KEY (createdByUser) REFERENCES users(id)
+      FOREIGN KEY (createdByUser) REFERENCES users(id),
+      FOREIGN KEY (targetUserId) REFERENCES users(id)
     )
   `, (err) => {
     if (err) {
@@ -240,6 +242,7 @@ function initializeTables() {
       'entityId INTEGER',
       'dedupeKey TEXT',
       'classroomId INTEGER', // class/section a teacher's announcement is for
+      'targetUserId INTEGER', // the one student a personal fee reminder is for (routes/classroomRoutes.js)
     ];
     let pendingColumns = notificationColumns.length;
     notificationColumns.forEach((column) => {

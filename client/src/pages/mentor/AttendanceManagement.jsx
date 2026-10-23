@@ -3,8 +3,9 @@ import MentorLayout from "../../components/MentorLayout";
 import { useAuth } from "../../auth/auth";
 import { useTranslation } from "../../context/TranslationContext";
 import { toast } from "react-toastify";
-import { Download, Save } from "lucide-react";
+import { Download, Save, Users } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
+import SpeedAttendanceBar from "../../components/mentor/SpeedAttendanceBar";
 
 const AttendanceManagement = () => {
   const { API, token } = useAuth();
@@ -35,7 +36,7 @@ const AttendanceManagement = () => {
   };
 
   // Fetch Assigned Classrooms
-  const fetchClassrooms = async () => {
+  const fetchClassrooms = async (preselectedId = null) => {
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       
@@ -53,12 +54,14 @@ const AttendanceManagement = () => {
       console.log('Classrooms response:', data);
       const classroomsList = unwrapResponse(data);
       console.log('Unwrapped classrooms:', classroomsList);
-      setClassrooms(Array.isArray(classroomsList) ? classroomsList : []);
+      const list = Array.isArray(classroomsList) ? classroomsList : [];
+      setClassrooms(list);
 
-      if (Array.isArray(classroomsList) && classroomsList.length > 0) {
-        console.log('Setting first classroom:', classroomsList[0].id);
-        setSelectedClassroom(classroomsList[0].id);
-        fetchStudents(classroomsList[0].id);
+      const targetId = preselectedId || (list.length > 0 ? list[0].id : null);
+      if (targetId) {
+        console.log('Selecting classroom ID:', targetId);
+        setSelectedClassroom(targetId);
+        fetchStudents(targetId);
       }
     } catch (err) {
       console.error("Failed to fetch classrooms:", err);
@@ -255,15 +258,10 @@ const AttendanceManagement = () => {
 
   useEffect(() => {
     if (classroomIdFromUrl) {
-      // Auto-load classroom from URL parameter
       console.log('Classroom ID from URL:', classroomIdFromUrl);
       const classroomId = parseInt(classroomIdFromUrl, 10);
-      setSelectedClassroom(classroomId);
-      setClassrooms([{ id: classroomId, name: 'Current Classroom' }]);
-      fetchStudents(classroomId);
-      setLoading(false);
+      fetchClassrooms(classroomId);
     } else {
-      // Load all classrooms if no specific classroom is selected
       fetchClassrooms();
     }
   }, [classroomIdFromUrl, API, token]);
@@ -305,6 +303,24 @@ const AttendanceManagement = () => {
             )}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-2">
+                Classroom
+              </label>
+              <select
+                value={String(selectedClassroom || "")}
+                onChange={(e) => handleClassroomChange(Number(e.target.value))}
+                className="w-full px-3.5 py-2.5 bg-white border border-[#ebdcaa]/80 rounded-none text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#002366]/30 focus:border-[#002366] transition-all font-medium"
+              >
+                <option value="">Select a classroom...</option>
+                {classrooms.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.name} {c.grade ? `(Grade ${c.grade})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#1e1b4b] mb-2">
                 {t('date')}
               </label>
               <input
@@ -318,7 +334,7 @@ const AttendanceManagement = () => {
             <div className="flex items-end gap-3 md:col-span-2 pt-2">
               <button
                 onClick={handleSaveAttendance}
-                disabled={!selectedClassroom || saving}
+                disabled={!selectedClassroom || saving || students.length === 0}
                 className="flex-1 bg-[#B99652] hover:bg-[#a38241] text-white px-6 py-2.5 rounded-none font-semibold text-sm shadow-sm hover:shadow transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <Save className="w-4 h-4" />
@@ -326,7 +342,7 @@ const AttendanceManagement = () => {
               </button>
               <button
                 onClick={handleDownloadExcel}
-                disabled={!selectedClassroom}
+                disabled={!selectedClassroom || students.length === 0}
                 className="bg-[#fffdf4] hover:bg-[#B99652] text-[#9a7837] hover:text-white border border-[#B99652] px-5 py-2.5 rounded-none font-semibold text-sm shadow-sm hover:shadow transition-all disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
@@ -335,6 +351,17 @@ const AttendanceManagement = () => {
             </div>
           </div>
         </div>
+
+        {/* Minimal Single-Line Speed Attendance Bar (Just Above Table) */}
+        {selectedClassroom && students.length > 0 && (
+          <SpeedAttendanceBar
+            students={students}
+            attendanceData={attendanceData}
+            onAttendanceChange={handleAttendanceChange}
+            onSaveAttendance={handleSaveAttendance}
+            selectedClassroom={selectedClassroom}
+          />
+        )}
 
         {/* Attendance Table */}
         {selectedClassroom && students.length > 0 ? (

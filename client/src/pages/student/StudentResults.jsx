@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/auth";
 import StudentLayout from "../../components/StudentLayout";
-import { useTranslation } from '../../context/TranslationContext';
+import { useTranslation } from "react-i18next";
 import { Trophy, FileText, CheckCircle, AlertCircle, Award } from "lucide-react";
 
 const StudentResults = () => {
   const { API, token } = useAuth();
-  const { t } = useTranslation();
+  const { t } = useTranslation(['common', 'forms']);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +52,7 @@ const StudentResults = () => {
             <Award className="text-[#B99652] w-7 h-7" /> {t('my_results')}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            Review your academic exam terms, grades, and subject-wise score breakdowns
+            {t('review_academic_exam_terms', 'Review your academic exam terms, grades, and subject-wise score breakdowns')}
           </p>
         </div>
 
@@ -71,11 +71,11 @@ const StudentResults = () => {
                 <div data-tour={resultIndex === 0 ? 'results-cards' : undefined} className="p-5 sm:p-6 bg-[#fffdf4] border-b border-[#ebdcaa]/80">
                   <div className="flex flex-wrap justify-between items-start gap-4">
                     <div>
-                      <h2 className="text-2xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">{result.term || "General Examination"}</h2>
+                      <h2 className="text-2xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-tight">{result.term || t('general_examination', 'General Examination')}</h2>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-slate-500 font-medium">Classroom: <strong className="text-slate-700">{result.classroomName || 'N/A'} {result.section ? `- ${result.section}` : ''}</strong></span>
+                        <span className="text-xs text-slate-500 font-medium">{t('classroom_colon', 'Classroom:')} <strong className="text-slate-700">{result.classroomName || 'N/A'} {result.section ? `- ${result.section}` : ''}</strong></span>
                         <span className="text-slate-300">•</span>
-                        <span className="text-xs text-slate-500 font-medium">Grade {result.grade || 'N/A'}</span>
+                        <span className="text-xs text-slate-500 font-medium">{t('grade', 'Grade')} {result.grade || 'N/A'}</span>
                       </div>
                     </div>
                     <div className={`px-3.5 py-1.5 rounded-none font-bold text-xs uppercase tracking-wider flex items-center gap-2 border ${
@@ -90,7 +90,7 @@ const StudentResults = () => {
                   
                   <div className="mt-4 pt-3 border-t border-[#ebdcaa]/50 flex gap-6">
                     <div>
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Overall Percentage</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t('overall_percentage', 'Overall Percentage')}</p>
                       <p className={`text-3xl sm:text-4xl font-bold font-['DM_Serif_Display',serif] mt-0.5 ${result.overallStatus === "PASS" ? "text-emerald-700" : "text-red-700"}`}>
                         {result.overallPercentage}%
                       </p>
@@ -100,7 +100,7 @@ const StudentResults = () => {
 
                 {/* Table */}
                 <div data-tour={resultIndex === 0 ? 'results-subject-breakdown' : undefined} className="p-5 sm:p-6">
-                  <h3 className="font-['DM_Serif_Display',serif] text-xl text-[#1e1b4b] tracking-tight mb-4">Subject-wise Marks</h3>
+                  <h3 className="font-['DM_Serif_Display',serif] text-xl text-[#1e1b4b] tracking-tight mb-4">{t('subject_wise_marks', 'Subject-wise Marks')}</h3>
                   <div className="overflow-x-auto border border-[#ebdcaa] rounded-none">
                     <table className="w-full">
                       <thead>
@@ -128,7 +128,7 @@ const StudentResults = () => {
                                       ? "text-emerald-700 bg-emerald-50 border-emerald-200"
                                       : "text-red-700 bg-red-50 border-red-200"
                                   }`}>
-                                    {sub.status === "PASS" ? "✓ PASS" : "✗ FAIL"}
+                                    {sub.status === "PASS" ? "✓ " + t('pass', 'PASS') : "✗ " + t('fail', 'FAIL')}
                                   </span>
                                 </td>
                               </tr>

@@ -22,6 +22,7 @@ const MentorCourseDetails = () => {
 
     useEffect(() => {
         fetchCourseData();
+        // Connect to the backend, not the page origin (the Vite dev server).
         const socket = io(API.replace(/\/api\/?$/, ""), {
           transports: ["websocket", "polling"],
           // the server only sends realtime events to sockets that carry a valid session

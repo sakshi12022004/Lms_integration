@@ -18,10 +18,11 @@ import {
 import { useAuth } from "../auth/auth";
 import QuotaLimitModal from './QuotaLimitModal';
 import { useTranslation } from "../context/TranslationContext";
-import GuideBotLauncher from '../guidebot/runtime/GuideBotLauncher';
+import LMSChatbot from './Chatbot/LMSChatbot';
 import whiteLogo from '../assets/core5-final-rbg.png';
 import AnnouncementBell from './AnnouncementBell';
 import LiveNowBanner from './lectures/LiveNowBanner';
+import UniversalLanguageSelector from './UniversalLanguageSelector';
 
 const StudentLayout = ({ children }) => {
   const location = useLocation();
@@ -53,42 +54,37 @@ const StudentLayout = ({ children }) => {
   const navItems = [
     {
       path: '/student/dashboard',
-      nameKey: 'nav_dashboard',
+      nameKey: 'navigation:nav_dashboard',
       icon: <Home size={20} />,
-      label: 'Dashboard',
-      description: 'Overview & Stats',
+      descKey: 'navigation:nav_desc_overview_stats',
       tourId: 'nav-dashboard'
     },
     {
       path: '/student/courses',
-      nameKey: 'nav_courses',
+      nameKey: 'navigation:nav_courses',
       icon: <GraduationCap size={20} />,
-      label: 'Courses',
-      description: 'My Courses',
+      descKey: 'navigation:nav_my_courses',
       tourId: 'nav-courses'
     },
     {
       path: '/student/assessment-agent/tests',
-      nameKey: 'nav_my_tests',
+      nameKey: 'navigation:nav_my_tests',
       icon: <ClipboardList size={19} />,
-      label: 'My Tests',
-      description: 'Tests from your teachers',
+      descKey: 'navigation:nav_desc_tests_from_teachers',
       tourId: 'nav-my-tests'
     },
     {
       path: '/student/assessment-agent/assignments',
-      nameKey: 'nav_assignments',
+      nameKey: 'common:assignments',
       icon: <FileCheck size={19} />,
-      label: 'Assignments',
-      description: 'Submit & Track Assignments',
+      descKey: 'navigation:nav_desc_submit_track_assignments',
       tourId: 'nav-assignments'
     },
     {
       path: '/student/results',
-      nameKey: 'nav_results',
+      nameKey: 'common:results',
       icon: <Trophy size={20} />,
-      label: 'Results',
-      description: 'Academic Results',
+      descKey: 'navigation:nav_desc_academic_results',
       tourId: 'nav-results'
     },
     {
@@ -101,26 +97,23 @@ const StudentLayout = ({ children }) => {
     },
     {
       path: '/student/attendance',
-      nameKey: 'nav_attendance',
+      nameKey: 'navigation:nav_attendance',
       icon: <Clock size={20} />,
-      label: 'Attendance',
-      description: 'Attendance Records',
+      descKey: 'common:attendance_records',
       tourId: 'nav-attendance'
     },
     {
       path: '/student/calendar',
-      nameKey: 'nav_calendar',
+      nameKey: 'navigation:nav_calendar',
       icon: <Calendar size={20} />,
-      label: 'Calendar',
-      description: 'Academic Schedule',
+      descKey: 'navigation:nav_desc_academic_schedule',
       tourId: 'nav-calendar'
     },
     {
       path: '/student/pay-fees',
-      nameKey: 'nav_fees',
+      nameKey: 'navigation:nav_fees_payments',
       icon: <CreditCard size={20} />,
-      label: 'Fees & Payments',
-      description: 'Fee Dues & Receipts',
+      descKey: 'navigation:nav_desc_fee_dues_receipts',
       tourId: 'nav-fees'
     }
   ];
@@ -128,14 +121,14 @@ const StudentLayout = ({ children }) => {
   const currentPage =
     navItems.find((item) => item.path === location.pathname)?.nameKey
       ? t(navItems.find((item) => item.path === location.pathname)?.nameKey)
-      : t('nav_dashboard');
+      : t('navigation:nav_dashboard');
 
   return (
     <div className="h-screen bg-background overflow-hidden">
       {/* ================= DESKTOP SIDEBAR ================= */}
       <aside
         className={`
-          fixed top-0 left-0 h-full z-40 hidden lg:block
+          fixed top-0 left-0 rtl:left-auto rtl:right-0 h-full z-40 hidden lg:block
           transition-all duration-300
           ${sidebarCollapsed ? "w-20" : "w-64"}
           bg-[#002366]
@@ -218,16 +211,16 @@ const StudentLayout = ({ children }) => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate text-white">
-                    {user?.name || 'Student'}
+                    {user?.name || t('common:student')}
                   </p>
                   <p className="text-white/70 text-xs truncate">
                     {user?.email || 'student@example.com'}
                   </p>
                   <div className="flex items-center mt-1 space-x-2">
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400">
-                      Active
+                      {t('common:active')}
                     </span>
-                    <span className="text-white/50 text-xs">Student</span>
+                    <span className="text-white/50 text-xs">{t('common:student')}</span>
                   </div>
                 </div>
               </div>
@@ -265,11 +258,11 @@ const StudentLayout = ({ children }) => {
                         {!sidebarCollapsed && (
                           <div>
                             <span className={`font-medium ${isActive ? 'text-white' : 'text-white/80 group-hover:text-white'}`}>
-                              {item.label}
+                              {t(item.nameKey)}
                             </span>
                             {!sidebarCollapsed && (
                               <p className="text-xs text-white/50 group-hover:text-white/70 mt-0.5">
-                                {item.description}
+                                {t(item.descKey)}
                               </p>
                             )}
                           </div>
@@ -282,8 +275,8 @@ const StudentLayout = ({ children }) => {
 
                     {/* Tooltip for collapsed state */}
                     {sidebarCollapsed && (
-                      <div className="absolute left-full ml-2 px-2 py-1 bg-[#001c52] text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-                        {item.label}
+                      <div className="absolute left-full ml-2 rtl:left-auto rtl:right-full rtl:ml-0 rtl:mr-2 px-2 py-1 bg-[#001c52] text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                        {t(item.nameKey)}
                         <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-[#001c52] rotate-45"></div>
                       </div>
                     )}
@@ -341,8 +334,8 @@ const StudentLayout = ({ children }) => {
                   {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'S'}
                 </div>
                 <div>
-                  <h1 className="font-bold text-lg">Student Portal</h1>
-                  <p className="text-white/70 text-sm">Welcome back</p>
+                  <h1 className="font-bold text-lg">{t('common:student_portal')}</h1>
+                  <p className="text-white/70 text-sm">{t('dashboard:welcome_back')}</p>
                 </div>
               </div>
             </div>
@@ -371,13 +364,13 @@ const StudentLayout = ({ children }) => {
                 })}
               </div>
 
-              <div className="mt-6 space-y-2">
+              <div className="mt-6 space-y-3">
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center justify-center space-x-2 p-3 rounded-xl bg-red-500/20 hover:bg-red-500/30"
                 >
                   <LogOut size={18} />
-                  <span className="font-medium">Logout</span>
+                  <span className="font-medium">{t('common:logout')}</span>
                 </button>
               </div>
             </nav>
@@ -389,7 +382,7 @@ const StudentLayout = ({ children }) => {
       <main
         className={`
           transition-all duration-300 flex-1 overflow-y-auto
-          ${sidebarCollapsed ? 'md:ml-16 lg:ml-20' : 'md:ml-56 lg:ml-64'}
+          ${sidebarCollapsed ? 'md:ml-16 lg:ml-20 rtl:md:ml-0 rtl:lg:ml-0 rtl:md:mr-16 rtl:lg:mr-20' : 'md:ml-56 lg:ml-64 rtl:md:ml-0 rtl:lg:ml-0 rtl:md:mr-56 rtl:lg:mr-64'}
           flex-1 overflow-y-auto
         `}
       >
@@ -397,23 +390,28 @@ const StudentLayout = ({ children }) => {
         {/* A lecture of the student's that is live or about to start: Join from any page */}
         <LiveNowBanner API={API} token={token} />
 
-        {/* ================= MOBILE MENU TRIGGER ================= */}
-        <div className="md:hidden p-3 flex items-center justify-between bg-white border-b border-gray-100">
+        {/* ================= MOBILE MENU TRIGGER & TOPBAR ================= */}
+        <div className="md:hidden p-3 flex items-center justify-between bg-white border-b border-gray-100 sticky top-0 z-20">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 rounded-none hover:bg-gray-100 text-slate-700"
-            aria-label="Open navigation menu"
+            aria-label={t('navigation:nav_open_menu')}
           >
             <ChevronRight size={20} />
           </button>
-          {location.pathname !== '/student/dashboard' && <AnnouncementBell />}
+          <div className="flex items-center gap-2">
+            <UniversalLanguageSelector variant="compact" />
+          </div>
         </div>
 
-        {/* Notifications (the dashboard has its own bell in its header) */}
+        {/* ================= DESKTOP SUBPAGE TOPBAR ================= */}
         {location.pathname !== '/student/dashboard' && (
-          <div className="hidden md:flex justify-end px-6 pt-4 text-slate-700">
-            <AnnouncementBell />
-          </div>
+          <header className="sticky top-0 z-30 bg-[#fffdf4]/90 backdrop-blur-md border-b border-[#ebdcaa]/40 px-6 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)] hidden md:flex items-center justify-between">
+            <h1 className="text-xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-wide">{currentPage}</h1>
+            <div className="flex items-center gap-3">
+              <UniversalLanguageSelector variant="compact" />
+            </div>
+          </header>
         )}
 
         {/* ================= CONTENT AREA ================= */}
@@ -428,10 +426,7 @@ const StudentLayout = ({ children }) => {
       {/* ================= QUOTA MODAL (OVERLAY) ================= */}
       <QuotaLimitModal isOpen={showQuotaModal} onClose={() => setShowQuotaModal(false)} quotaDetails={quotaDetails} />
 
-      {/* GuideBot Launcher — one shared instance for both desktop and mobile */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <GuideBotLauncher tourId="student-overview-v1" />
-      </div>
+      <LMSChatbot />
     </div>
   );
 };

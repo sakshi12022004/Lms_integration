@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { generateInvoicePdf } from "./invoice";
 import PaymentModal from "./PaymentModal";
 import { useTranslation } from "../context/TranslationContext";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
-import { Download, CreditCard, RefreshCw } from 'lucide-react';
+import { Download, CreditCard, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useTransactionStore } from "../store/transactionStore";
 import { useAuth } from "../auth/auth";
 
@@ -165,7 +166,7 @@ export default function FeesCollection({ category }: { category?: "Primary" | "S
   return (
     <div className="p-6 bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-slate-800 mb-2">{t('fees_collection')}</h1>
           <p className="text-slate-600">{t('manage_student_fee_payments')}</p>
@@ -177,6 +178,20 @@ export default function FeesCollection({ category }: { category?: "Primary" | "S
           <RefreshCw size={16} className={loading ? "animate-spin text-blue-600" : "text-slate-500"} />
           Refresh Data
         </button>
+      </div>
+
+      {/* Informational Legacy Reconciliation Alert */}
+      <div className="mb-6 p-4 rounded-xl bg-blue-50/80 border border-blue-200/80 flex items-start gap-3 shadow-xs">
+        <div className="p-2 bg-blue-600 text-white rounded-lg shrink-0 mt-0.5">
+          <ShieldAlert size={18} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-bold text-blue-950">Legacy Payment Reconciliation Active</h4>
+          <p className="text-xs text-blue-800/90 mt-0.5 leading-relaxed">
+            Historical payments recorded before schedule tracking require academic-session confirmation before allocation. 
+            View unlinked payments on the <Link to="/accountant/legacy-reconciliation" className="font-semibold underline hover:text-blue-950">Legacy Reconciliation</Link> console.
+          </p>
+        </div>
       </div>
 
       {/* Category Tabs */}

@@ -8,6 +8,10 @@ export default defineConfig(({ command }) => ({
   // belongs in a visitor's browser console, so a production build leaves those calls out.
   // Warnings and errors are kept.
   esbuild: command === 'build' ? { pure: ['console.log', 'console.debug', 'console.info'] } : {},
+  server: {
+    host: true,
+    port: 5173
+  },
   build: {
     assetsDir: 'assets'
   }

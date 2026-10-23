@@ -190,7 +190,7 @@ const Courses = () => {
                 <div className="relative flex-1">
                   <input
                     type="text"
-                    placeholder="Search my courses..."
+                    placeholder={t('dashboard:sd_search_courses_ellipsis')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full h-12 sm:h-13 pl-5 pr-12 bg-white border border-[#ebdcaa] rounded-none text-base text-[#1e1b4b] outline-none placeholder-slate-400 focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]/30 transition-all shadow-xs"
@@ -219,7 +219,7 @@ const Courses = () => {
                       : 'text-slate-600 hover:bg-[#fffdf4]'
                   }`}
                 >
-                  In Progress
+                  {t('common:in_progress')}
                 </button>
                 <button
                   onClick={() => setFilterStatus('completed')}
@@ -300,7 +300,7 @@ const Courses = () => {
                     {course.mentor && (
                       <div className="flex items-center gap-2 text-sm text-text/60 mb-4">
                         <Users className="w-3 h-3" />
-                        <span>Mentor: {course.mentor.name || 'Unknown'}</span>
+                        <span>{t('dashboard:sc_mentor')} {course.mentor.name || t('dashboard:sc_unknown')}</span>
                       </div>
                     )}
 
@@ -359,15 +359,15 @@ const Courses = () => {
                 </div>
                 <div className="text-center p-4 bg-success/5 rounded-lg">
                   <div className="text-2xl font-bold text-success">{stats.completedCourses}</div>
-                  <p className="text-sm text-text/60 mt-1">Completed</p>
+                  <p className="text-sm text-text/60 mt-1">{t('common:completed')}</p>
                 </div>
                 <div className="text-center p-4 bg-primary/5 rounded-lg">
                   <div className="text-2xl font-bold text-primary">{stats.inProgressCourses}</div>
-                  <p className="text-sm text-text/60 mt-1">In Progress</p>
+                  <p className="text-sm text-text/60 mt-1">{t('common:in_progress')}</p>
                 </div>
                 <div className="text-center p-4 bg-warning/5 rounded-lg">
                   <div className="text-2xl font-bold text-warning">{stats.totalProgress}%</div>
-                  <p className="text-sm text-text/60 mt-1">Avg Progress</p>
+                  <p className="text-sm text-text/60 mt-1">{t('avg_progress')}</p>
                 </div>
               </div>
             </div>

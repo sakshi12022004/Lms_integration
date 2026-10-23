@@ -13,15 +13,18 @@ import {
   Calendar
 } from "lucide-react";
 import { useAuth } from "../auth/auth";
+import { useTranslation } from "../context/TranslationContext";
 import AnnouncementBell from "./AnnouncementBell";
 import LoginFooter from './LoginFooter';
 import GuideBotLauncher from '../guidebot/runtime/GuideBotLauncher';
 import whiteLogo from '../assets/core5-final-rbg.png';
+import UniversalLanguageSelector from './UniversalLanguageSelector';
 
 const SuperAdminLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logoutUser, user, API } = useAuth();
+  const { t } = useTranslation();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -191,24 +194,31 @@ const SuperAdminLayout = ({ children }) => {
 
   /* ================= SIDEBAR ITEMS ================= */
   const navItems = [
-    { path: "/superadmin/dashboard", name: 'Overview', icon: <LayoutDashboard size={20} />, tourId: 'nav-overview' },
-    { path: "/superadmin/dashboard?tab=universities", name: 'Institutes', icon: <Building2 size={20} />, tourId: 'nav-institutes' },
-    { path: "/superadmin/dashboard?tab=demoLeads", name: 'Demo Leads', icon: <Calendar size={20} />, tourId: 'nav-demo-leads' },
-    { path: "/superadmin/dashboard?tab=createUniversity", name: 'Add Institute', icon: <Plus size={20} />, tourId: 'nav-add-institute' },
-    { path: "/superadmin/dashboard?tab=createUser", name: 'Add Staff', icon: <UserPlus size={20} />, tourId: 'nav-add-staff' },
-    { path: "/superadmin/dashboard?tab=users", name: 'All Staff', icon: <Users size={20} />, tourId: 'nav-all-staff' },
-    { path: "/superadmin/subscription", name: 'Subscription', icon: <Star size={20} />, tourId: 'nav-subscription' },
+    { path: "/superadmin/dashboard", nameKey: 'nav_overview', name: 'Overview', icon: <LayoutDashboard size={20} />, tourId: 'nav-overview' },
+    { path: "/superadmin/dashboard?tab=universities", nameKey: 'institutes', name: 'Institutes', icon: <Building2 size={20} />, tourId: 'nav-institutes' },
+    { path: "/superadmin/dashboard?tab=demoLeads", nameKey: 'demo_leads', name: 'Demo Leads', icon: <Calendar size={20} />, tourId: 'nav-demo-leads' },
+    { path: "/superadmin/dashboard?tab=createUniversity", nameKey: 'add_institute', name: 'Add Institute', icon: <Plus size={20} />, tourId: 'nav-add-institute' },
+    { path: "/superadmin/dashboard?tab=createUser", nameKey: 'add_staff', name: 'Add Staff', icon: <UserPlus size={20} />, tourId: 'nav-add-staff' },
+    { path: "/superadmin/dashboard?tab=users", nameKey: 'all_staff', name: 'All Staff', icon: <Users size={20} />, tourId: 'nav-all-staff' },
+    { path: "/superadmin/subscription", nameKey: 'nav_subscription', name: 'Subscription', icon: <Star size={20} />, tourId: 'nav-subscription' },
   ];
 
-  const currentPage =
-    navItems.find((item) => {
-      if (item.path.includes('?')) {
-        const basePath = item.path.split('?')[0];
-        const tabParam = item.path.split('?')[1].split('=')[1];
-        return location.pathname === basePath && location.search.includes(tabParam);
-      }
-      return location.pathname === item.path && !location.search.includes('tab=');
-    })?.name || 'Overview';
+  const getItemLabel = (item) => {
+    if (!item) return '';
+    const translated = t(item.nameKey);
+    return translated && translated !== item.nameKey ? translated : (item.name || item.nameKey);
+  };
+
+  const currentItem = navItems.find((item) => {
+    if (item.path.includes('?')) {
+      const basePath = item.path.split('?')[0];
+      const tabParam = item.path.split('?')[1].split('=')[1];
+      return location.pathname === basePath && location.search.includes(tabParam);
+    }
+    return location.pathname === item.path && !location.search.includes('tab=');
+  });
+
+  const currentPage = currentItem ? getItemLabel(currentItem) : (t('nav_overview') !== 'nav_overview' ? t('nav_overview') : 'Overview');
 
   // Show loading screen while initializing
   if (loading) {
@@ -350,7 +360,7 @@ const SuperAdminLayout = ({ children }) => {
                   <div className={`${isActive ? "text-[#B99652]" : "text-white/70"} transition-colors`}>
                     {item.icon}
                   </div>
-                  {!sidebarCollapsed && <span className="ml-3 font-medium text-sm">{item.name}</span>}
+                  {!sidebarCollapsed && <span className="ml-3 font-medium text-sm">{getItemLabel(item)}</span>}
                 </Link>
               );
             })}
@@ -365,7 +375,7 @@ const SuperAdminLayout = ({ children }) => {
               <div className="flex items-center space-x-3">
                 <ChevronLeft className={`transition-transform duration-200 ${sidebarCollapsed ? "rotate-180" : ""}`} />
                 {!sidebarCollapsed && (
-                  <span className="font-medium text-xs">Collapse</span>
+                  <span className="font-medium text-xs">{t('nav_collapse') ?? 'Collapse'}</span>
                 )}
               </div>
               {sidebarCollapsed && <ChevronRight />}
@@ -378,7 +388,7 @@ const SuperAdminLayout = ({ children }) => {
               }`}
             >
               <LogOut size={16} />
-              {!sidebarCollapsed && <span className="ml-2.5 font-medium">Logout</span>}
+              {!sidebarCollapsed && <span className="ml-2.5 font-medium">{t('nav_logout') ?? 'Logout'}</span>}
             </button>
           </div>
         </div>
@@ -533,6 +543,9 @@ const SuperAdminLayout = ({ children }) => {
                 )}
               </div>
 
+              {/* Language Selector */}
+              <UniversalLanguageSelector variant="compact" />
+
               {/* Logout Button */}
               <button
                 onClick={handleLogout}
@@ -584,6 +597,7 @@ const SuperAdminLayout = ({ children }) => {
                   </div>
                 )}
               </div>
+              <GuideBotLauncher tourId="superadmin-overview-v1" />
               <button
                 onClick={handleLogout}
                 className="p-2 hover:bg-gray-100 rounded-lg text-red-600"
@@ -598,11 +612,6 @@ const SuperAdminLayout = ({ children }) => {
         <main className="flex-1 overflow-y-auto scrollable-content p-4 lg:p-6">
           {children}
         </main>
-      </div>
-      
-      {/* GuideBot Launcher — one shared instance for both desktop and mobile */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <GuideBotLauncher tourId="superadmin-overview-v1" />
       </div>
 
       {/* Footer */}

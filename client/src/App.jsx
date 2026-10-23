@@ -5,6 +5,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from 'react';
 
 import { useTranslation } from './context/TranslationContext';
+import { SUPPORTED_LANGUAGES } from './i18n/languageRegistry';
 
 import { useAuth } from "./auth/auth";
 
@@ -88,6 +89,8 @@ const TestDatabaseExport = () => {
 };
 
 import FeesCollection from "./pages/accountant/FeesCollection_temp";
+
+import LegacyReconciliationPage from "./pages/accountant/LegacyReconciliationPage";
 
 
 
@@ -297,29 +300,15 @@ function App() {
   // No need for DOM translation here - components use t() function
 
   useEffect(() => {
-
     try {
-
-      if (currentLanguage === 'ar') {
-
-        document.documentElement.dir = 'rtl';
-
-        document.documentElement.lang = 'ar';
-
-      } else {
-
-        document.documentElement.dir = 'ltr';
-
-        document.documentElement.lang = 'en';
-
-      }
-
+      const langMeta = SUPPORTED_LANGUAGES[currentLanguage];
+      const shortLang = langMeta?.legacyCode || currentLanguage?.split('-')[0] || 'en';
+      const direction = langMeta?.dir || 'ltr';
+      document.documentElement.lang = shortLang;
+      document.documentElement.dir = direction;
     } catch (e) {
-
-      console.warn('Language direction setup failed:', e);
-
+      console.warn('Language document setup failed:', e);
     }
-
   }, [currentLanguage]);
 
   const handleTermsAccept = () => {
@@ -1068,6 +1057,24 @@ function App() {
               <ProtectedRoute requiredRole="accountant">
 
                 <FeesCollection />
+
+              </ProtectedRoute>
+
+            }
+
+          />
+
+
+
+          <Route
+
+            path="/accountant/legacy-reconciliation"
+
+            element={
+
+              <ProtectedRoute requiredRole="accountant">
+
+                <LegacyReconciliationPage />
 
               </ProtectedRoute>
 

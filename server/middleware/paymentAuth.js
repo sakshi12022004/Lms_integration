@@ -4,6 +4,11 @@
  */
 const requirePaymentAuth = require('./authMiddleware');
 
+/** A usable university id is a positive integer; anything else is "no tenant" (null). */
+function toTenantId(value) {
+  return /^[1-9]\d{0,14}$/.test(String(value ?? '').trim()) ? Number(value) : null;
+}
+
 function defaultGetDatabase(req) {
   return req.tenant?.database || require('../config/database-switch');
 }
@@ -11,6 +16,8 @@ function defaultGetDatabase(req) {
 /**
  * Role authorization checked against the users table, not just the token:
  * the account must still exist and its CURRENT role must be allowed.
+ * Also loads the account's CURRENT university into req.user.universityId
+ * (null when it has none), so tenant scoping never trusts the token claim.
  * Must run after requirePaymentAuth.
  */
 function requireRoles(roles, getDatabase = defaultGetDatabase) {
@@ -20,7 +27,7 @@ function requireRoles(roles, getDatabase = defaultGetDatabase) {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 
-    getDatabase(req).get('SELECT id, role FROM users WHERE id = ?', [userId], (err, row) => {
+    getDatabase(req).get('SELECT id, role, university_id FROM users WHERE id = ?', [userId], (err, row) => {
       if (err) {
         console.error('Payment role check failed:', err.message);
         return res.status(500).json({ success: false, message: 'Authorization check failed.' });
@@ -32,9 +39,21 @@ function requireRoles(roles, getDatabase = defaultGetDatabase) {
         return res.status(403).json({ success: false, message: 'Access denied.' });
       }
       req.user.role = row.role;
+      req.user.universityId = toTenantId(row.university_id);
       next();
     });
   };
+}
+
+/**
+ * Fails closed (403) when the account has no valid university in the users table.
+ * There is no default tenant. Must run after requireRoles.
+ */
+function requireTenant(req, res, next) {
+  if (toTenantId(req.user?.universityId) === null) {
+    return res.status(403).json({ success: false, message: 'Access denied: Tenant association missing or invalid' });
+  }
+  next();
 }
 
 /**
@@ -64,4 +83,4 @@ function resolveStudentScope(req, res, requestedStudentId) {
 
 const STAFF_ROLES = ['accountant', 'admin'];
 
-module.exports = { requirePaymentAuth, requireRoles, resolveStudentScope, STAFF_ROLES };
+module.exports = { requirePaymentAuth, requireRoles, requireTenant, toTenantId, resolveStudentScope, STAFF_ROLES };

@@ -1,9 +1,12 @@
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 const BilingualDataService = require("../services/BilingualDataService");
-const db = require("../config/database-switch");
 const { generateText, NOTIFICATION_TYPES } = require("../services/notificationText");
 const { HttpError, authorizeClassroom, authorizeCourse, listClassrooms } = require("../helpers/teachingScope");
 const { run } = require("../helpers/dbAsync");
+
+function getDb(req) {
+  return req?.tenant?.database || require("../config/database-switch");
+}
 
 
 
@@ -111,11 +114,17 @@ const createAnnouncement = async (req, res) => {
       values.push(announcementData.classroomId);
     }
 
+    // Add targetUserId for direct personal user announcements
+    if (announcementData.targetUserId) {
+      columns.push('targetUserId');
+      values.push(announcementData.targetUserId);
+    }
+
     // Build the INSERT query
     const placeholders = columns.map(() => '?').join(', ');
     const insertQuery = `INSERT INTO announcements (${columns.join(', ')}) VALUES (${placeholders})`;
 
-    db.run(insertQuery, values, function(err) {
+    getDb(req).run(insertQuery, values, function(err) {
       if (err) {
         console.error("Error creating announcement:", err);
         return res.status(500).json({ message: "Error creating announcement" });
@@ -157,17 +166,23 @@ const getAllAnnouncements = async (req, res) => {
     `;
 
     // Filter based on role (ordinary announcements only)
-    let audience = "1 = 1"; // admin and other staff roles: every announcement of their university
+    let audience = "1 = 1"; // admin: every announcement of their university
+    const roleParams = [];
     if (role === "student") {
       // Students see:
-      // 1. Announcements published for 'students' or 'both'
+      // 1. Announcements for 'students' or 'both': a personal one (targetUserId, e.g. a fee reminder) only when it
+      //    is theirs; general ones only when they are not a fee reminder meant for someone else
       // 2. Announcements created by mentors for courses the student is enrolled in
       // 3. General class announcements (no course) for a classroom the student belongs to
       audience = `(
-        a.publishFor IN ('students', 'both')
+        (a.publishFor IN ('students', 'both') AND (
+          a.targetUserId = ?
+          OR (a.targetUserId IS NULL AND a.title NOT LIKE '%Fee Payment Reminder%')
+        ))
         OR (a.createdByRole = 'mentor' AND a.courseId IN (SELECT courseId FROM course_students WHERE studentId = ?))
         OR (a.courseId IS NULL AND a.classroomId IN (SELECT classroomId FROM student_classroom_assignment WHERE studentId = ?))
       )`;
+      roleParams.push(userId, userId, userId);
     } else if (role === "mentor" || role === "teacher" || role === "faculty") {
       // Mentors see:
       // 1. Announcements published for 'mentors' or 'both'
@@ -177,6 +192,15 @@ const getAllAnnouncements = async (req, res) => {
         a.publishFor IN ('mentors', 'both')
         OR (a.courseId IN (SELECT id FROM courses WHERE mentorId = ?))
         OR a.createdByUser = ?
+      )`;
+      roleParams.push(userId, userId);
+    } else if (role !== "admin") {
+      // Any other role (accountant, storekeeper, ...) only sees broadcasts to everyone, never announcements
+      // targeted at a specific user or student fee reminders.
+      audience = `(
+        a.publishFor = 'both'
+        AND a.targetUserId IS NULL
+        AND a.title NOT LIKE '%Fee Payment Reminder%'
       )`;
     }
 
@@ -188,12 +212,10 @@ const getAllAnnouncements = async (req, res) => {
 
     query += ` ORDER BY a.createdAt DESC, a.id DESC`;
 
-    // Prepare query params: universityId, the user (targeted rows), then userId for the role subquery
-    let params = [universityId, userId];
-    if (role === 'student') params.push(userId, userId);
-    else if (role === "mentor" || role === "teacher" || role === "faculty") params.push(userId, userId);
+    // universityId, the user (targeted rows), then the role's own parameters in the order they appear
+    const params = [universityId, userId, ...roleParams];
 
-    db.all(query, params, (err, announcements) => {
+    getDb(req).all(query, params, (err, announcements) => {
       if (err) {
         console.error("Error fetching announcements:", err);
         return res.status(500).json({ message: "Database error" });
@@ -229,7 +251,7 @@ const deleteAnnouncement = async (req, res) => {
     const universityId = req.user?.universityId;
 
     // Check if announcement exists and user has permission
-    db.get("SELECT * FROM announcements WHERE id = ? AND university_id = ?", [id, universityId], (err, announcement) => {
+    getDb(req).get("SELECT * FROM announcements WHERE id = ? AND university_id = ?", [id, universityId], (err, announcement) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({ message: "Database error" });
@@ -245,7 +267,7 @@ const deleteAnnouncement = async (req, res) => {
       }
 
       // Delete announcement
-      db.run("DELETE FROM announcements WHERE id = ? AND university_id = ?", [id, universityId], function(err) {
+      getDb(req).run("DELETE FROM announcements WHERE id = ? AND university_id = ?", [id, universityId], function(err) {
         if (err) {
           console.error("Error deleting announcement:", err);
           return res.status(500).json({ message: "Error deleting announcement" });
@@ -277,7 +299,7 @@ const markAsRead = async (req, res) => {
     }
 
     // Get current announcement
-    db.get("SELECT * FROM announcements WHERE id = ?", [id], (err, announcement) => {
+    getDb(req).get("SELECT * FROM announcements WHERE id = ?", [id], (err, announcement) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({ message: "Database error" });
@@ -314,7 +336,7 @@ const markAsRead = async (req, res) => {
       }
 
       // Update announcement
-      db.run(
+      getDb(req).run(
         "UPDATE announcements SET readBy = ? WHERE id = ?",
         [JSON.stringify(readBy), id],
         function(err) {

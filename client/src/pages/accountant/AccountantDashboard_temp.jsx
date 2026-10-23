@@ -41,8 +41,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import AccountantLayout from "../../components/AccountantLayout";
+import { useTranslation } from "../../context/TranslationContext";
 
 const AccountantDashboard = () => {
+  const { t } = useTranslation();
   const { token, API } = useAuth();
   const navigate = useNavigate();
 
@@ -105,13 +107,16 @@ const AccountantDashboard = () => {
           
           // Group paid invoices by month for expense data
           const monthlyExpenseData = paidInvoices.reduce((acc, invoice) => {
-            if (invoice.paidDate) {
-              const date = new Date(invoice.paidDate);
-              const monthYear = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-              if (!acc[monthYear]) {
-                acc[monthYear] = 0;
+            const rawDate = invoice.paidDate || invoice.updatedAt || invoice.issueDate;
+            if (rawDate) {
+              const date = new Date(rawDate);
+              if (!isNaN(date.getTime())) {
+                const monthYear = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                if (!acc[monthYear]) {
+                  acc[monthYear] = 0;
+                }
+                acc[monthYear] += invoice.amount || 0;
               }
-              acc[monthYear] += invoice.amount || 0;
             }
             return acc;
           }, {});
@@ -215,7 +220,7 @@ const AccountantDashboard = () => {
             onClick={fetchDashboardData}
             className="bg-[#002366] hover:bg-[#001845] text-white px-5 py-2.5 rounded-none font-semibold text-sm transition"
           >
-            Retry Loading
+            {t('retry_loading', 'Retry Loading')}
           </button>
         </div>
       </AccountantLayout>
@@ -228,15 +233,15 @@ const AccountantDashboard = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#ebdcaa] pb-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#002366] tracking-tight">Accountant Executive Dashboard</h1>
-            <p className="text-slate-600 text-sm mt-1">Real-time revenue monitoring, vendor liabilities, and financial audit insights</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#002366] tracking-tight">{t('accountant_executive_dashboard', 'Accountant Executive Dashboard')}</h1>
+            <p className="text-slate-600 text-sm mt-1">{t('accountant_dashboard_subtitle', 'Real-time revenue monitoring, vendor liabilities, and financial audit insights')}</p>
           </div>
           <button
             onClick={fetchDashboardData}
             className="bg-[#002366] hover:bg-[#001845] text-white px-4 py-2.5 rounded-none font-semibold text-sm transition-all shadow-xs flex items-center gap-2 self-start sm:self-auto"
           >
             <RefreshCw size={16} className="text-[#B99652]" />
-            Refresh Overview
+            {t('refresh_overview', 'Refresh Overview')}
           </button>
         </div>
 
@@ -244,35 +249,35 @@ const AccountantDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="bg-white rounded-none border border-[#ebdcaa] border-t-4 border-t-[#002366] p-5 shadow-xs">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">Total Fees Collected</span>
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">{t('total_fees_collected', 'Total Fees Collected')}</span>
               <DollarSign className="h-6 w-6 text-[#002366]" />
             </div>
             <div className="text-2xl sm:text-3xl font-bold text-[#002366]">
               ₹{stats.totalFeesCollected.toLocaleString('en-IN')}
             </div>
-            <p className="text-xs text-slate-500 mt-1">Direct student & offline payments</p>
+            <p className="text-xs text-slate-500 mt-1">{t('direct_student_offline_payments', 'Direct student & offline payments')}</p>
           </div>
 
           <div className="bg-white rounded-none border border-[#ebdcaa] border-t-4 border-t-[#B99652] p-5 shadow-xs">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">Pending Vendor Invoices</span>
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">{t('pending_vendor_invoices', 'Pending Vendor Invoices')}</span>
               <FileText className="h-6 w-6 text-[#B99652]" />
             </div>
             <div className="text-2xl sm:text-3xl font-bold text-[#002366]">
               {stats.pendingVendorInvoices}
             </div>
-            <p className="text-xs text-slate-500 mt-1">Awaiting corporate disbursement</p>
+            <p className="text-xs text-slate-500 mt-1">{t('awaiting_corporate_disbursement', 'Awaiting corporate disbursement')}</p>
           </div>
 
           <div className="bg-white rounded-none border border-[#ebdcaa] border-t-4 border-t-rose-600 p-5 shadow-xs">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">Total Settled Expenses</span>
+              <span className="text-xs uppercase tracking-wider font-bold text-slate-500">{t('total_settled_expenses', 'Total Settled Expenses')}</span>
               <TrendingDown className="h-6 w-6 text-rose-600" />
             </div>
             <div className="text-2xl sm:text-3xl font-bold text-rose-700">
               ₹{stats.totalExpenses.toLocaleString('en-IN')}
             </div>
-            <p className="text-xs text-slate-500 mt-1">Cleared operational expenses</p>
+            <p className="text-xs text-slate-500 mt-1">{t('cleared_operational_expenses', 'Cleared operational expenses')}</p>
           </div>
         </div>
 
@@ -283,10 +288,10 @@ const AccountantDashboard = () => {
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
               <h2 className="text-lg font-bold text-[#002366] flex items-center gap-2">
                 <TrendingUp size={18} className="text-emerald-600" />
-                Revenue Trajectory
+                {t('revenue_trajectory', 'Revenue Trajectory')}
               </h2>
               <span className="text-xs bg-emerald-50 text-emerald-800 font-bold px-2.5 py-1 rounded-none border border-emerald-200 uppercase">
-                Income Flow
+                {t('income_flow', 'Income Flow')}
               </span>
             </div>
             <div className="h-64 flex items-center justify-center">
@@ -318,8 +323,8 @@ const AccountantDashboard = () => {
               ) : (
                 <div className="text-center py-8">
                   <TrendingUp className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-slate-600 font-medium text-sm">No revenue data available yet</p>
-                  <p className="text-slate-400 text-xs mt-1">Collections will populate this chart in real-time</p>
+                  <p className="text-slate-600 font-medium text-sm">{t('no_revenue_data_yet', 'No revenue data available yet')}</p>
+                  <p className="text-slate-400 text-xs mt-1">{t('collections_realtime_notice', 'Collections will populate this chart in real-time')}</p>
                 </div>
               )}
             </div>
@@ -330,10 +335,10 @@ const AccountantDashboard = () => {
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
               <h2 className="text-lg font-bold text-[#002366] flex items-center gap-2">
                 <TrendingDown size={18} className="text-rose-600" />
-                Expense Analysis
+                {t('expense_analysis', 'Expense Analysis')}
               </h2>
               <span className="text-xs bg-rose-50 text-rose-800 font-bold px-2.5 py-1 rounded-none border border-rose-200 uppercase">
-                Outflow Audit
+                {t('outflow_audit', 'Outflow Audit')}
               </span>
             </div>
             <div className="h-64 flex items-center justify-center">
@@ -360,8 +365,8 @@ const AccountantDashboard = () => {
               ) : (
                 <div className="text-center py-8">
                   <TrendingDown className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-slate-600 font-medium text-sm">No expense records available yet</p>
-                  <p className="text-slate-400 text-xs mt-1">Paid vendor invoices will populate this graph</p>
+                  <p className="text-slate-600 font-medium text-sm">{t('no_expense_records_yet', 'No expense records available yet')}</p>
+                  <p className="text-slate-400 text-xs mt-1">{t('paid_invoices_graph_notice', 'Paid vendor invoices will populate this graph')}</p>
                 </div>
               )}
             </div>
