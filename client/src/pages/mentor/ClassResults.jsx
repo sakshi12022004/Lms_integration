@@ -659,72 +659,124 @@ const ClassResults = () => {
                 />
               </div>
 
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center mb-3">
-                  <label className="block text-sm font-medium text-gray-700">
-                    {t('subjects') || "Subjects"} *
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addSubject}
-                    className="text-sm text-[#B99652] hover:text-[#a38241] font-medium"
-                  >
-                    + {t('add_subject')}
-                  </button>
-                </div>
+              {resultForm.studentId && (
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      {t('subjects') || "Subjects"} *
+                    </label>
+                    {resultForm.hasConfig ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const formRow = rows.find((r) => String(r.student.id) === String(resultForm.studentId));
+                          if (formRow) setSubjectsStudent(formRow.student);
+                        }}
+                        className="text-sm text-[#B99652] hover:text-[#a38241] font-medium"
+                      >
+                        {t('edit_subjects') || "Edit Subjects"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setResultForm((prev) => ({ ...prev, rows: [...prev.rows, blankSubjectRow()] }))}
+                        className="text-sm text-[#B99652] hover:text-[#a38241] font-medium"
+                      >
+                        + {t('add_subject')}
+                      </button>
+                    )}
+                  </div>
 
-                <div className="space-y-3">
-                  {resultForm.subjects.map((subject, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={subject.name}
-                          onChange={(e) => updateSubject(index, 'name', e.target.value)}
-                          placeholder={t('subject_name')}
-                          className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
-                          required
-                        />
-                        {resultForm.subjects.length > 1 && (
+                  {!resultForm.hasConfig && (
+                    <p className="text-xs text-gray-500 mb-3">
+                      No subjects are configured for this student yet. Use Configure Subjects on the results page to
+                      set them once for the whole class.
+                    </p>
+                  )}
+
+                  <div className="space-y-3">
+                    {resultForm.rows.map((subject, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50">
+                        {subject.locked ? (
+                          <div className="flex items-center gap-2">
+                            <span className="flex-1 text-sm font-medium text-gray-900">{subject.name}</span>
+                            {subject.source === "custom" && (
+                              <span className="bg-blue-100 text-blue-800 text-[11px] px-2 py-0.5 font-medium">Custom</span>
+                            )}
+                            {subject.source === "override" && (
+                              <span className="bg-amber-100 text-amber-800 text-[11px] px-2 py-0.5 font-medium">Override</span>
+                            )}
+                            {subject.source === "saved" && (
+                              <span className="bg-gray-200 text-gray-700 text-[11px] px-2 py-0.5 font-medium">Saved earlier</span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={subject.name}
+                              onChange={(e) => updateFormRow(index, 'name', e.target.value)}
+                              placeholder={t('subject_name')}
+                              className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                              required
+                            />
+                            {resultForm.rows.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setResultForm((prev) => ({ ...prev, rows: prev.rows.filter((_, i) => i !== index) }))}
+                                className="text-red-600 hover:text-red-700 text-sm font-medium px-2"
+                              >
+                                {t('remove')}
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-3 gap-2 items-center">
+                          <input
+                            type="number"
+                            value={subject.marks}
+                            onChange={(e) => updateFormRow(index, 'marks', e.target.value)}
+                            placeholder={t('marks')}
+                            min="0"
+                            max={subject.total}
+                            className="px-2 py-1 text-sm border border-gray-300 rounded"
+                            required={!subject.locked}
+                          />
+                          {subject.locked ? (
+                            <span className="text-sm text-gray-600">out of {subject.total}</span>
+                          ) : (
+                            <input
+                              type="number"
+                              value={subject.total}
+                              onChange={(e) => updateFormRow(index, 'total', e.target.value)}
+                              placeholder={t('total_marks')}
+                              min="0"
+                              className="px-2 py-1 text-sm border border-gray-300 rounded"
+                            />
+                          )}
+                          <select
+                            value={subject.status}
+                            onChange={(e) => updateFormRow(index, 'status', e.target.value)}
+                            className="px-2 py-1 text-sm border border-gray-300 rounded"
+                          >
+                            <option value="PASS">{t('pass')}</option>
+                            <option value="FAIL">{t('fail')}</option>
+                          </select>
+                        </div>
+
+                        {subject.locked && subject.currentMax !== undefined && subject.currentMax !== subject.total && (
                           <button
                             type="button"
                             onClick={() => updateFormRow(index, 'total', subject.currentMax)}
                             className="text-xs text-[#B99652] hover:text-[#a38241] font-medium"
                           >
-                            {t('remove')}
+                            This result was saved out of {subject.total}. Use the current maximum ({subject.currentMax})
                           </button>
                         )}
                       </div>
-                      
-                      <div className="grid grid-cols-3 gap-2">
-                        <input
-                          type="number"
-                          value={subject.marks}
-                          onChange={(e) => updateSubject(index, 'marks', e.target.value)}
-                          placeholder={t('marks')}
-                          min="0"
-                          className="px-2 py-1 text-sm border border-gray-300 rounded"
-                          required
-                        />
-                        <input
-                          type="number"
-                          value={subject.total}
-                          onChange={(e) => updateSubject(index, 'total', e.target.value)}
-                          placeholder={t('total_marks')}
-                          min="0"
-                          className="px-2 py-1 text-sm border border-gray-300 rounded"
-                        />
-                        <select
-                          value={subject.status}
-                          onChange={(e) => updateSubject(index, 'status', e.target.value)}
-                          className="px-2 py-1 text-sm border border-gray-300 rounded"
-                        >
-                          <option value="PASS">{t('pass')}</option>
-                          <option value="FAIL">{t('fail')}</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
 

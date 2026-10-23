@@ -164,7 +164,7 @@ const getAllAnnouncements = async (req, res) => {
       // 2. General announcements for students (where targetUserId IS NULL and not a fee reminder)
       // 3. Legacy reminders matching student's name
       // 4. Announcements created by mentors for courses the student is enrolled in
-      query += ` AND (
+      audience = `(
         (a.publishFor IN ('students', 'both') AND (
           (a.targetUserId IS NOT NULL AND a.targetUserId = ?)
           OR (a.targetUserId IS NULL AND a.title NOT LIKE '%Fee Payment Reminder%')
@@ -191,7 +191,7 @@ const getAllAnnouncements = async (req, res) => {
       // broadcasts to everyone, never announcements targeted at a specific
       // user or student fee reminders. Unknown roles must not fall through to
       // the unfiltered admin view.
-      query += ` AND (
+      audience = `(
         a.publishFor = 'both'
         AND a.targetUserId IS NULL
         AND a.title NOT LIKE '%Fee Payment Reminder%'
@@ -208,13 +208,8 @@ const getAllAnnouncements = async (req, res) => {
 
     // Prepare query params: universityId, the user (targeted rows), then userId for the role subquery
     let params = [universityId, userId];
-    if (role === 'student') params.push(userId, userId);
+    if (role === 'student') params.push(userId, userId, userId, userId);
     else if (role === "mentor" || role === "teacher" || role === "faculty") params.push(userId, userId);
-
-    // Prepare query params: universityId is always first, then userId for subqueries
-    let params = [universityId];
-    if (role === 'student') params.push(userId, userId, userId);
-    else if (role === "mentor" || role === "teacher" || role === "faculty") params.push(userId);
     
     getDb(req).all(query, params, (err, announcements) => {
       if (err) {
