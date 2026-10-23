@@ -104,7 +104,7 @@ describe('migration 006: existing single-answer MCQ data is preserved', () => {
     assert.deepEqual(names(post).filter((n) => !names(pre).includes(n)), ['aia_attempt_responses']);
     assert.deepEqual(names(pre).filter((n) => !names(post).includes(n)), ['uq_aia_options_one_correct']);
     const cols = (db) => rows(db, 'PRAGMA table_info(aia_questions)').map((c) => c.name);
-    assert.deepEqual(cols(post).filter((c) => !cols(pre).includes(c)), ['question_type', 'numeric_answer', 'numeric_format']);
+    assert.deepEqual(cols(post).filter((c) => !cols(pre).includes(c)), ['question_type', 'numeric_answer', 'numeric_format', 'image_key']); // image_key comes from migration 009, also part of the current schema
     for (const t of ['aia_assessments', 'aia_options', 'aia_attempts', 'aia_attempt_answers', 'aia_attempt_archive']) {
       assert.equal(post.prepare('SELECT sql FROM sqlite_master WHERE name = ?').get(t).sql, pre.prepare('SELECT sql FROM sqlite_master WHERE name = ?').get(t).sql, t);
     }

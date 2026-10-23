@@ -21,6 +21,14 @@ const ASSIGNMENT_TABLES = Object.freeze(['aia_assignments', 'aia_assignment_ques
 function assignmentMethods(db) {
   const plain = (row) => (row ? { ...row } : null);
   let supported;
+  let imagesSupported;
+  /** Migration 009 applied to the assignment questions. */
+  const hasImages = () => {
+    if (imagesSupported === undefined) {
+      imagesSupported = db.prepare('PRAGMA table_info(aia_assignment_questions)').all().some((c) => c.name === 'image_key');
+    }
+    return imagesSupported;
+  };
 
   return {
     /** Migration 007 applied. Without it only the assignment routes are unavailable (503). */
@@ -70,15 +78,20 @@ function assignmentMethods(db) {
     },
 
     listAssignmentQuestions(assignmentId) {
-      return db.prepare('SELECT id, position, text, max_marks AS maxMarks FROM aia_assignment_questions WHERE assignment_id = ? ORDER BY position')
-        .all(assignmentId).map(plain);
+      return db.prepare(`SELECT id, position, text, max_marks AS maxMarks${hasImages() ? ', image_key AS imageKey' : ''} FROM aia_assignment_questions WHERE assignment_id = ? ORDER BY position`)
+        .all(assignmentId).map((q) => ({ ...q, imageKey: q.imageKey ?? null }));
     },
 
     /** Replaces ALL questions (add/edit/remove/reorder in one step). Caller runs this in a transaction. */
     replaceAssignmentQuestions(assignmentId, questions) {
       db.prepare('DELETE FROM aia_assignment_questions WHERE assignment_id = ?').run(assignmentId);
-      const insert = db.prepare('INSERT INTO aia_assignment_questions (assignment_id, position, text, max_marks) VALUES (?, ?, ?, ?)');
-      questions.forEach((q, i) => insert.run(assignmentId, i + 1, q.text, q.maxMarks));
+      if (hasImages()) {
+        const insert = db.prepare('INSERT INTO aia_assignment_questions (assignment_id, position, text, max_marks, image_key) VALUES (?, ?, ?, ?, ?)');
+        questions.forEach((q, i) => insert.run(assignmentId, i + 1, q.text, q.maxMarks, q.imageKey ?? null));
+      } else {
+        const insert = db.prepare('INSERT INTO aia_assignment_questions (assignment_id, position, text, max_marks) VALUES (?, ?, ?, ?)');
+        questions.forEach((q, i) => insert.run(assignmentId, i + 1, q.text, q.maxMarks));
+      }
       db.prepare('UPDATE aia_assignments SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(assignmentId);
     },
 

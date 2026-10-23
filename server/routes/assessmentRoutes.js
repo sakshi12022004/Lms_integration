@@ -51,6 +51,12 @@ router.get(
   controller.getAssessmentQuestions
 );
 
+// Picture of one question (private file; access checked in the controller)
+router.get(
+  "/questions/:questionId/image",
+  authMiddleware,
+  controller.getQuestionImage
+);
 // Publish assessment
 router.put(
   "/:assessmentId/publish",

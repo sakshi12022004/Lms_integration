@@ -8,6 +8,8 @@ const {
   getAllAnnouncements,
   deleteAnnouncement,
   markAsRead,
+  getAnnouncement,
+  suggestNotificationText,
 } = require("../controllers/announcementController");
 
 // authMiddleware falls back to a "guest" user (userId null) when the token is
@@ -27,6 +29,12 @@ router.post("/", authMiddleware, requireAuthenticatedUser, roleMiddleware(["admi
 
 // Get announcements (Role based)
 router.get("/", authMiddleware, requireAuthenticatedUser, getAllAnnouncements);
+
+// Suggest a short notification message for preview (Admin / Mentor)
+router.post("/suggest-text", authMiddleware, suggestNotificationText);
+
+// Get one announcement / notification the user is allowed to see
+router.get("/:id", authMiddleware, getAnnouncement);
 
 // Delete announcement (Admin / Creator)
 router.delete("/:id", authMiddleware, requireAuthenticatedUser, deleteAnnouncement);

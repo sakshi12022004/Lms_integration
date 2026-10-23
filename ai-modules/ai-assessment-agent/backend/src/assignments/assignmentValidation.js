@@ -1,4 +1,5 @@
 const { AssessmentError } = require('../core/errors');
+const { parseImageKey } = require('../core/questionImage');
 
 /**
  * Descriptive Assignments - deterministic validation of teacher input. Unknown fields are
@@ -10,7 +11,7 @@ const LIMITS = Object.freeze({
   marksMin: 1, marksMax: 1000, feedbackMax: 4000,
 });
 const ASSIGNMENT_FIELDS = Object.freeze(['title', 'instructions', 'classroomId', 'maxMarks', 'dueAt']);
-const QUESTION_FIELDS = Object.freeze(['text', 'maxMarks']);
+const QUESTION_FIELDS = Object.freeze(['text', 'maxMarks', 'imageKey']);
 const EVALUATION_FIELDS = Object.freeze(['finalMarks', 'teacherFeedback', 'questionMarks']);
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/; // explicit timezone
 
@@ -73,7 +74,11 @@ function validateQuestionsInput(input) {
     const at = `questions[${i}].`;
     if (!isObject(q)) { details.push({ field: `questions[${i}]`, code: 'MUST_BE_OBJECT' }); return null; }
     unknown(q, QUESTION_FIELDS, at, details);
-    return { text: text(q.text, `${at}text`, LIMITS.questionTextMax, details, true), maxMarks: marks(q.maxMarks, `${at}maxMarks`, details) };
+    return {
+      text: text(q.text, `${at}text`, LIMITS.questionTextMax, details, true),
+      maxMarks: marks(q.maxMarks, `${at}maxMarks`, details),
+      imageKey: parseImageKey(q.imageKey, `${at}imageKey`, details), // optional picture
+    };
   });
   if (details.length > 0) throw fail('The questions are not valid.', details);
   return questions;

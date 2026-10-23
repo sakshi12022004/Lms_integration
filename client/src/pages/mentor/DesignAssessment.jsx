@@ -1,14 +1,22 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/auth";
 import { useTranslation } from "../../context/TranslationContext";
 import MentorLayout from "../../components/MentorLayout";
 import { toast } from "react-toastify";
+import { QuestionImageField, LegacyQuestionImage } from "../../components/QuestionImage";
 
 const DesignAssessment = () => {
   const { assessmentId } = useParams();
   const { API, token } = useAuth();
   const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const [assessment, setAssessment] = useState(null); // loaded from the server, including isPublished
+  const [publishing, setPublishing] = useState(false);
+  const [justPublished, setJustPublished] = useState(false);
+  const publishLock = useRef(false); // set immediately, so rapid clicks send one request
+  const isPublished = !!assessment?.isPublished;
 
   const [questionType, setQuestionType] = useState("text"); // text | image
   const [questionText, setQuestionText] = useState("");
@@ -20,12 +28,15 @@ const DesignAssessment = () => {
   // Load existing questions
   useEffect(() => {
     setQuestions([]); // Reset questions on load
+    setAssessment(null);
+    setJustPublished(false);
     fetch(`${API}/assessments/questions/${assessmentId}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => {
         // Handle new response structure { assessment, questions }
+        if (data.assessment) setAssessment(data.assessment); // a refresh shows the real published state
         if (data.questions) {
           setQuestions(data.questions);
         } else if (Array.isArray(data)) {
@@ -62,7 +73,7 @@ const DesignAssessment = () => {
       return;
     }
     if (questionType === "image" && !questionImage) {
-      toast.error("Question image URL is required");
+      toast.error("Add the picture for this question");
       return;
     }
     if (options.some(opt => !opt.trim())) {
@@ -73,8 +84,8 @@ const DesignAssessment = () => {
     try {
       const payload = {
         assessmentId,
-        questionText: questionType === "text" ? questionText : "",
-        questionImage: questionType === "image" ? questionImage : "",
+        questionText,
+        questionImage: questionImage || "", // optional for a text question, required for a picture question
         options,
         correctOptionIndex: correctIndex
       };
@@ -100,7 +111,15 @@ const DesignAssessment = () => {
   };
 
   const publishAssessment = async () => {
+    if (publishLock.current || publishing || isPublished) return; // a second click does nothing
+    if (questions.length === 0) {
+      toast.error("Add at least one question before publishing");
+      return;
+    }
+
+    publishLock.current = true;
     try {
+      setPublishing(true);
       const res = await fetch(
         `${API}/assessments/${assessmentId}/publish`,
         {
@@ -108,17 +127,67 @@ const DesignAssessment = () => {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
+      const data = await res.json().catch(() => ({}));
 
-      if (!res.ok) throw new Error();
-      toast.success("Assessment published");
-    } catch {
-      toast.error("Publish failed");
+      // 409 = the server says it is already published: show the published state, change nothing
+      if (res.status === 409 && data.alreadyPublished) {
+        setAssessment(prev => ({ ...(prev || {}), ...(data.assessment || {}), isPublished: 1 }));
+        toast.info("This assessment is already published");
+        return;
+      }
+      if (!res.ok) throw new Error(data.message);
+
+      setAssessment(prev => ({ ...(prev || {}), ...(data.assessment || {}), isPublished: 1 }));
+      setJustPublished(true);
+      toast.success("Assessment published successfully.");
+    } catch (err) {
+      toast.error(err?.message || "Publish failed");
+    } finally {
+      publishLock.current = false;
+      setPublishing(false);
     }
   };
 
   return (
     <MentorLayout>
       <div className="max-w-4xl mx-auto p-6">
+
+        {/* PUBLISHED STATE */}
+        {isPublished && (
+          <div className="mb-6 p-5 bg-[#fffdf4] border border-[#ebdcaa]" data-testid="assessment-published">
+            <h3 className="text-lg font-bold text-[#1e1b4b]">
+              {justPublished ? "Assessment published successfully." : "This assessment is published."}
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {assessment?.title ? `"${assessment.title}" is ` : "It is "}
+              now available to the students of the course. It cannot be published again.
+            </p>
+            <div className="flex flex-wrap gap-3 mt-4">
+              {assessment?.courseId && (
+                <button
+                  onClick={() => navigate(`/mentor/course/${assessment.courseId}`)}
+                  className="px-4 py-2 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none font-semibold text-sm"
+                >
+                  View Course
+                </button>
+              )}
+              <button
+                onClick={() => navigate("/mentor/classroom")}
+                className="px-4 py-2 border border-[#B99652] text-[#B99652] hover:bg-white rounded-none font-semibold text-sm"
+              >
+                Back to Classroom
+              </button>
+              {assessment?.courseId && (
+                <button
+                  onClick={() => navigate("/mentor/create-assessment", { state: { courseId: assessment.courseId } })}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-none font-semibold text-sm"
+                >
+                  Create New Assessment
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* QUESTION LIST */}
         {questions.map((q, idx) => (
@@ -134,13 +203,7 @@ const DesignAssessment = () => {
               <p className="mb-3">{q.questionText}</p>
             )}
 
-            {q.questionImage && (
-              <img
-                src={q.questionImage}
-                alt="Question"
-                className="mb-3 max-h-60 rounded"
-              />
-            )}
+            <LegacyQuestionImage question={q} className="mb-3 max-h-60 rounded" />
 
             <ul className="space-y-1">
               {q.options.map((opt, i) => (
@@ -159,7 +222,8 @@ const DesignAssessment = () => {
           </div>
         ))}
 
-        {/* QUESTION EDITOR */}
+        {/* QUESTION EDITOR (drafts only) */}
+        {!isPublished && (
         <div className="mt-8 p-6 bg-white border rounded-xl shadow">
           <h3 className="text-lg font-bold mb-4">
             Add New Question
@@ -187,22 +251,16 @@ const DesignAssessment = () => {
           </div>
 
           {/* Question Input */}
-          {questionType === "text" ? (
-            <textarea
-              className="w-full border p-2 rounded mb-4"
-              placeholder="Enter question text"
-              value={questionText}
-              onChange={e => setQuestionText(e.target.value)}
-            />
-          ) : (
-            <input
-              type="text"
-              placeholder="Paste image URL"
-              className="w-full border p-2 rounded mb-4"
-              value={questionImage || ""}
-              onChange={e => setQuestionImage(e.target.value)}
-            />
-          )}
+          <textarea
+            className="w-full border p-2 rounded mb-3"
+            placeholder={questionType === "text" ? "Enter question text" : "Question text (optional for a picture question)"}
+            value={questionText}
+            onChange={e => setQuestionText(e.target.value)}
+          />
+          {/* Optional picture for a text question; the question itself for a picture question */}
+          <div className="mb-4">
+            <QuestionImageField imageKey={questionImage} onChange={setQuestionImage} />
+          </div>
 
           {/* OPTIONS */}
           {options.map((opt, i) => (
@@ -236,13 +294,19 @@ const DesignAssessment = () => {
           </button>
         </div>
 
-        {/* PUBLISH */}
-        <button
-          onClick={publishAssessment}
-          className="w-full mt-8 py-3 bg-green-600 text-white rounded-xl font-semibold"
-        >
-          Publish Assessment
-        </button>
+        )}
+
+        {/* PUBLISH (drafts only) */}
+        {!isPublished && (
+          <button
+            onClick={publishAssessment}
+            disabled={publishing || !assessment}
+            data-testid="publish-assessment"
+            className="w-full mt-8 py-3 bg-green-600 text-white rounded-xl font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {publishing ? "Publishing..." : "Publish Assessment"}
+          </button>
+        )}
 
       </div>
     </MentorLayout>

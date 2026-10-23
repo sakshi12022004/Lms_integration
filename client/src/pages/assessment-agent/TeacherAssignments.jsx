@@ -8,6 +8,7 @@ import {
 import MentorLayout from "../../components/MentorLayout";
 import AssignmentSubmissions from "./AssignmentSubmissions";
 import { useAuth } from "../../auth/auth";
+import { QuestionImageField } from "../../components/QuestionImage";
 import {
   ASSIGNMENT_STATUS, Badge, Stepper, TEACHER_FLOW, apiError, dueText, toIso, toLocalInput,
 } from "./assignmentUi";
@@ -19,7 +20,7 @@ import {
  */
 
 const EMPTY = { title: "", instructions: "", classroomId: "", maxMarks: 10, dueAt: "" };
-const newQuestion = () => ({ key: Math.random().toString(36).slice(2), text: "", maxMarks: 5 });
+const newQuestion = () => ({ key: Math.random().toString(36).slice(2), text: "", maxMarks: 5, imageKey: null });
 const classLabel = (c) => (c ? `${c.name} (Grade ${c.grade}${c.section ? ` ${c.section}` : ""})` : "—");
 
 function Card({ title, subtitle, children, right }) {
@@ -210,7 +211,7 @@ function Editor({ base, auth, classrooms, id, onBack, onOpenSubmissions }) {
   const accept = (a) => {
     setAssignment(a);
     setForm({ title: a.title, instructions: a.instructions, classroomId: String(a.classroomId), maxMarks: a.maxMarks, dueAt: toLocalInput(a.dueAt) });
-    setQuestions(a.questions.length ? a.questions.map((q) => ({ key: String(q.id), text: q.text, maxMarks: q.maxMarks })) : [newQuestion()]);
+    setQuestions(a.questions.length ? a.questions.map((q) => ({ key: String(q.id), text: q.text, maxMarks: q.maxMarks, imageKey: q.imageKey || null })) : [newQuestion()]);
   };
   useEffect(() => {
     if (!id) return;
@@ -225,7 +226,7 @@ function Editor({ base, auth, classrooms, id, onBack, onOpenSubmissions }) {
 
   const save = async () => {
     const details = { title: form.title, instructions: form.instructions, classroomId: form.classroomId === "" ? null : Number(form.classroomId), maxMarks: Number(form.maxMarks), dueAt: toIso(form.dueAt) };
-    const body = { questions: questions.filter((q) => q.text.trim() !== "").map((q) => ({ text: q.text, maxMarks: Number(q.maxMarks) })) };
+    const body = { questions: questions.filter((q) => q.text.trim() !== "").map((q) => ({ text: q.text, maxMarks: Number(q.maxMarks), imageKey: q.imageKey || null })) };
     let a = assignment;
     a = a ? (await axios.patch(`${base}/assignments/${a.id}`, details, auth)).data.assignment : (await axios.post(`${base}/assignments`, details, auth)).data.assignment;
     a = (await axios.put(`${base}/assignments/${a.id}/questions`, body, auth)).data.assignment;
@@ -417,6 +418,7 @@ function Editor({ base, auth, classrooms, id, onBack, onOpenSubmissions }) {
                   onChange={(e) => setQ(i, { text: e.target.value })}
                   data-testid="aia-asg-question"
                 />
+                <QuestionImageField imageKey={q.imageKey} onChange={(imageKey) => setQ(i, { imageKey })} disabled={locked || busy} />
                 <label className="inline-flex items-center gap-2 text-xs font-bold text-[#665e4d]">
                   <span>Marks for this question:</span>
                   <input

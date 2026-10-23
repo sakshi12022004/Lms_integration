@@ -9,6 +9,8 @@ const { publicTemplates } = require('../core/ai/generationTemplates');
 const { publicFocuses, validateReportRequest } = require('../core/ai/reportFocus');
 const { QUESTION_TYPES } = require('../core/questionTypes');
 const { registerAssignmentRoutes } = require('../assignments/assignmentRoutes'); // Descriptive Assignments
+const { AssignmentService } = require('../assignments/AssignmentService');
+const { validateImageUpload, contentTypeOfKey, MAX_IMAGE_BYTES, IMAGE_CONTENT_TYPES, IMAGE_KEY } = require('../core/questionImage');
 
 /**
  * HTTP layer of the assessment agent. It knows nothing about the LMS
@@ -66,14 +68,32 @@ const { registerAssignmentRoutes } = require('../assignments/assignmentRoutes');
  * `generator` (core/ai/AssessmentGenerator) is optional. Without it the AI
  * routes answer 503 AI_NOT_CONFIGURED and everything else works as in Step 1.
  * `now` is the server clock used for attempt deadlines (injectable for tests).
+ *
+ * `onEvent` is optional. After one of these actions has SUCCEEDED and the response was sent, the
+ * host is told what happened so it can notify people: assessment.published, assignment.published,
+ * assignment.submitted, assignment.evaluated, attempt.submitted, report.shared. The event carries
+ * only the school and user from the verified session plus the ids involved - never request data.
+ * A failing handler is logged and ignored; it cannot affect the request.
  */
 function createAssessmentRouter({ express, openAdapter, generator = null, throttle = new GenerationThrottle(), now = () => Date.now(), analyst = null, analysisThrottle = new GenerationThrottle(), fileStore = null, assignmentEvaluator = null,
-  evaluationThrottle = new GenerationThrottle({ maxPerWindow: 60 }) }) {
+  evaluationThrottle = new GenerationThrottle({ maxPerWindow: 60 }), onEvent = null, imageStore = null }) {
   if (!express || typeof express.Router !== 'function') throw new TypeError('createAssessmentRouter requires the host app\'s express.');
   if (typeof openAdapter !== 'function') throw new TypeError('createAssessmentRouter requires openAdapter().');
 
   const router = express.Router();
   router.use(express.json({ limit: '64kb' }));
+
+  /** Reports a finished action to the host (see `onEvent` above). Deferred, and never throws. */
+  const emit = (name, actor, data = {}) => {
+    if (typeof onEvent !== 'function') return;
+    setImmediate(() => {
+      try {
+        onEvent({ name, universityId: actor.universityId, actorId: actor.userId, ...data });
+      } catch (err) {
+        console.error('[ai-assessment-agent] event handler failed:', name);
+      }
+    });
+  };
 
   /**
    * Opens the adapter, re-derives the actor from the session, runs one service call, closes.
@@ -82,7 +102,7 @@ function createAssessmentRouter({ express, openAdapter, generator = null, thrott
    * after its callback returns. Running our synchronous write inside that callback would
    * wait on a lock that cannot be released until we return (deadlock until busy_timeout).
    */
-  const handle = (fn, status = 200) => (req, res, next) => setImmediate(() => {
+  const handle = (fn, status = 200, event = null) => (req, res, next) => setImmediate(() => {
     let opened;
     try {
       opened = openAdapter();
@@ -94,6 +114,8 @@ function createAssessmentRouter({ express, openAdapter, generator = null, thrott
       const attempts = new AttemptService({ adapter: opened.adapter, now }); // Step 3; `now` = server clock
       const out = fn(service, actor, req, attempts, opened.adapter);
       res.status(typeof status === 'function' ? status(out) : status).json(out);
+      const happened = event ? event(out, req) : null;
+      if (happened) emit(happened.name, actor, happened.data);
     } catch (err) {
       next(err);
     } finally {
@@ -170,7 +192,8 @@ function createAssessmentRouter({ express, openAdapter, generator = null, thrott
   router.post('/teacher/assessments/:id/questions', handle((s, a, req) => ({ assessment: s.addQuestion(a, req.params.id, jsonBody(req)) }), 201));
   router.put('/teacher/assessments/:id/questions/:questionId', handle((s, a, req) => ({ assessment: s.updateQuestion(a, req.params.id, req.params.questionId, jsonBody(req)) })));
   router.delete('/teacher/assessments/:id/questions/:questionId', handle((s, a, req) => ({ assessment: s.deleteQuestion(a, req.params.id, req.params.questionId) })));
-  router.post('/teacher/assessments/:id/publish', handle((s, a, req) => ({ assessment: s.publish(a, req.params.id, optionalBody(req)) })));
+  router.post('/teacher/assessments/:id/publish', handle((s, a, req) => ({ assessment: s.publish(a, req.params.id, optionalBody(req)) }), 200,
+    (out) => ({ name: 'assessment.published', data: { assessmentId: out.assessment.id } })));
   router.post('/teacher/assessments/:id/unpublish', handle((s, a, req) => (emptyBody(req), { assessment: s.unpublish(a, req.params.id) })));
 
   // Teacher, results (Step 3)
@@ -222,7 +245,8 @@ function createAssessmentRouter({ express, openAdapter, generator = null, thrott
   router.post('/teacher/assessments/:id/students/:studentId/reset', handle((s, a, req, t) => (emptyBody(req), t.resetAttempt(a, req.params.id, req.params.studentId))));
   // Shared AI Performance Reports (migration 008). No AI call on any of these routes.
   router.post('/teacher/performance-reports/:reportId/share', handle((s, a, req, t, adapter) =>
-    (emptyBody(req), new PerformanceReportService({ adapter, now }).share(a, req.params.reportId))));
+    (emptyBody(req), new PerformanceReportService({ adapter, now }).share(a, req.params.reportId)), 200,
+    (out) => (out.alreadyShared ? null : { name: 'report.shared', data: { reportId: out.report.id } }))); // first share only
   router.get('/student/performance-reports', handle((s, a, req, t, adapter) => ({ reports: new PerformanceReportService({ adapter, now }).listForStudent(a) })));
   router.get('/student/performance-reports/:reportId', handle((s, a, req, t, adapter) => ({ report: new PerformanceReportService({ adapter, now }).getForStudent(a, req.params.reportId) })));
 
@@ -259,11 +283,83 @@ function createAssessmentRouter({ express, openAdapter, generator = null, thrott
   router.post('/student/assessments/:id/attempt', handle((s, a, req, t) => (emptyBody(req), t.startAttempt(a, req.params.id)), (out) => (out.created ? 201 : 200)));
   router.get('/student/attempts/:attemptId', handle((s, a, req, t) => ({ attempt: t.getAttempt(a, req.params.attemptId) })));
   router.put('/student/attempts/:attemptId/answers/:questionId', handle((s, a, req, t) => t.saveAnswer(a, req.params.attemptId, req.params.questionId, jsonBody(req))));
-  router.post('/student/attempts/:attemptId/submit', handle((s, a, req, t) => (emptyBody(req), t.submit(a, req.params.attemptId))));
+  router.post('/student/attempts/:attemptId/submit', handle((s, a, req, t) => (emptyBody(req), t.submit(a, req.params.attemptId)), 200,
+    (out, req) => ({ name: 'attempt.submitted', data: { attemptId: Number(req.params.attemptId) } })));
   router.get('/student/attempts/:attemptId/result', handle((s, a, req, t) => ({ attempt: t.getResult(a, req.params.attemptId) })));
 
+  /**
+   * Question pictures (migration 009), only when the host provides an `imageStore`.
+   *   POST /teacher/question-images                              raw image body -> { image: { key } }; the key then goes in a question's `imageKey`
+   *   GET  /teacher/question-images/:key                         the picture, for the teacher's editor / review
+   *   GET  /student/assessments/:id/questions/:questionId/image  picture of a question of a test the student may see
+   *   GET  /student/assignments/:id/questions/:position/image    picture of a question of an assignment the student may see
+   * Students never receive keys: the server finds the key after checking that the student may see the question.
+   */
+  if (imageStore) {
+    /** Opens the adapter, resolves the actor, runs a synchronous step, closes. */
+    const withActor = (req, fn) => {
+      const opened = openAdapter();
+      try {
+        if (!opened.adapter.isReady()) throw new AssessmentError('NOT_READY', 'Assessments are not available yet.', { statusCode: 503 });
+        return fn(opened.adapter.resolveActor(req.user), opened.adapter);
+      } finally {
+        opened.close();
+      }
+    };
+    const requireTeacherActor = (req) => withActor(req, (actor, adapter) => {
+      new AssessmentService({ adapter, now }).assertTeacher(actor);
+      if (!adapter.supportsQuestionImages()) {
+        throw new AssessmentError('IMAGES_NOT_READY', 'Question pictures are not available yet (a database update is pending).', { statusCode: 503 });
+      }
+      return actor;
+    });
+    const sendImage = async (res, key) => {
+      let bytes;
+      try {
+        bytes = await imageStore.read(key);
+      } catch {
+        throw new AssessmentError('IMAGE_NOT_FOUND', 'The picture is not available.', { statusCode: 404 });
+      }
+      res.set({
+        'Content-Type': contentTypeOfKey(key),
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Security-Policy': "default-src 'none'; sandbox",
+        'Cache-Control': 'private, max-age=300',
+      });
+      res.send(bytes);
+    };
+
+    router.post('/teacher/question-images', express.raw({ type: IMAGE_CONTENT_TYPES, limit: MAX_IMAGE_BYTES }), (req, res, next) => setImmediate(async () => {
+      try {
+        requireTeacherActor(req); // session + role before touching the bytes
+        const image = validateImageUpload({ buffer: Buffer.isBuffer(req.body) ? req.body : undefined, contentType: req.get('content-type') });
+        const { storageKey } = await imageStore.save(image.buffer, image.extension);
+        res.status(201).json({ image: { key: storageKey } });
+      } catch (err) { next(err); }
+    }));
+    router.get('/teacher/question-images/:key', (req, res, next) => setImmediate(async () => {
+      try {
+        requireTeacherActor(req);
+        if (!IMAGE_KEY.test(req.params.key)) throw new AssessmentError('IMAGE_NOT_FOUND', 'The picture is not available.', { statusCode: 404 });
+        await sendImage(res, req.params.key);
+      } catch (err) { next(err); }
+    }));
+    router.get('/student/assessments/:id/questions/:questionId/image', (req, res, next) => setImmediate(async () => {
+      try {
+        const key = withActor(req, (actor, adapter) => new AssessmentService({ adapter, now }).questionImageForStudent(actor, req.params.id, req.params.questionId));
+        await sendImage(res, key);
+      } catch (err) { next(err); }
+    }));
+    router.get('/student/assignments/:id/questions/:position/image', (req, res, next) => setImmediate(async () => {
+      try {
+        const key = withActor(req, (actor, adapter) => new AssignmentService({ adapter, now }).questionImageForStudent(actor, req.params.id, req.params.position));
+        await sendImage(res, key);
+      } catch (err) { next(err); }
+    }));
+  }
+
   // Descriptive Assignments (remove this block to remove the feature's routes).
-  if (fileStore) registerAssignmentRoutes({ router, express, handle, openAdapter, fileStore, now, emptyBody, jsonBody, evaluator: assignmentEvaluator, evaluationThrottle });
+  if (fileStore) registerAssignmentRoutes({ router, express, handle, openAdapter, fileStore, now, emptyBody, jsonBody, evaluator: assignmentEvaluator, evaluationThrottle, emit });
 
   // Unknown paths end here instead of falling through to the host's catch-all routes.
   router.use((req, res, next) => next(new AssessmentError('ROUTE_NOT_FOUND', 'Not found.', { statusCode: 404 })));

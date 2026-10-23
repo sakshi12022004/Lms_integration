@@ -103,8 +103,13 @@ const CreateAnnouncementModal = ({
       }
 
       // MENTOR PAYLOAD
-      if (user.role === "mentor") {
-        payload.courseId = form.courseId;
+      if (isTeacher) {
+        if (forCourse) {
+          payload.classroomId = Number(target.classroomId);
+          payload.courseId = Number(target.courseId);
+        } else {
+          payload.allClasses = true; // the server sends it to every class and section this teacher is assigned to
+        }
       }
 
       const res = await fetch(`${API}/announcements`, {
@@ -129,6 +134,8 @@ const CreateAnnouncementModal = ({
         publishFor: "students",
         courseId: "",
       });
+      setTarget({ classroomId: "", courseId: "" });
+      setForCourse(false);
 
       onSuccess?.(); // 🔔 refresh bell instantly
       onClose();

@@ -52,7 +52,7 @@ describe('17. createAssessmentWithQuestions (teacher-reviewed save)', () => {
   it('an invalid question rejects the whole save and writes nothing', () => {
     const bad = reviewed('Bad?'); bad.options[2].isCorrect = true;
     try {
-      service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S' }, questions: [reviewed('Good?'), bad] });
+      service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S', classroomId: IDS.class10 }, questions: [reviewed('Good?'), bad] });
       assert.fail('should throw');
     } catch (err) {
       assert.deepEqual(err.details, [{ field: 'questions[1].options', code: 'MULTIPLE_CORRECT_OPTIONS' }]);
@@ -61,14 +61,14 @@ describe('17. createAssessmentWithQuestions (teacher-reviewed save)', () => {
   });
 
   it('requires at least one question and rejects extra top-level fields (status, ids, tenant)', () => {
-    assert.equal(code(() => service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S' }, questions: [] })), 'VALIDATION_FAILED');
+    assert.equal(code(() => service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S', classroomId: IDS.class10 }, questions: [] })), 'VALIDATION_FAILED');
     assert.equal(code(() => service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S', status: 'published' }, questions: [reviewed('Q?')] })), 'VALIDATION_FAILED');
-    assert.equal(code(() => service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S' }, questions: [reviewed('Q?')], publish: true, universityId: 2 })), 'VALIDATION_FAILED');
+    assert.equal(code(() => service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S', classroomId: IDS.class10 }, questions: [reviewed('Q?')], publish: true, universityId: 2 })), 'VALIDATION_FAILED');
     assert.equal(count('aia_assessments'), 0);
   });
 
   it('14/13. students (and non-teachers) cannot save', () => {
-    assert.equal(code(() => service.createAssessmentWithQuestions(st1, { assessment: { title: 'T', subject: 'S' }, questions: [reviewed('Q?')] })), 'FORBIDDEN');
+    assert.equal(code(() => service.createAssessmentWithQuestions(st1, { assessment: { title: 'T', subject: 'S', classroomId: IDS.class10 }, questions: [reviewed('Q?')] })), 'FORBIDDEN');
     assert.equal(code(() => service.assertTeacher(st1)), 'FORBIDDEN');
     assert.equal(count('aia_assessments'), 0);
   });
@@ -76,14 +76,14 @@ describe('17. createAssessmentWithQuestions (teacher-reviewed save)', () => {
   it('15. tenant isolation: another school\'s class is refused, and the saved draft is private', () => {
     assert.equal(code(() => service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S', classroomId: IDS.class20 }, questions: [reviewed('Q?')] })), 'VALIDATION_FAILED');
     assert.equal(count('aia_assessments'), 0);
-    const a = service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S' }, questions: [reviewed('Q?')] });
+    const a = service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S', classroomId: IDS.class10 }, questions: [reviewed('Q?')] });
     assert.equal(code(() => service.getOwnAssessment(t3, a.id)), 'NOT_FOUND');
     assert.equal(code(() => service.resolveGenerationTarget(t1, IDS.class20)), 'VALIDATION_FAILED');
     assert.equal(service.resolveGenerationTarget(t1, IDS.class10).grade, '10');
   });
 
   it('Step 1 manual edit keeps working and can edit the explanation', () => {
-    const a = service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S' }, questions: [reviewed('Q?')] });
+    const a = service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S', classroomId: IDS.class10 }, questions: [reviewed('Q?')] });
     const updated = service.updateQuestion(t1, a.id, a.questions[0].id, { ...reviewed('Q edited?', 2, 'New reason.'), difficulty: null });
     assert.deepEqual([updated.questions[0].text, updated.questions[0].explanation, updated.questions[0].difficulty], ['Q edited?', 'New reason.', null]);
   });
@@ -111,7 +111,7 @@ describe('migration 002 (explanation + difficulty columns)', () => {
   });
 
   it('the database refuses an unknown difficulty', () => {
-    const a = service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S' }, questions: [reviewed('Q?')] });
+    const a = service.createAssessmentWithQuestions(t1, { assessment: { title: 'T', subject: 'S', classroomId: IDS.class10 }, questions: [reviewed('Q?')] });
     assert.throws(() => db.prepare("UPDATE aia_questions SET difficulty = 'expert' WHERE assessment_id = ?").run(a.id), /CHECK/);
   });
 });

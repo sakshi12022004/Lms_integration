@@ -1,5 +1,8 @@
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 const db = require('../config/database-switch');
+const { get, all, run } = require('../helpers/dbAsync');
+const notifications = require('../services/notificationService');
+const { HttpError, CLASSROOM_ACCESS_SQL, authorizeClassroom, authorizeCourse, listClassrooms } = require('../helpers/teachingScope');
 
 
 
@@ -13,6 +16,51 @@ const db = require('../config/database-switch');
  * Mentor:
  *  - courseId required
  */
+/**
+ * Optional notification for a new event. The audience is the event's own audience:
+ *   course event        -> the students enrolled in that course
+ *   class/section event -> the students of that classroom
+ *   school-wide event   -> students / mentors / both of the creator's school (admin only)
+ * Runs after the response; a notification problem never fails the event.
+ */
+const notifyEventAudience = async (event, user, customMessage) => {
+  try {
+    let recipientIds = [];
+    if (event.courseId) {
+      recipientIds = await notifications.studentsOfCourse(event.courseId, event.university_id);
+    } else if (event.classroomId) {
+      recipientIds = await notifications.studentsOfClassroom(event.classroomId, event.university_id);
+    } else if (event.createdByRole === "admin") {
+      const roles = [];
+      if (["students", "both"].includes(event.publishFor)) roles.push("student");
+      if (["mentors", "both"].includes(event.publishFor)) roles.push("mentor", "teacher");
+      if (roles.length > 0) recipientIds = await notifications.usersByRole(event.university_id, roles);
+    }
+
+    await notifications.notify({
+      type: "CALENDAR_EVENT",
+      data: { title: event.title, date: event.startDate },
+      customMessage,
+      universityId: event.university_id,
+      recipientIds: recipientIds.filter((id) => String(id) !== String(user.userId)),
+      entityType: "calendar_event",
+      entityId: event.id,
+      createdBy: user.userId,
+      createdByRole: user.role,
+    });
+  } catch (err) {
+    console.error("CALENDAR NOTIFY ERROR:", err.message);
+  }
+};
+
+const normalizePublishFor = (publishFor) => {
+  const pf = String(publishFor || "").toLowerCase().trim();
+  if (["faculty", "mentor", "mentors", "teachers"].includes(pf)) return "mentors";
+  if (["student", "students"].includes(pf)) return "students";
+  if (["both", "all"].includes(pf)) return "both";
+  return null;
+};
+
 const createCalendarEvent = async (req, res) => {
   try {
     if (!req.user || !req.user.userId) {
@@ -21,110 +69,84 @@ const createCalendarEvent = async (req, res) => {
 
     const userId = req.user.userId;
     const role = req.user.role;
+    const universityId = req.user.universityId || 1;
+    const isTeacher = role === "mentor" || role === "teacher";
 
-    const { title, description, startDate, endDate, publishFor, courseId } =
+    const { title, description, startDate, endDate, publishFor, courseId, classroomId, allClasses, notify, notifyMessage } =
       req.body;
+    const shouldNotify = notify === true || notify === "true";
 
     if (!title || !startDate || !endDate) {
       return res.status(400).json({ message: "Missing required fields" });
     }
-
-    // ========= ADMIN =========
-    if (role === "admin") {
-      if (!publishFor) {
-        return res
-          .status(400)
-          .json({ message: "publishFor is required" });
-      }
-
-      // Normalize publishFor: Convert legacy variants to canonical values
-      const pf = String(publishFor).toLowerCase().trim();
-      let normalized = pf;
-      if (pf === 'faculty' || pf === 'mentor' || pf === 'mentors' || pf === 'teachers') normalized = 'mentors';
-      else if (pf === 'student' || pf === 'students') normalized = 'students';
-      else if (pf === 'both' || pf === 'all') normalized = 'both';
-      else {
-        return res.status(400).json({ 
-          message: "publishFor must be 'students', 'mentors', or 'both'" 
-        });
-      }
-
-      console.log(`📅 Creating admin calendar event: publishFor '${publishFor}' -> normalized '${normalized}'`);
-
-      db.run(
-        `INSERT INTO calendar_events (title, description, startDate, endDate, publishFor, createdByRole, createdByUser, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-        [title, description, startDate, endDate, normalized, role, userId],
-        function(err) {
-          if (err) {
-            console.error("CREATE EVENT ERROR:", err);
-            return res.status(500).json({ message: "Server error" });
-          }
-          
-          console.log(`✅ Calendar event created with ID: ${this.lastID}`);
-          
-          // Fetch and return the created event
-          db.get(
-            `SELECT * FROM calendar_events WHERE id = ?`,
-            [this.lastID],
-            (err, event) => {
-              if (err) {
-                return res.status(500).json({ message: "Server error" });
-              }
-              return res.status(201).json(event);
-            }
-          );
-        }
-      );
-      return;
+    if (role !== "admin" && !isTeacher) {
+      return res.status(403).json({ message: "Not allowed" });
     }
 
-    // ========= MENTOR =========
-    if (role === "mentor") {
+    // Teacher, "Whole class and section": one event for every class and section the teacher is
+    // assigned to. The list comes from the server, never from the browser.
+    if (isTeacher && (allClasses === true || allClasses === "true") && !classroomId && !courseId) {
+      const classrooms = await listClassrooms(req);
+      if (classrooms.length === 0) {
+        return res.status(400).json({ message: "You are not assigned to any class yet" });
+      }
+      const events = [];
+      for (const classroom of classrooms) {
+        const added = await run(
+          `INSERT INTO calendar_events
+             (title, description, startDate, endDate, publishFor, courseId, classroomId, university_id, createdByRole, createdByUser, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, 'mentor', ?, datetime('now'), datetime('now'))`,
+          [title, description, startDate, endDate, classroom.id, universityId, userId]
+        );
+        const created = await get(`SELECT * FROM calendar_events WHERE id = ?`, [added.lastID]);
+        events.push(created);
+        if (shouldNotify) notifyEventAudience(created, req.user, notifyMessage);
+      }
+      return res.status(201).json({ ...events[0], events });
+    }
+
+    // Class / section and course are checked against what this user may manage.
+    let targetClassroomId = null;
+    let targetCourseId = null;
+    let audience = null; // school-wide audience (admin only)
+
+    if (classroomId) {
+      const classroom = await authorizeClassroom(req, classroomId);
+      targetClassroomId = classroom.id;
+      if (courseId) targetCourseId = (await authorizeCourse(req, courseId, classroom.id)).id;
+    } else if (isTeacher) {
+      // Older clients send a course only: accepted for a course the teacher may manage
       if (!courseId) {
-        return res
-          .status(400)
-          .json({ message: "courseId is required" });
+        return res.status(400).json({ message: "Class and section are required" });
       }
-
-      // Verify course exists
-      db.get(
-        `SELECT id FROM courses WHERE id = ?`,
-        [courseId],
-        (err, course) => {
-          if (err || !course) {
-            return res.status(404).json({ message: "Course not found" });
-          }
-
-          db.run(
-            `INSERT INTO calendar_events (title, description, startDate, endDate, courseId, createdByRole, createdByUser, createdAt, updatedAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-            [title, description, startDate, endDate, courseId, role, userId],
-            function(err) {
-              if (err) {
-                console.error("CREATE EVENT ERROR:", err);
-                return res.status(500).json({ message: "Server error" });
-              }
-
-              db.get(
-                `SELECT * FROM calendar_events WHERE id = ?`,
-                [this.lastID],
-                (err, event) => {
-                  if (err) {
-                    return res.status(500).json({ message: "Server error" });
-                  }
-                  return res.status(201).json(event);
-                }
-              );
-            }
-          );
-        }
-      );
-      return;
+      const course = await authorizeCourse(req, courseId);
+      targetCourseId = course.id;
+      targetClassroomId = course.classroomId || null;
+    } else {
+      // Admin, whole school
+      audience = normalizePublishFor(publishFor);
+      if (!publishFor) {
+        return res.status(400).json({ message: "publishFor is required" });
+      }
+      if (!audience) {
+        return res.status(400).json({ message: "publishFor must be 'students', 'mentors', or 'both'" });
+      }
     }
 
-    return res.status(403).json({ message: "Not allowed" });
+    const inserted = await run(
+      `INSERT INTO calendar_events
+         (title, description, startDate, endDate, publishFor, courseId, classroomId, university_id, createdByRole, createdByUser, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+      [title, description, startDate, endDate, audience, targetCourseId, targetClassroomId, universityId, isTeacher ? "mentor" : "admin", userId]
+    );
+    const event = await get(`SELECT * FROM calendar_events WHERE id = ?`, [inserted.lastID]);
+
+    if (shouldNotify) notifyEventAudience(event, req.user, notifyMessage);
+    return res.status(201).json(event);
   } catch (err) {
+    if (err instanceof HttpError) {
+      return res.status(err.status).json({ message: err.message });
+    }
     console.error("CREATE EVENT ERROR:", err);
     res.status(500).json({ message: "Server error" });
   }
@@ -134,6 +156,7 @@ const createCalendarEvent = async (req, res) => {
  * ==================================
  * GET CALENDAR EVENTS (ROLE BASED)
  * ==================================
+ * Always limited to the user's own school.
  */
 const getCalendarEvents = async (req, res) => {
   try {
@@ -143,100 +166,47 @@ const getCalendarEvents = async (req, res) => {
 
     const userId = req.user.userId;
     const role = req.user.role;
+    const universityId = req.user.universityId || 1;
 
-    // ========= ADMIN =========
+    // ========= ADMIN: every event of the school =========
     if (role === "admin") {
-      db.all(
-        `SELECT * FROM calendar_events ORDER BY startDate ASC`,
-        (err, events) => {
-          if (err) {
-            console.error("FETCH EVENTS ERROR:", err);
-            return res.status(500).json({ message: "Server error" });
-          }
-          console.log(`📅 Fetched ${(events || []).length} events for admin`);
-          return res.json(events || []);
-        }
+      return res.json(
+        await all(`SELECT * FROM calendar_events WHERE university_id = ? ORDER BY startDate ASC`, [universityId])
       );
-      return;
     }
 
     // ========= MENTOR =========
-    if (role === "mentor") {
-      // Mentor can see:
-      // 1. Their own events
-      // 2. Admin events published to mentors or both
-      db.all(
-        `SELECT * FROM calendar_events 
-         WHERE createdByUser = ? 
-         OR (createdByRole = 'admin' AND publishFor IN ('mentors', 'both'))
-         ORDER BY startDate ASC`,
-        [userId],
-        (err, events) => {
-          if (err) {
-            console.error("FETCH EVENTS ERROR:", err);
-            return res.status(500).json({ message: "Server error" });
-          }
-          console.log(`📅 Fetched ${(events || []).length} events for mentor`);
-          return res.json(events || []);
-        }
+    // Their own events, school-wide events for mentors, and events of classrooms they manage
+    if (role === "mentor" || role === "teacher") {
+      return res.json(
+        await all(
+          `SELECT e.* FROM calendar_events e
+           WHERE e.university_id = ? AND (
+             e.createdByUser = ?
+             OR (e.createdByRole = 'admin' AND e.classroomId IS NULL AND e.courseId IS NULL AND e.publishFor IN ('mentors', 'both'))
+             OR e.classroomId IN (SELECT c.id FROM classrooms c WHERE c.university_id = ? AND ${CLASSROOM_ACCESS_SQL})
+           )
+           ORDER BY e.startDate ASC`,
+          [universityId, userId, universityId, userId, userId, userId, userId]
+        )
       );
-      return;
     }
 
     // ========= STUDENT =========
+    // School-wide events for students, events of their courses, and class events of their classrooms
     if (role === "student") {
-      // Get courses where this student is enrolled
-      db.all(
-        `SELECT courseId FROM course_students WHERE studentId = ?`,
-        [userId],
-        (err, records) => {
-          if (err) {
-            console.error("FETCH COURSES ERROR:", err);
-            return res.status(500).json({ message: "Server error" });
-          }
-
-          const courseIds = records && records.length > 0 ? records.map(r => r.courseId) : [];
-          console.log(`📅 Student ${userId} enrolled in courses:`, courseIds);
-
-          // Student can see:
-          // 1. Admin events published to students or both
-          // 2. Mentor events in their courses
-          let query = `SELECT * FROM calendar_events 
-                      WHERE (createdByRole = 'admin' AND publishFor IN ('students', 'both'))`;
-          
-          if (courseIds && courseIds.length > 0) {
-            const placeholders = courseIds.map(() => '?').join(',');
-            query += ` OR (createdByRole = 'mentor' AND courseId IN (${placeholders}))`;
-            query += ` ORDER BY startDate ASC`;
-            
-            console.log(`📅 Student query with courses:`, query);
-            console.log(`📅 Student params:`, courseIds);
-
-            return db.all(query, courseIds, (err, events) => {
-              if (err) {
-                console.error("FETCH EVENTS ERROR:", err);
-                return res.status(500).json({ message: "Server error" });
-              }
-              console.log(`📅 Fetched ${events ? events.length : 0} events for student`);
-              return res.json(events || []);
-            });
-          }
-          
-          // No courses - just fetch admin events
-          query += ` ORDER BY startDate ASC`;
-          console.log(`📅 Student query without courses:`, query);
-
-          return db.all(query, (err, events) => {
-            if (err) {
-              console.error("FETCH EVENTS ERROR:", err);
-              return res.status(500).json({ message: "Server error" });
-            }
-            console.log(`📅 Fetched ${events ? events.length : 0} events for student (no courses)`);
-            return res.json(events || []);
-          });
-        }
+      return res.json(
+        await all(
+          `SELECT e.* FROM calendar_events e
+           WHERE e.university_id = ? AND (
+             (e.createdByRole = 'admin' AND e.classroomId IS NULL AND e.courseId IS NULL AND e.publishFor IN ('students', 'both'))
+             OR (e.courseId IS NOT NULL AND e.courseId IN (SELECT courseId FROM course_students WHERE studentId = ?))
+             OR (e.courseId IS NULL AND e.classroomId IN (SELECT classroomId FROM student_classroom_assignment WHERE studentId = ?))
+           )
+           ORDER BY e.startDate ASC`,
+          [universityId, userId, userId]
+        )
       );
-      return;
     }
 
     return res.status(403).json({ message: "Invalid role" });
@@ -286,7 +256,7 @@ const updateCalendarEvent = async (req, res) => {
         }
 
         // Build update query
-        const allowedFields = ['title', 'description', 'startDate', 'endDate', 'publishFor', 'courseId'];
+        const allowedFields = ['title', 'description', 'startDate', 'endDate']; // who the event is for cannot be changed here
         const updates = {};
         for (const field of allowedFields) {
           if (req.body.hasOwnProperty(field)) {

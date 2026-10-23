@@ -122,6 +122,7 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
   });
 
   const generate = () => locked(async () => { // explicit click only; one request per click
+    if (!form.classroomId) { toast.error("Choose the class these questions are for."); return; }
     setGenerating(true);
     setAiError(null);
     try {
@@ -190,6 +191,7 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
   });
 
   const save = () => locked(async () => { // also prevents a double-click from creating two drafts
+    if (!form.classroomId) { toast.error("Choose the class for this test."); return; }
     if (!questions.length) { toast.error("Add at least one question before saving."); return; }
     setSaving(true);
     try {
@@ -271,8 +273,11 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
                 className="p-2.5 border border-[#ebdcaa] rounded-none bg-white text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none"
                 value={form.classroomId}
                 onChange={(e) => setForm({ ...form, classroomId: e.target.value })}
+                required
+                aria-label="Classroom (required)"
+                data-testid="aia-gen-classroom"
               >
-                <option value="">Classroom (optional; required to publish)</option>
+                <option value="">Classroom (required)</option>
                 {classrooms.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
               </select>
               <div className="grid grid-cols-2 gap-3">

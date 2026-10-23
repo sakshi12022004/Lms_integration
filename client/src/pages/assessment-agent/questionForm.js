@@ -30,6 +30,7 @@ export const blankQuestion = (type = "single_mcq") => ({
   numericValue: "",
   explanation: "",
   difficulty: null,
+  imageKey: null, // optional picture (key of the uploaded file)
 });
 
 /** Server question (teacher view or AI proposal) -> editable state. */
@@ -46,6 +47,7 @@ export function toEditable(q) {
     numericValue: q.numericAnswer?.value ?? "",
     explanation: q.explanation || "",
     difficulty: q.difficulty || null,
+    imageKey: q.imageKey || null,
   };
 }
 
@@ -62,7 +64,7 @@ export function withType(q, type) {
 
 /** Editable state -> request body for POST/PUT questions and from-review. */
 export function toBody(q) {
-  const common = { type: q.type, text: q.text, explanation: q.explanation, difficulty: q.difficulty };
+  const common = { type: q.type, text: q.text, explanation: q.explanation, difficulty: q.difficulty, imageKey: q.imageKey || null };
   if (q.type === "numerical") return { ...common, numericAnswer: { format: q.numericFormat, value: String(q.numericValue).trim() } };
   return { ...common, options: q.options.map((text, i) => ({ text, isCorrect: q.correct.includes(i) })) };
 }

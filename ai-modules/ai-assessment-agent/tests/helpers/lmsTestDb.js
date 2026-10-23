@@ -29,7 +29,10 @@ const DOWN_007 = path.join(MIGRATIONS, '007_aia_assignments.down.sql');
 const UP_008 = path.join(MIGRATIONS, '008_aia_recipients_reports.sql');
 const DOWN_008 = path.join(MIGRATIONS, '008_aia_recipients_reports.down.sql');
 
+const UP_009 = path.join(MIGRATIONS, '009_aia_question_images.sql');
+
 const LMS_TABLES = [
+  "CREATE TABLE classroomAssignments ( id INTEGER PRIMARY KEY AUTOINCREMENT, classroomId INTEGER NOT NULL, teacherId INTEGER NOT NULL, role TEXT NOT NULL DEFAULT 'class_teacher', assignedAt DATETIME DEFAULT CURRENT_TIMESTAMP )",
   "CREATE TABLE users ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'user', university_id INTEGER DEFAULT 1, isApproved INTEGER DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP , classroom_id INTEGER, subscriptionPlan TEXT DEFAULT 'free', created_by INTEGER)",
   "CREATE TABLE universities ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, area TEXT, adminId INTEGER, subscriptionPlan TEXT DEFAULT 'free', createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP )",
   'CREATE TABLE classrooms ( id INTEGER PRIMARY KEY AUTOINCREMENT, university_id INTEGER NOT NULL DEFAULT 1, name TEXT NOT NULL, grade TEXT NOT NULL, section TEXT, classTeacher TEXT, classTeacherId INTEGER, studentCount INTEGER DEFAULT 0, timetable TEXT, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (classTeacherId) REFERENCES users(id), FOREIGN KEY (university_id) REFERENCES universities(id) )',
@@ -73,6 +76,8 @@ function seed(db) {
   room.run(11, 1, 'Grade 11 - B', '11', 'B');
   room.run(20, 2, 'Grade 10 - A', '10', 'A');
   db.exec('INSERT INTO student_classroom_assignment (studentId, classroomId) VALUES (4, 10), (5, 11), (6, 20)');
+  // Teaching assignments (the LMS's classroomAssignments): each school's teachers teach its classes.
+  db.exec('INSERT INTO classroomAssignments (classroomId, teacherId) VALUES (10, 1), (11, 1), (10, 2), (11, 2), (10, 8), (11, 8), (20, 3)');
 }
 
 /**
@@ -98,6 +103,7 @@ function createLmsSchema(db, { withMigration = true, withStep2 = true, withStep3
             if (withQuestionTypes) db.exec(fs.readFileSync(UP_006, 'utf8'));
             if (withAssignments) db.exec(fs.readFileSync(UP_007, 'utf8'));
             if (withRecipientsReports) db.exec(fs.readFileSync(UP_008, 'utf8'));
+            if (withQuestionTypes && withAssignments) db.exec(fs.readFileSync(UP_009, 'utf8')); // 009 adds a column to tables from 001 and 007
           }
         }
       }

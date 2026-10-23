@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import { ArrowLeft, CheckCircle, Clock, Loader2, XCircle } from "lucide-react";
 import StudentLayout from "../../components/StudentLayout";
 import { useAuth } from "../../auth/auth";
+import { AuthedImage } from "../../components/QuestionImage";
 
 /*
  * AI Assessment Agent (Step 3) - take a test and see the result.
@@ -166,6 +167,7 @@ export default function StudentAttempt() {
                     {q.outcome === "correct" ? <CheckCircle size={18} className="text-green-600 shrink-0 mt-0.5" /> : <XCircle size={18} className={`${q.outcome === "incorrect" ? "text-red-500" : "text-gray-400"} shrink-0 mt-0.5`} />}
                     <span>{q.position}. {q.text}</span>
                   </div>
+                  {q.hasImage && <AuthedImage url={`${API}/assessment-agent/student/assessments/${attempt.assessmentId}/questions/${q.id}/image`} />}
                   {q.type === "numerical" ? (
                     <div className="mt-2 text-sm space-y-1">
                       <div className={q.outcome === "correct" ? "text-green-700 font-semibold" : q.outcome === "incorrect" ? "text-red-600" : "text-gray-500"}>Your answer: {q.submittedValue ?? "—"}</div>
@@ -218,6 +220,7 @@ export default function StudentAttempt() {
           {attempt.questions.map((q) => (
             <li key={q.id} className="bg-white rounded-xl shadow p-5" data-testid="aia-question" data-type={q.type || "single_mcq"}>
               <div className="font-medium mb-1">{q.position}. {q.text}</div>
+              {q.hasImage && <AuthedImage url={`${API}/assessment-agent/student/assessments/${attempt.assessmentId}/questions/${q.id}/image`} className="max-w-full max-h-80 h-auto border border-gray-200 mb-3" />}
               {q.type === "multi_select" && <p className="text-xs text-primary font-medium mb-2">Select all that apply</p>}
               {q.type === "numerical" ? (
                 <div className="mt-2">

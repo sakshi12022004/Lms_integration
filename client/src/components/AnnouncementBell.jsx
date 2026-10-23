@@ -192,6 +192,11 @@ const AnnouncementBell = () => {
       auth: { token },
     });
 
+    // A notification addressed to this user arrived: reload the list
+    socketRef.current.on("notification:new", () => {
+      fetchAnnouncements();
+    });
+
     const userRole = user?.role || 'student';
     console.log(`🔔 Socket listener setup for role: ${userRole}`);
     
@@ -286,6 +291,20 @@ const AnnouncementBell = () => {
     }
   };
 
+  /* ================= OPEN THE SCREEN A NOTIFICATION IS ABOUT ================= */
+  const openNotification = (a) => {
+    const target = notificationTarget(a, user?.role);
+    if (!target) return;
+    setOpen(false);
+    navigate(target);
+  };
+
+  const unreadCount = announcements.filter((a) => {
+    let readBy = [];
+    try { readBy = JSON.parse(a.readBy || '[]'); } catch (e) { readBy = a.readBy || []; }
+    return !(Array.isArray(readBy) ? readBy : []).map(String).includes(String(user?.id));
+  }).length;
+
   /* ================= CLOSE ON OUTSIDE CLICK ================= */
   useEffect(() => {
     const handler = (e) => {
@@ -301,10 +320,12 @@ const AnnouncementBell = () => {
   return (
     <div className="relative" ref={ref}>
       {/* 🔔 BELL ICON (UI UNCHANGED) */}
-      <button onClick={toggleBell} className="relative">
+      <button onClick={toggleBell} className="relative" aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}>
         <Bell className="w-5 h-5" />
         {hasUnread && (
-          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] leading-4 font-bold rounded-full text-center" data-testid="notification-unread-count">
+            {unreadCount > 9 ? "9+" : unreadCount || ""}
+          </span>
         )}
       </button>
 
@@ -337,6 +358,12 @@ const AnnouncementBell = () => {
                 return (
                   <div
                     key={a.id}
+                    data-testid="notification-item"
+                    data-type={a.type || "announcement"}
+                    role={target ? "button" : undefined}
+                    tabIndex={target ? 0 : undefined}
+                    onClick={target ? () => openNotification(a) : undefined}
+                    onKeyDown={target ? (e) => { if (e.key === "Enter") openNotification(a); } : undefined}
                     className={`p-3 border-b last:border-0 ${
                       isUnread ? (isFeeAlert ? "bg-amber-50/60" : "bg-gray-50") : ""
                     }`}

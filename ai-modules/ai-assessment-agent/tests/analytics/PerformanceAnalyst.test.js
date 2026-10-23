@@ -28,6 +28,7 @@ beforeEach(() => {
   db.prepare("INSERT INTO users (id, name, email, password, role, university_id) VALUES (?, 'Teacher Private', 'teacher.private@example.test', 'x', 'mentor', ?)").run(P.teacherId, P.schoolId);
   db.prepare("INSERT INTO users (id, name, email, password, role, university_id) VALUES (?, ?, ?, 'x', 'student', ?)").run(P.studentId, P.studentName, P.email, P.schoolId);
   db.prepare("INSERT INTO classrooms (id, university_id, name, grade, section) VALUES (?, ?, ?, '8', 'O')").run(P.classId, P.schoolId, P.className);
+  db.prepare('INSERT INTO classroomAssignments (classroomId, teacherId) VALUES (?, ?)').run(P.classId, P.teacherId); // the teacher teaches this class
   db.prepare("INSERT INTO student_classroom_assignment (studentId, classroomId, createdAt) VALUES (?, ?, '2026-10-01 00:00:00')").run(P.studentId, P.classId);
   adapter = createSqliteAssessmentLmsAdapter(db);
   const now = () => clock;

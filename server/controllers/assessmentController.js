@@ -1,5 +1,16 @@
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 const db = require('../config/database-switch');
+const { get, run } = require('../helpers/dbAsync');
+const notifications = require('../services/notificationService');
+const { IMAGE_KEY, contentTypeOfKey } = require('../../ai-modules/ai-assessment-agent/backend/src/integration/lmsAssessmentAgent');
+
+// A question picture is the key of a private uploaded file, or (older data) a plain web address
+const cleanQuestionImage = (value) => {
+  const image = String(value || '').trim();
+  if (!image) return null;
+  if (IMAGE_KEY.test(image)) return image;
+  return /^https?:\/\/\S{1,500}$/i.test(image) ? image : null;
+};
 
 
 
@@ -184,9 +195,9 @@ exports.addQuestion = (req, res) => {
         const optionsJson = options ? JSON.stringify(options) : null;
 
         db.run(
-          `INSERT INTO assessment_questions (assessmentId, questionNumber, questionText, questionType, options, correctAnswer, marks, createdAt, updatedAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-          [assessmentId, questionNumber, questionText || "", questionType, optionsJson, correctAnswer || "", marks || 1],
+          `INSERT INTO assessment_questions (assessmentId, questionNumber, questionText, questionType, options, correctAnswer, marks, questionImage, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [assessmentId, questionNumber, questionText || "", questionType, optionsJson, correctAnswer || "", marks || 1, cleanQuestionImage(req.body.questionImage)],
           function(err) {
             if (err) {
               console.error("Error creating question:", err);
@@ -290,58 +301,138 @@ exports.getAssessmentQuestions = (req, res) => {
 
 /**
  * ================================
+ * QUESTION PICTURE (PRIVATE FILE)
+ * ================================
+ * The teacher of the course, an admin of its school, or a student enrolled in the
+ * course (once the assessment is published) may fetch the picture of a question.
+ */
+exports.getQuestionImage = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const row = await get(
+      `SELECT q.questionImage, a.isPublished, a.createdBy, c.id AS courseId, c.mentorId, c.university_id
+       FROM assessment_questions q
+       JOIN assessments a ON a.id = q.assessmentId
+       LEFT JOIN courses c ON c.id = a.courseId
+       WHERE q.id = ?`,
+      [req.params.questionId]
+    );
+    if (!row || !row.questionImage || !IMAGE_KEY.test(row.questionImage)) {
+      return res.status(404).json({ message: "Picture not found" });
+    }
+
+    let allowed = String(row.createdBy) === String(userId) || String(row.mentorId) === String(userId);
+    if (!allowed && req.user.role === "admin") {
+      allowed = Number(row.university_id) === Number(req.user.universityId || 1);
+    }
+    if (!allowed && req.user.role === "student" && row.isPublished) {
+      allowed = !!(await get("SELECT id FROM course_students WHERE courseId = ? AND studentId = ?", [row.courseId, userId]));
+    }
+    if (!allowed) return res.status(404).json({ message: "Picture not found" });
+
+    const { questionImageStore } = require("../routes/assessmentAgentRoutes");
+    let bytes;
+    try {
+      bytes = await questionImageStore.read(row.questionImage);
+    } catch (readErr) {
+      return res.status(404).json({ message: "Picture not found" });
+    }
+    res.set({
+      "Content-Type": contentTypeOfKey(row.questionImage),
+      "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "private, max-age=300",
+    });
+    res.send(bytes);
+  } catch (error) {
+    console.error("GET QUESTION IMAGE ERROR:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
+ * ================================
  * PUBLISH ASSESSMENT (MENTOR)
  * ================================
  */
-exports.publishAssessment = (req, res) => {
+exports.publishAssessment = async (req, res) => {
   try {
     const { assessmentId } = req.params;
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
-    db.get(
-      "SELECT * FROM assessments WHERE id = ?",
-      [assessmentId],
-      (err, assessment) => {
-        if (err) {
-          console.error("Database error:", err);
-          return res.status(500).json({ message: "Database error" });
-        }
+    const assessment = await get("SELECT * FROM assessments WHERE id = ?", [assessmentId]);
+    if (!assessment) {
+      return res.status(404).json({ message: "Assessment not found" });
+    }
 
-        if (!assessment) {
-          return res.status(404).json({ message: "Assessment not found" });
-        }
+    // Only the assessment's creator, the course teacher, or an admin of the course's school may publish
+    const course = await get("SELECT id, mentorId, university_id FROM courses WHERE id = ?", [assessment.courseId]);
+    const isOwner = String(assessment.createdBy) === String(userId) || (course && String(course.mentorId) === String(userId));
+    const isSchoolAdmin =
+      req.user.role === "admin" && course && Number(course.university_id) === Number(req.user.universityId || 1);
+    if (!isOwner && !isSchoolAdmin) {
+      return res.status(403).json({ message: "Not authorized for this assessment" });
+    }
 
-        // Verify that assessment has at least one question
-        db.get(
-          "SELECT COUNT(*) as count FROM assessment_questions WHERE assessmentId = ?",
-          [assessmentId],
-          (countErr, countResult) => {
-            if (countErr) {
-              console.error("Database error:", countErr);
-              return res.status(500).json({ message: "Database error" });
-            }
+    // Already published: nothing is changed and nobody is notified again
+    if (assessment.isPublished) {
+      return res.status(409).json({
+        message: "This assessment is already published",
+        alreadyPublished: true,
+        assessment: mapAssessment(assessment),
+      });
+    }
 
-            if (!countResult || countResult.count === 0) {
-              return res.status(400).json({ 
-                message: "Cannot publish an assessment with no questions. Please add at least one question first." 
-              });
-            }
-
-            db.run(
-              "UPDATE assessments SET isPublished = 1, updatedAt = CURRENT_TIMESTAMP WHERE id = ?",
-              [assessmentId],
-              (updateErr) => {
-                if (updateErr) {
-                  console.error("Database error:", updateErr);
-                  return res.status(500).json({ message: "Failed to publish assessment" });
-                }
-
-                res.json({ message: "Assessment published successfully" });
-              }
-            );
-          }
-        );
-      }
+    // Verify that assessment has at least one question
+    const countResult = await get(
+      "SELECT COUNT(*) as count FROM assessment_questions WHERE assessmentId = ?",
+      [assessmentId]
     );
+    if (!countResult || countResult.count === 0) {
+      return res.status(400).json({
+        message: "Cannot publish an assessment with no questions. Please add at least one question first."
+      });
+    }
+
+    // The WHERE clause makes two simultaneous requests publish only once
+    const updated = await run(
+      "UPDATE assessments SET isPublished = 1, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND isPublished = 0",
+      [assessmentId]
+    );
+    const published = await get("SELECT * FROM assessments WHERE id = ?", [assessmentId]);
+    if (!updated.changes) {
+      return res.status(409).json({
+        message: "This assessment is already published",
+        alreadyPublished: true,
+        assessment: mapAssessment(published),
+      });
+    }
+
+    res.json({ message: "Assessment published successfully", assessment: mapAssessment(published) });
+
+    // Tell the students enrolled in the course (after the response; never fails the publish)
+    if (course) {
+      notifications
+        .studentsOfCourse(course.id, course.university_id)
+        .then((recipientIds) =>
+          notifications.notify({
+            type: "ASSESSMENT_PUBLISHED",
+            data: { title: published.title, deadline: published.endTime },
+            universityId: course.university_id,
+            recipientIds,
+            entityType: "course",
+            entityId: course.id,
+            createdBy: userId,
+            createdByRole: req.user.role,
+            dedupeSuffix: `assessment-${published.id}`,
+          })
+        )
+        .catch((notifyErr) => console.error("PUBLISH NOTIFY ERROR:", notifyErr.message));
+    }
   } catch (error) {
     console.error("PUBLISH ASSESSMENT ERROR:", error);
     res.status(500).json({ message: "Server error" });

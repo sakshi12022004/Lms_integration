@@ -21,7 +21,7 @@ const estimateTokens = (text) => Math.ceil(String(text).length / 4);
 
 function generationCase() {
   const req = validateGenerationRequest({
-    topic: 'Motion', subject: 'Physics', count: 10, difficulty: 'medium', template: 'concept_mastery', instructions: 'Use real-life examples.',
+    classroomId: 10, topic: 'Motion', subject: 'Physics', count: 10, difficulty: 'medium', template: 'concept_mastery', instructions: 'Use real-life examples.',
     avoidQuestions: Array.from({ length: 9 }, (_, i) => `An existing question number ${i} about velocity and acceleration in everyday situations?`),
   });
   const p = buildGenerationPrompt(req, { grade: '9' });

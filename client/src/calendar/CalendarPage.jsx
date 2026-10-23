@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -129,6 +129,7 @@ const CalendarPage = ({ role }) => {
           ) : (
             <div className="bg-white rounded-none shadow-sm border border-[#ebdcaa]/60 p-4 md:p-6 flex-1 flex flex-col overflow-hidden">
               <FullCalendar
+                ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                 initialView="dayGridMonth"
                 headerToolbar={{

@@ -27,7 +27,7 @@ const { extractPdfText } = require('./pdfText');
  * -> record in a transaction (rules re-checked) -> delete the replaced file. A failed record deletes
  * the newly stored file. Nothing logs file contents or student names.
  */
-function registerAssignmentRoutes({ router, express, handle, openAdapter, fileStore, now, emptyBody, jsonBody, evaluator = null, evaluationThrottle = null, log = (m) => console.warn(m) }) {
+function registerAssignmentRoutes({ router, express, handle, openAdapter, fileStore, now, emptyBody, jsonBody, evaluator = null, evaluationThrottle = null, log = (m) => console.warn(m), emit = () => {} }) {
   const svc = (adapter) => new AssignmentService({ adapter, now });
 
   /** Opens the adapter, resolves the actor, runs a synchronous step, closes (for the async routes). */
@@ -66,11 +66,13 @@ function registerAssignmentRoutes({ router, express, handle, openAdapter, fileSt
   router.get('/teacher/assignments/:id', handle((s, a, req, t, adapter) => ({ assignment: svc(adapter).getOwn(a, req.params.id) })));
   router.patch('/teacher/assignments/:id', handle((s, a, req, t, adapter) => ({ assignment: svc(adapter).update(a, req.params.id, jsonBody(req)) })));
   router.put('/teacher/assignments/:id/questions', handle((s, a, req, t, adapter) => ({ assignment: svc(adapter).replaceQuestions(a, req.params.id, jsonBody(req)) })));
-  router.post('/teacher/assignments/:id/publish', handle((s, a, req, t, adapter) => (emptyBody(req), { assignment: svc(adapter).publish(a, req.params.id) })));
+  router.post('/teacher/assignments/:id/publish', handle((s, a, req, t, adapter) => (emptyBody(req), { assignment: svc(adapter).publish(a, req.params.id) }), 200,
+    (out) => ({ name: 'assignment.published', data: { assignmentId: out.assignment.id } })));
   router.post('/teacher/assignments/:id/close', handle((s, a, req, t, adapter) => (emptyBody(req), { assignment: svc(adapter).close(a, req.params.id) })));
   router.get('/teacher/assignments/:id/submissions', handle((s, a, req, t, adapter) => svc(adapter).submissions(a, req.params.id)));
   router.put('/teacher/assignments/:id/submissions/:submissionId/evaluation',
-    handle((s, a, req, t, adapter) => svc(adapter).evaluate(a, req.params.id, req.params.submissionId, jsonBody(req))));
+    handle((s, a, req, t, adapter) => svc(adapter).evaluate(a, req.params.id, req.params.submissionId, jsonBody(req)), 200,
+      (out, req) => ({ name: 'assignment.evaluated', data: { assignmentId: Number(req.params.id), submissionId: Number(req.params.submissionId) } })));
   /**
    * Prompt 2 - AI-ASSISTED evaluation, ONLY on this explicit request (never on page loads).
    * authorization + submission lookup (DB, closed) -> AI available? -> throttle (1 in flight per teacher: a
@@ -130,12 +132,14 @@ function registerAssignmentRoutes({ router, express, handle, openAdapter, fileSt
       // 3) Store under a server-generated key (no DB connection held while writing).
       stored = await fileStore.save(file.buffer);
       // 4) Record, re-checking every rule in a transaction.
-      const result = step(req, (service, actor) => service.recordSubmission(actor, req.params.id, { ...file, ...stored }));
+      let submitter;
+      const result = step(req, (service, actor) => { submitter = actor; return service.recordSubmission(actor, req.params.id, { ...file, ...stored }); });
       stored = null; // now owned by the database row
       if (result.replacedStorageKey) {
         await fileStore.delete(result.replacedStorageKey).catch(() => log(`[ai-assessment-agent] could not delete replaced file: ${result.replacedStorageKey}`));
       }
       res.status(result.created ? 201 : 200).json({ submission: result.submission, replaced: !result.created });
+      emit('assignment.submitted', submitter, { assignmentId: Number(req.params.id) });
     } catch (err) {
       if (stored) await fileStore.delete(stored.storageKey).catch(() => {});
       next(err);

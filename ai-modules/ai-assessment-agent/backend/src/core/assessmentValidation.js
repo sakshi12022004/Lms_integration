@@ -1,5 +1,6 @@
 const { AssessmentError } = require('./errors');
 const { QUESTION_TYPES, NUMERIC_FORMATS, normalizeNumber } = require('./questionTypes');
+const { parseImageKey } = require('./questionImage');
 
 /**
  * Deterministic validation of teacher input. Pure functions: no database, no
@@ -26,7 +27,7 @@ const LIMITS = Object.freeze({
 const ASSESSMENT_FIELDS = Object.freeze(['title', 'description', 'subject', 'classroomId', 'durationMinutes', 'opensAt', 'closesAt']);
 // Step 5: an explicit timezone is required so the server never guesses local time.
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
-const QUESTION_FIELDS = Object.freeze(['type', 'text', 'options', 'numericAnswer', 'explanation', 'difficulty']);
+const QUESTION_FIELDS = Object.freeze(['type', 'text', 'options', 'numericAnswer', 'explanation', 'difficulty', 'imageKey']);
 const NUMERIC_ANSWER_FIELDS = Object.freeze(['format', 'value']);
 const DIFFICULTIES = Object.freeze(['easy', 'medium', 'hard']);
 const OPTION_FIELDS = Object.freeze(['text', 'isCorrect']);
@@ -160,11 +161,12 @@ function validateQuestionInput(input) {
     : text(input.explanation, 'explanation', LIMITS.explanationMax, details, { required: false });
   const difficulty = input.difficulty === undefined || input.difficulty === null ? null : input.difficulty;
   if (difficulty !== null && !DIFFICULTIES.includes(difficulty)) details.push({ field: 'difficulty', code: 'INVALID_DIFFICULTY' });
+  const imageKey = parseImageKey(input.imageKey, 'imageKey', details); // optional picture (core/questionImage.js)
 
   if (type === 'numerical') {
     const numericAnswer = numericAnswerOf(input, details);
     if (details.length > 0) throw fail('The question is not valid.', details);
-    return { type, text: questionText, options: [], numericAnswer, explanation, difficulty };
+    return { type, text: questionText, options: [], numericAnswer, explanation, difficulty, imageKey };
   }
   if (input.numericAnswer !== undefined && input.numericAnswer !== null) details.push({ field: 'numericAnswer', code: 'NOT_ALLOWED_FOR_TYPE' });
 
@@ -195,7 +197,7 @@ function validateQuestionInput(input) {
   }
 
   if (details.length > 0) throw fail('The question is not valid.', details);
-  return { type, text: questionText, options, numericAnswer: null, explanation, difficulty };
+  return { type, text: questionText, options, numericAnswer: null, explanation, difficulty, imageKey };
 }
 
 /** numerical: options must be absent (or empty); numericAnswer { format, value } is required. */

@@ -168,10 +168,25 @@ app.use((req, res, next) => {
 io.on("connection", (socket) => {
   console.log("🟢 Socket connected:", socket.id);
 
+  // A signed-in client joins its own room so targeted notifications reach only that user
+  try {
+    const socketToken = socket.handshake?.auth?.token;
+    if (socketToken) {
+      const decoded = require("jsonwebtoken").verify(socketToken, process.env.JWT_SECRET || "default_jwt_secret_key");
+      if (decoded?.userId) socket.join(`user:${decoded.userId}`);
+    }
+  } catch (socketAuthErr) {
+    // Invalid or expired token: the socket stays connected but receives no targeted notifications
+  }
+
   socket.on("disconnect", () => {
     console.log("🔴 Socket disconnected:", socket.id);
   });
 });
+
+// Notifications: realtime delivery + time-based reminders (deadlines, attendance, approvals)
+require("./services/notificationService").setIo(io);
+require("./schedulers/notification-scheduler").start();
 
 // Make plan change emitter available globally for real-time updates
 global.emitPlanChange = (planChangeData) => {

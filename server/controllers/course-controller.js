@@ -5,6 +5,15 @@ const {
   getSuperadminSubscription,
   checkMentorCourseQuotaPerClass
 } = require("../helpers/quotaHelper");
+const { get } = require("../helpers/dbAsync");
+const { HttpError, authorizeClassroom, authorizeCourse } = require("../helpers/teachingScope");
+
+// Sends the response for an access error and returns true; false for any other error
+const sendAccessError = (err, res) => {
+  if (!(err instanceof HttpError)) return false;
+  res.status(err.status).json({ message: err.message });
+  return true;
+};
 
 
 
@@ -24,10 +33,24 @@ const getAllCourses = async (req, res) => {
   try {
     // Filter by university_id for tenant isolation
     const universityId = req.user?.universityId || 1;
-    const query = req.user?.role === 'superadmin' 
-      ? "SELECT * FROM courses" 
-      : "SELECT * FROM courses WHERE university_id = ?";
-    const params = req.user?.role === 'superadmin' ? [] : [universityId];
+    const role = req.user?.role;
+    const userId = req.user?.userId;
+    let query;
+    let params = [];
+    if (role === 'superadmin') {
+      query = "SELECT * FROM courses";
+    } else if (role === 'admin') {
+      query = "SELECT * FROM courses WHERE university_id = ?";
+      params = [universityId];
+    } else if (role === 'mentor' || role === 'teacher') {
+      query = "SELECT * FROM courses WHERE mentorId = ?"; // the courses this teacher teaches
+      params = [userId];
+    } else if (role === 'student') {
+      query = "SELECT c.* FROM courses c JOIN course_students cs ON cs.courseId = c.id WHERE cs.studentId = ?";
+      params = [userId];
+    } else {
+      return res.json([]);
+    }
 
     db.all(query, params, (err, courses) => {
       if (err) {
@@ -53,6 +76,16 @@ const createCourse = async (req, res) => {
 
     if (!title) {
       return res.status(400).json({ message: "Course title is required" });
+    }
+
+    // A course can only be created in a classroom the user may manage
+    if (classroomId) {
+      try {
+        await authorizeClassroom(req, classroomId);
+      } catch (accessErr) {
+        if (sendAccessError(accessErr, res)) return;
+        throw accessErr;
+      }
     }
 
     let assignedMentorId = mentorId || req.user.userId;
@@ -519,6 +552,13 @@ const updateCourse = async (req, res) => {
     const courseId = req.params.id;
     const { title, description, category, duration, price } = req.body;
 
+    try {
+      await authorizeCourse(req, courseId);
+    } catch (accessErr) {
+      if (sendAccessError(accessErr, res)) return;
+      throw accessErr;
+    }
+
     db.run(
       "UPDATE courses SET title = ?, description = ?, category = ?, duration = ?, price = ? WHERE id = ?",
       [title, description, category, duration, price, courseId],
@@ -542,6 +582,13 @@ const deleteCourse = async (req, res) => {
   try {
     const courseId = req.params.id;
 
+    try {
+      await authorizeCourse(req, courseId);
+    } catch (accessErr) {
+      if (sendAccessError(accessErr, res)) return;
+      throw accessErr;
+    }
+
     db.run("DELETE FROM courses WHERE id = ?", [courseId], function(err) {
       if (err) {
         console.error("Error deleting course:", err);
@@ -562,6 +609,34 @@ const getCoursesByClassroom = async (req, res) => {
     // Accept both route param and query param
     const classroomId = req.params.classroomId || req.query.classroomId;
 
+    // Who may list a classroom's courses: its school admin, a teacher assigned to it
+    // (teachers who only teach there see their own courses), or a student who is a member.
+    const viewer = req.user || {};
+    let ownCoursesOnly = false;
+    try {
+      if (viewer.role === "student") {
+        const member = await get(
+          "SELECT id FROM student_classroom_assignment WHERE classroomId = ? AND studentId = ?",
+          [classroomId, viewer.userId]
+        );
+        if (!member) throw new HttpError(403, "You are not a member of this classroom");
+      } else {
+        const classroom = await authorizeClassroom(req, classroomId);
+        if (viewer.role !== "admin") {
+          const staff = await get(
+            `SELECT c.id FROM classrooms c WHERE c.id = ? AND (
+               CAST(c.classTeacher AS INTEGER) = ? OR c.classTeacherId = ?
+               OR EXISTS (SELECT 1 FROM classroomAssignments ca WHERE ca.classroomId = c.id AND ca.teacherId = ?))`,
+            [classroom.id, viewer.userId, viewer.userId, viewer.userId]
+          );
+          ownCoursesOnly = !staff;
+        }
+      }
+    } catch (accessErr) {
+      if (sendAccessError(accessErr, res)) return;
+      throw accessErr;
+    }
+
     db.all(
       `SELECT 
          c.*, 
@@ -569,9 +644,9 @@ const getCoursesByClassroom = async (req, res) => {
          u.name as mentorName
        FROM courses c 
        LEFT JOIN users u ON c.mentorId = u.id 
-       WHERE c.classroomId = ?
+       WHERE c.classroomId = ? AND (? = 0 OR c.mentorId = ?)
        ORDER BY c.createdAt DESC`,
-      [classroomId],
+      [classroomId, ownCoursesOnly ? 1 : 0, viewer.userId || 0],
       (err, courses) => {
         if (err) {
           console.error("Database error:", err);

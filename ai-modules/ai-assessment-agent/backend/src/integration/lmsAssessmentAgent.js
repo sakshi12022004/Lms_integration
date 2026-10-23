@@ -6,7 +6,8 @@ const { createGenerationProvider } = require('../llm/createGenerationProvider');
 const { AssessmentGenerator } = require('../core/ai/AssessmentGenerator');
 const { PerformanceAnalyst } = require('../core/ai/PerformanceAnalyst');
 const { isReportPreviewEnabled } = require('../core/ai/reportPreview'); // TEMPORARY preview mode (remove later)
-const { LocalSubmissionFileStore, defaultSubmissionsDir } = require('../assignments/LocalSubmissionFileStore');
+const { LocalSubmissionFileStore, defaultSubmissionsDir, defaultQuestionImagesDir } = require('../assignments/LocalSubmissionFileStore');
+const { IMAGE_EXTENSIONS, IMAGE_KEY, contentTypeOfKey } = require('../core/questionImage');
 const { AssignmentEvaluator } = require('../assignments/AssignmentEvaluator');
 
 /**
@@ -24,6 +25,7 @@ const { AssignmentEvaluator } = require('../assignments/AssignmentEvaluator');
  * AIA_AI_GENERATION_ENABLED / AIA_LLM_TIMEOUT_MS. When AI is missing or off,
  * only the AI routes answer 503. Manual test creation is unaffected.
  * `generationProvider` lets tests inject a mock (no real LLM calls in tests).
+ * `onEvent` (optional) is passed to the router: the LMS uses it to create notifications.
  */
 /**
  * Descriptive Assignments: uploaded PDFs go to `submissionsDir` (tests), else AIA_SUBMISSIONS_DIR (absolute),
@@ -38,7 +40,18 @@ function submissionsDirFrom(submissionsDir, env) {
   return defaultSubmissionsDir();
 }
 
-function createLmsAssessmentAgentRouter({ express, dbPath, env = process.env, generationProvider, now, submissionsDir }) {
+/**
+ * Private store for question pictures: AIA_QUESTION_IMAGES_DIR (absolute), else
+ * <module>/data/question-images (git-ignored). The LMS also reads it to show the picture of a
+ * legacy course-assessment question, after its own access check.
+ */
+function createQuestionImageStore({ env = process.env, questionImagesDir } = {}) {
+  const configured = env.AIA_QUESTION_IMAGES_DIR;
+  const rootDir = questionImagesDir || (configured && path.isAbsolute(configured) ? configured : defaultQuestionImagesDir());
+  return new LocalSubmissionFileStore({ rootDir, extensions: IMAGE_EXTENSIONS });
+}
+
+function createLmsAssessmentAgentRouter({ express, dbPath, env = process.env, generationProvider, now, submissionsDir, onEvent = null, questionImagesDir, imageStore }) {
   if (typeof dbPath !== 'string' || !path.isAbsolute(dbPath)) {
     throw new TypeError('createLmsAssessmentAgentRouter requires the absolute LMS database path.');
   }
@@ -52,7 +65,8 @@ function createLmsAssessmentAgentRouter({ express, dbPath, env = process.env, ge
   const fileStore = new LocalSubmissionFileStore({ rootDir: submissionsDirFrom(submissionsDir, env) });
   // Descriptive Assignments (Prompt 2): AI-assisted evaluation reuses the SAME generator/provider (explicit request only).
   const assignmentEvaluator = new AssignmentEvaluator({ generator });
-  return createAssessmentRouter({ express, openAdapter: () => openSqliteAssessmentLmsAdapter(dbPath), generator, analyst, fileStore, assignmentEvaluator, ...(now ? { now } : {}) });
+  return createAssessmentRouter({ express, openAdapter: () => openSqliteAssessmentLmsAdapter(dbPath), generator, analyst, fileStore, assignmentEvaluator, onEvent,
+    imageStore: imageStore || createQuestionImageStore({ env, questionImagesDir }), ...(now ? { now } : {}) });
 }
 
-module.exports = { createLmsAssessmentAgentRouter, assessmentErrorHandler };
+module.exports = { createLmsAssessmentAgentRouter, assessmentErrorHandler, createQuestionImageStore, IMAGE_KEY, contentTypeOfKey };
