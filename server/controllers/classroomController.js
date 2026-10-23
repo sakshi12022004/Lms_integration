@@ -938,11 +938,15 @@ const getClassroomFeeStructure = async (req, res) => {
 /* ================= GET STUDENT CLASSROOMS ================= */
 const getStudentClassrooms = async (req, res) => {
   try {
-    const studentId = req.user.id;
+    const studentId = req.user?.userId || req.user?.id;
+    if (!studentId) {
+      return res.status(401).json({ message: 'Student not authenticated' });
+    }
     console.log("getStudentClassrooms - Student ID:", studentId);
     console.log("getStudentClassrooms - Full user object:", req.user);
 
-    db.all(
+    const activeDb = req.tenant?.database || db;
+    activeDb.all(
       `SELECT 
         c.id,
         c.name,
@@ -956,8 +960,10 @@ const getStudentClassrooms = async (req, res) => {
         u.email as classTeacherEmail
       FROM classrooms c
       INNER JOIN student_classroom_assignment sca ON c.id = sca.classroomId
-      LEFT JOIN users u ON c.classTeacherId = u.id
-      WHERE sca.studentId = ?`,
+      INNER JOIN users s ON s.id = sca.studentId
+      LEFT JOIN users u ON u.id = COALESCE(c.classTeacherId, c.classTeacher)
+      WHERE sca.studentId = ?
+        AND c.university_id = s.university_id`,
       [studentId],
       (err, classrooms) => {
         if (err) {

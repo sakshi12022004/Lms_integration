@@ -7,11 +7,11 @@ import RequestStatus from "./RequestStatus";
 import whiteLogo from '../../../core5 logo new new-modified (1).png';
 
 const items = [
-  { name: "Inventory", icon: Package },
-  { name: "Vendors", icon: Users2 },
-  { name: "Vendor Stock", icon: Package },
-  { name: "Requirements", icon: ClipboardList },
-  { name: "Reports", icon: FileText },
+  { name: "Inventory", nameKey: "inventory", icon: Package },
+  { name: "Vendors", nameKey: "vendors", icon: Users2 },
+  { name: "Vendor Stock", nameKey: "vendor_stock", icon: Package },
+  { name: "Requirements", nameKey: "requirements", icon: ClipboardList },
+  { name: "Reports", nameKey: "reports", icon: FileText },
 ];
 
 export default function Sidebar() {
@@ -44,6 +44,7 @@ export default function Sidebar() {
             ? "/storekeeper/vendor-stock"
             : `/storekeeper/${item.name.toLowerCase()}`;
           const active = loc.pathname.startsWith(path);
+          const label = t(item.nameKey) !== item.nameKey ? t(item.nameKey) : item.name;
           return (
             <Link
               key={item.name}
@@ -54,7 +55,7 @@ export default function Sidebar() {
                   : 'text-white/70 hover:text-white hover:bg-white/5'
               } ${sidebarCollapsed ? 'justify-center' : ''}`}>
               <Icon size={20} className={active ? 'text-[#B99652]' : 'text-white/70'} />
-              {!sidebarCollapsed && <span className="font-medium text-sm">{item.name}</span>}
+              {!sidebarCollapsed && <span className="font-medium text-sm">{label}</span>}
             </Link>
           );
         })}

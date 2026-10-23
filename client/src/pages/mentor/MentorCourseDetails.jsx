@@ -21,7 +21,8 @@ const MentorCourseDetails = () => {
 
     useEffect(() => {
         fetchCourseData();
-        const socket = io({
+        // Connect to the backend, not the page origin (the Vite dev server).
+        const socket = io(API.replace(/\/api\/?$/, ''), {
           transports: ["websocket", "polling"]
         });
         const onProgress = (data) => {

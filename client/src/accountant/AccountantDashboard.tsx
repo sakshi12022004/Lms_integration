@@ -8,6 +8,7 @@ import Inventory from "./Inventory";
 import Expenses from "./Expenses";
 import AccountantExport from "../components/AccountantExportFixed";
 import RealTimeNotification from "../components/RealTimeNotification";
+import LegacyReconciliation from "./LegacyReconciliation";
 
 export default function AccountantDashboard() {
   return (
@@ -19,6 +20,7 @@ export default function AccountantDashboard() {
           <Route path="fees-collection" element={<FeesCollection category={"Primary"} />} />
           <Route path="fees-collection/primary" element={<FeesCollection category={"Primary"} />} />
           <Route path="fees-collection/secondary" element={<FeesCollection category={"Secondary"} />} />
+          <Route path="legacy-reconciliation" element={<LegacyReconciliation />} />
           <Route path="payment-history" element={<AccountantTransactionHistory />} />
           <Route path="vendor-invoices" element={<VendorInvoiceManagement />} />
           <Route path="inventory" element={<Inventory />} />

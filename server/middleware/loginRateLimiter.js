@@ -1,170 +1,177 @@
 // Simple Login Rate Limiting Middleware (Memory Store Only)
 // No Redis dependency - uses in-memory storage
+//
+// Counts FAILED login attempts in a fixed window, per account (normalized email,
+// across all IPs) and per client IP, and temporarily blocks whichever one reaches
+// its limit. A successful login is never counted and clears that account's counter.
 
-const crypto = require('crypto');
+// A positive whole number from the environment, or the default (same convention as rateLimiter.js)
+function positiveInt(value, fallback) {
+  const parsed = parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 // Configuration constants
 const CONFIG = {
-  MAX_ATTEMPTS_PER_MINUTE: 1000,
-  BLOCK_DURATION_SECONDS: 60,
-  ATTEMPT_WINDOW_SECONDS: 60,
-  REDIS_PREFIX: 'login:',
-  REDIS_TTL: 3600 // 1 hour for keys
+  // Failed attempts allowed for one account within the window, counted across all IPs
+  MAX_FAILED_ATTEMPTS_PER_ACCOUNT: positiveInt(process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_ACCOUNT, 5),
+  // Failed attempts allowed from one IP within the window, across all accounts.
+  // Higher than the account limit because a whole campus can share one address.
+  MAX_FAILED_ATTEMPTS_PER_IP: positiveInt(process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IP, 50),
+  ATTEMPT_WINDOW_MS: positiveInt(process.env.LOGIN_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
+  BLOCK_DURATION_MS: positiveInt(process.env.LOGIN_RATE_LIMIT_BLOCK_MS, 15 * 60 * 1000),
+  KEY_PREFIX: 'login:'
 };
 
-// Memory store
+// Memory store: key -> { value, expiresAt }
 const memoryStore = new Map();
 
-// Memory store functions
 function getMemoryKey(key) {
   const data = memoryStore.get(key);
   if (!data) return null;
-  
+
   // Check if expired
   if (Date.now() > data.expiresAt) {
     memoryStore.delete(key);
     return null;
   }
-  
+
   return data.value;
 }
 
-function setMemoryKey(key, value, ttlSeconds) {
-  memoryStore.set(key, {
-    value,
-    expiresAt: Date.now() + (ttlSeconds * 1000)
-  });
+function setMemoryKey(key, value, expiresAt) {
+  memoryStore.set(key, { value, expiresAt });
 }
 
 function deleteMemoryKey(key) {
   memoryStore.delete(key);
 }
 
+// One canonical form per account, so letter case or spaces cannot dodge the account counter.
+// Anything that is not a plausible email string is treated as "no account" (IP counting only).
+function normalizeEmail(email) {
+  if (typeof email !== 'string') return null;
+  const normalized = email.trim().toLowerCase();
+  return normalized !== '' && normalized.length <= 254 ? normalized : null;
+}
+
 // Generate keys for tracking
 function generateKeys(ip, email = null) {
-  const ipKey = `${CONFIG.REDIS_PREFIX}fail:ip:${ip}`;
-  const emailKey = email ? `${CONFIG.REDIS_PREFIX}fail:user:${email}` : null;
-  const blockKey = `${CONFIG.REDIS_PREFIX}block:${ip}`;
-  
-  return { ipKey, emailKey, blockKey };
+  const account = normalizeEmail(email);
+  return {
+    ipKey: `${CONFIG.KEY_PREFIX}fail:ip:${ip}`,
+    emailKey: account ? `${CONFIG.KEY_PREFIX}fail:user:${account}` : null,
+    ipBlockKey: `${CONFIG.KEY_PREFIX}block:ip:${ip}`,
+    emailBlockKey: account ? `${CONFIG.KEY_PREFIX}block:user:${account}` : null
+  };
 }
 
 // Get client IP address
 function getClientIP(req) {
-  return req.ip || 
-         req.connection?.remoteAddress || 
-         req.socket?.remoteAddress || 
+  return req.ip ||
+         req.connection?.remoteAddress ||
+         req.socket?.remoteAddress ||
          req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
          req.headers['x-real-ip'] ||
          'unknown';
+}
+
+/**
+ * Records one failed attempt against a counter key and returns the new count.
+ * The window is fixed: it starts at the first failure and is not extended by later ones.
+ * Reaching the limit starts a block and clears the counter, so a fresh window begins after the block.
+ */
+function recordFailure(counterKey, blockKey, limit, blockReason) {
+  const now = Date.now();
+  const current = getMemoryKey(counterKey) || { count: 0, windowStart: now };
+  const updated = { count: current.count + 1, windowStart: current.windowStart };
+
+  if (updated.count >= limit) {
+    const expiresAt = now + CONFIG.BLOCK_DURATION_MS;
+    setMemoryKey(blockKey, { blocked: true, expiresAt, blockReason, blockedAt: now }, expiresAt);
+    deleteMemoryKey(counterKey);
+  } else {
+    setMemoryKey(counterKey, updated, updated.windowStart + CONFIG.ATTEMPT_WINDOW_MS);
+  }
+  return updated.count;
 }
 
 // Main rate limiting middleware
 const loginRateLimiter = async (req, res, next) => {
   try {
     const ip = getClientIP(req);
-    const { email } = req.body;
-    const { ipKey, emailKey, blockKey } = generateKeys(ip, email);
+    const account = normalizeEmail(req.body?.email);
+    const { ipKey, emailKey, ipBlockKey, emailBlockKey } = generateKeys(ip, account);
+    const who = `IP: ${ip}, Email: ${account || 'not provided'}`;
 
-    console.log(`🔐 Login attempt - IP: ${ip}, Email: ${email || 'not provided'}`);
+    console.log(`🔐 Login attempt - ${who}`);
 
-    // Check if user is blocked
-    const blockData = getMemoryKey(blockKey);
-    if (blockData) {
-      const remainingTime = Math.ceil((blockData.expiresAt - Date.now()) / 1000);
-      
-      console.log(`🚫 Login blocked for ${remainingTime}s - IP: ${ip}, Email: ${email || 'not provided'}`);
-      
+    // Refuse while this IP or this account is blocked (the request never reaches the login handler)
+    const ipBlock = getMemoryKey(ipBlockKey);
+    const emailBlock = emailBlockKey ? getMemoryKey(emailBlockKey) : null;
+    const activeBlock = ipBlock || emailBlock;
+    if (activeBlock) {
+      const remainingTime = Math.max(1, Math.ceil((activeBlock.expiresAt - Date.now()) / 1000));
+
+      console.log(`🚫 Login blocked for ${remainingTime}s - ${who}`);
+
+      res.set('Retry-After', String(remainingTime));
       return res.status(429).json({
         success: false,
         message: 'Too many login attempts. Please try again later.',
         blocked: true,
         remainingTime: remainingTime,
-        blockType: 'ip'
+        blockType: ipBlock ? 'ip' : 'account'
       });
     }
 
-    // Check failed attempts for IP
-    const ipAttempts = getMemoryKey(ipKey) || { count: 0, firstAttempt: Date.now() };
-    
-    // Check failed attempts for email (if provided)
-    let emailAttempts = null;
-    if (email) {
-      emailAttempts = getMemoryKey(emailKey) || { count: 0, firstAttempt: Date.now() };
-    }
-
-    // Determine if we should block
-    const ipExceeded = ipAttempts.count >= CONFIG.MAX_ATTEMPTS_PER_MINUTE;
-    const emailExceeded = emailAttempts && emailAttempts.count >= CONFIG.MAX_ATTEMPTS_PER_MINUTE;
-
-    if (ipExceeded || emailExceeded) {
-      // Block the user
-      const blockExpiresAt = Date.now() + (CONFIG.BLOCK_DURATION_SECONDS * 1000);
-      
-      setMemoryKey(blockKey, {
-        blocked: true,
-        expiresAt: blockExpiresAt,
-        blockReason: ipExceeded ? 'ip_limit' : 'email_limit',
-        blockedAt: Date.now()
-      }, CONFIG.BLOCK_DURATION_SECONDS);
-
-      console.log(`🚫 Login blocked for ${CONFIG.BLOCK_DURATION_SECONDS}s - Reason: ${ipExceeded ? 'IP limit' : 'Email limit'}`);
-
-      return res.status(429).json({
-        success: false,
-        message: 'Too many login attempts. Please try again later.',
-        blocked: true,
-        remainingTime: CONFIG.BLOCK_DURATION_SECONDS,
-        blockType: 'ip'
-      });
-    }
-
-    // Not blocked, continue to login
-    // Store original res.json to intercept responses
+    // Not blocked, continue to login.
+    // The outcome is read from the response the login handler actually sends: its HTTP status,
+    // plus the token on success. Only the status and the presence of a token are inspected;
+    // nothing from the request or response body is logged.
     const originalJson = res.json;
-    
+    let outcomeRecorded = false;
+
     res.json = function(data) {
-      // Handle successful login - reset counters
-      if (data.success && data.token) {
-        console.log(`✅ Successful login - IP: ${ip}, Email: ${email || 'not provided'}`);
-        
-        // Reset failed attempt counters
-        deleteMemoryKey(ipKey);
-        if (email) {
-          deleteMemoryKey(emailKey);
+      if (!outcomeRecorded) {
+        outcomeRecorded = true;
+        const status = res.statusCode;
+        const isSuccess = status >= 200 && status < 300 && Boolean(data && data.token);
+
+        if (isSuccess) {
+          console.log(`✅ Successful login - ${who}`);
+          // A correct password clears this account's failures. The IP counter is deliberately
+          // kept: otherwise one valid account could be used to reset guessing against others.
+          if (emailKey) deleteMemoryKey(emailKey);
+        } else if (status === 401) {
+          // Wrong credentials (or unknown email): counts against the account and the IP
+          console.log(`❌ Failed login - ${who}`);
+          const ipCount = recordFailure(ipKey, ipBlockKey, CONFIG.MAX_FAILED_ATTEMPTS_PER_IP, 'ip_limit');
+          const emailCount = emailKey
+            ? recordFailure(emailKey, emailBlockKey, CONFIG.MAX_FAILED_ATTEMPTS_PER_ACCOUNT, 'account_limit')
+            : 0;
+
+          // Add attempt info to response for frontend
+          if (data && typeof data === 'object') {
+            data.attemptInfo = {
+              ipAttempts: ipCount,
+              emailAttempts: emailCount,
+              maxAttempts: CONFIG.MAX_FAILED_ATTEMPTS_PER_ACCOUNT,
+              remainingAttempts: Math.max(0, Math.min(
+                CONFIG.MAX_FAILED_ATTEMPTS_PER_IP - ipCount,
+                emailKey ? CONFIG.MAX_FAILED_ATTEMPTS_PER_ACCOUNT - emailCount : Infinity
+              ))
+            };
+          }
+        } else if (status >= 400 && status < 500) {
+          // Malformed request (e.g. missing password): not a password guess, so it does not count
+          // against any account, but it still counts against the sending IP
+          console.log(`❌ Rejected login request (${status}) - ${who}`);
+          recordFailure(ipKey, ipBlockKey, CONFIG.MAX_FAILED_ATTEMPTS_PER_IP, 'ip_limit');
         }
-        deleteMemoryKey(blockKey);
-      } 
-      // Handle failed login - increment counters
-      else if (!data.success) {
-        console.log(`❌ Failed login - IP: ${ip}, Email: ${email || 'not provided'}`);
-        
-        // Increment IP counter
-        const newIpAttempts = {
-          count: ipAttempts.count + 1,
-          firstAttempt: ipAttempts.firstAttempt
-        };
-        setMemoryKey(ipKey, newIpAttempts, CONFIG.ATTEMPT_WINDOW_SECONDS);
-        
-        // Increment email counter (if provided)
-        let newEmailAttempts = null;
-        if (email) {
-          newEmailAttempts = {
-            count: (emailAttempts?.count || 0) + 1,
-            firstAttempt: emailAttempts?.firstAttempt || Date.now()
-          };
-          setMemoryKey(emailKey, newEmailAttempts, CONFIG.ATTEMPT_WINDOW_SECONDS);
-        }
-        
-        // Add attempt info to response for frontend
-        data.attemptInfo = {
-          ipAttempts: newIpAttempts.count,
-          emailAttempts: email ? newEmailAttempts.count : 0,
-          maxAttempts: CONFIG.MAX_ATTEMPTS_PER_MINUTE,
-          remainingAttempts: CONFIG.MAX_ATTEMPTS_PER_MINUTE - Math.max(newIpAttempts.count, email ? newEmailAttempts.count : 0)
-        };
+        // 5xx: a server fault is not a failed attempt by the user and is not counted
       }
-      
+
       // Call original json
       return originalJson.call(this, data);
     };
@@ -180,15 +187,16 @@ const loginRateLimiter = async (req, res, next) => {
 // Helper function to reset user's rate limit (for admin use)
 async function resetUserRateLimit(ip, email = null) {
   try {
-    const { ipKey, emailKey, blockKey } = generateKeys(ip, email);
-    
+    const { ipKey, emailKey, ipBlockKey, emailBlockKey } = generateKeys(ip, email);
+
     deleteMemoryKey(ipKey);
-    if (email) {
+    deleteMemoryKey(ipBlockKey);
+    if (emailKey) {
       deleteMemoryKey(emailKey);
+      deleteMemoryKey(emailBlockKey);
     }
-    deleteMemoryKey(blockKey);
-    
-    console.log(`🔄 Rate limit reset - IP: ${ip}, Email: ${email || 'not provided'}`);
+
+    console.log(`🔄 Rate limit reset - IP: ${ip}, Email: ${normalizeEmail(email) || 'not provided'}`);
     return true;
   } catch (error) {
     console.error('❌ Error resetting rate limit:', error);
@@ -199,11 +207,11 @@ async function resetUserRateLimit(ip, email = null) {
 // Helper function to check if user is blocked
 async function isUserBlocked(ip, email = null) {
   try {
-    const { blockKey } = generateKeys(ip, email);
-    const blockData = getMemoryKey(blockKey);
-    
+    const { ipBlockKey, emailBlockKey } = generateKeys(ip, email);
+    const blockData = getMemoryKey(ipBlockKey) || (emailBlockKey ? getMemoryKey(emailBlockKey) : null);
+
     if (!blockData) return null;
-    
+
     const remainingTime = Math.ceil((blockData.expiresAt - Date.now()) / 1000);
     return {
       blocked: true,
@@ -217,22 +225,22 @@ async function isUserBlocked(ip, email = null) {
   }
 }
 
-// Cleanup expired entries periodically
+// Cleanup expired entries periodically (unref: this timer must not keep the process alive)
 setInterval(() => {
   const now = Date.now();
   let cleanedCount = 0;
-  
+
   for (const [key, data] of memoryStore.entries()) {
     if (now > data.expiresAt) {
       memoryStore.delete(key);
       cleanedCount++;
     }
   }
-  
+
   if (cleanedCount > 0) {
     console.log(`🧹 Cleaned ${cleanedCount} expired rate limiting entries`);
   }
-}, 60000); // Clean every minute
+}, 60000).unref(); // Clean every minute
 
 module.exports = {
   loginRateLimiter,

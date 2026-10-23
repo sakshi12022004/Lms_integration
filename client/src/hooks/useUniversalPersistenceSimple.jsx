@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../auth/auth';
 
-const API_BASE_URL = '/api';
 
 // Retry logic helper
 const fetchWithRetry = async (url, options = {}, retries = 3) => {
@@ -21,7 +20,10 @@ const fetchWithRetry = async (url, options = {}, retries = 3) => {
 };
 
 export function useUniversalPersistence(entityType, initialData = []) {
-  const { token } = useAuth();
+  // Use the backend base URL from AuthProvider (VITE_BACKEND_URL or the
+  // localhost/production default). A bare '/api' resolves against the Vite
+  // dev server, which answers with index.html instead of JSON.
+  const { token, API: API_BASE_URL } = useAuth();
   const [data, setData] = useState(initialData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -58,10 +60,14 @@ export function useUniversalPersistence(entityType, initialData = []) {
         } else {
           console.warn(`⚠️ Unexpected API response format:`, result);
           setData(initialData);
+          setError('Unexpected response from server');
         }
       } catch (apiErr) {
         console.warn(`⚠️ API error: ${apiErr.message}`);
         setData(initialData);
+        // Surface the failure so pages show an error state instead of a
+        // misleading empty list.
+        setError(apiErr.message);
       }
     } catch (err) {
       console.error(`❌ Error loading ${entityType}:`, err);
@@ -70,7 +76,7 @@ export function useUniversalPersistence(entityType, initialData = []) {
     } finally {
       setLoading(false);
     }
-  }, [entityType, initialData, token]);
+  }, [entityType, initialData, token, API_BASE_URL]);
 
   // Load data from database on component mount only
   useEffect(() => {

@@ -44,8 +44,6 @@ export const studentOverviewTour = {
     // live class) must be at their final position before the spotlight and
     // popover are placed, or they land where the target was mid-scroll.
     smoothScroll: false,
-    nextBtnText: 'Next',
-    doneBtnText: 'Got it ✓',
   },
   steps: [
     // ---- A: Dashboard ----

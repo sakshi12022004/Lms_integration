@@ -67,7 +67,7 @@ app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000', 'http://localhost:8080'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Authorization', 'Cache-Control', 'Accept', 'X-CSRF-Token', 'X-Auth-Token'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Authorization', 'Cache-Control', 'Accept', 'X-CSRF-Token', 'X-Auth-Token', 'X-Language'],
   exposedHeaders: ['Content-Length', 'Content-Type']
 }));
 
@@ -77,7 +77,7 @@ app.use((req, res, next) => {
   
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Authorization, Cache-Control, Accept, X-CSRF-Token, X-Auth-Token, X-Requested-With');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Authorization, Cache-Control, Accept, X-CSRF-Token, X-Auth-Token, X-Language');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Max-Age', '86400');
   res.header('Access-Control-Expose-Headers', 'Content-Length, Content-Type');
@@ -200,7 +200,7 @@ app.use(
     origin: allowedCorsOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-User-ID"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-User-ID", "X-Language"],
     preflightContinue: false,
     optionsSuccessStatus: 204
   })

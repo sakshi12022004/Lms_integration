@@ -14,11 +14,14 @@ import {
 import { useAuth } from '../auth/auth';
 import LoginFooter from './LoginFooter';
 import whiteLogo from '../assets/core5-final-rbg.png';
+import UniversalLanguageSelector from './UniversalLanguageSelector';
+import { useTranslation } from '../context/TranslationContext';
 
 const VendorLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logoutUser, user } = useAuth();
+  const { t } = useTranslation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -28,14 +31,21 @@ const VendorLayout = ({ children }) => {
   };
 
   const navItems = [
-    { path: '/vendor/dashboard', name: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { path: '/vendor/invoices', name: 'Invoices', icon: <FileText size={20} /> },
-    { path: '/vendor/orders', name: 'Orders', icon: <Package size={20} /> },
-    { path: '/vendor/stock', name: 'Stock', icon: <Warehouse size={20} /> },
-    { path: '/vendor/payments', name: 'Payments', icon: <DollarSign size={20} /> },
+    { path: '/vendor/dashboard', nameKey: 'nav_dashboard', name: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+    { path: '/vendor/invoices', nameKey: 'invoices', name: 'Invoices', icon: <FileText size={20} /> },
+    { path: '/vendor/orders', nameKey: 'purchase_orders', name: 'Orders', icon: <Package size={20} /> },
+    { path: '/vendor/stock', nameKey: 'vendor_stock', name: 'Stock', icon: <Warehouse size={20} /> },
+    { path: '/vendor/payments', nameKey: 'payments', name: 'Payments', icon: <DollarSign size={20} /> },
   ];
 
-  const currentPage = navItems.find(item => location.pathname === item.path)?.name || 'Dashboard';
+  const getItemLabel = (item) => {
+    if (!item) return '';
+    const translated = t(item.nameKey);
+    return translated && translated !== item.nameKey ? translated : (item.name || item.nameKey);
+  };
+
+  const currentItem = navItems.find(item => location.pathname === item.path);
+  const currentPage = currentItem ? getItemLabel(currentItem) : (t('nav_dashboard') !== 'nav_dashboard' ? t('nav_dashboard') : 'Dashboard');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50">
@@ -157,7 +167,7 @@ const VendorLayout = ({ children }) => {
                   >
                     <span className={`shrink-0 ${isActive ? 'text-[#B99652]' : 'text-white/70'} transition-colors`}>{item.icon}</span>
                     {!sidebarCollapsed && (
-                      <span className="font-medium text-sm">{item.name}</span>
+                      <span className="font-medium text-sm">{getItemLabel(item)}</span>
                     )}
                   </Link>
                 );
@@ -174,7 +184,7 @@ const VendorLayout = ({ children }) => {
               <div className="flex items-center space-x-3">
                 <ChevronLeft className={`transition-transform duration-200 ${sidebarCollapsed ? 'rotate-180' : ''}`} />
                 {!sidebarCollapsed && (
-                  <span className="font-medium text-xs">Collapse</span>
+                  <span className="font-medium text-xs">{t('nav_collapse') ?? 'Collapse'}</span>
                 )}
               </div>
               {sidebarCollapsed && <ChevronRight size={18} />}
@@ -187,7 +197,7 @@ const VendorLayout = ({ children }) => {
               }`}
             >
               <LogOut size={16} />
-              {!sidebarCollapsed && <span className="ml-2.5 font-medium">Logout</span>}
+              {!sidebarCollapsed && <span className="ml-2.5 font-medium">{t('nav_logout') ?? 'Logout'}</span>}
             </button>
           </div>
         </div>
@@ -276,6 +286,7 @@ const VendorLayout = ({ children }) => {
             </div>
             
             <div className="flex items-center gap-4">
+              <UniversalLanguageSelector variant="compact" />
               {/* Mobile menu button */}
               <button
                 onClick={() => setMobileMenuOpen(true)}

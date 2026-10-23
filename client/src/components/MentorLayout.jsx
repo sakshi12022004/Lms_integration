@@ -22,7 +22,9 @@ import { useTranslation } from "../context/TranslationContext";
 import AnnouncementBell from "./AnnouncementBell";
 import LoginFooter from './LoginFooter';
 import GuideBotLauncher from '../guidebot/runtime/GuideBotLauncher';
+import LMSChatbot from './Chatbot/LMSChatbot';
 import whiteLogo from '../assets/core5-final-rbg.png';
+import UniversalLanguageSelector from './UniversalLanguageSelector';
 
 const MentorLayout = ({ children }) => {
   const location = useLocation();
@@ -291,10 +293,12 @@ const MentorLayout = ({ children }) => {
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-['DM_Serif_Display',serif] text-[#1e1b4b] tracking-wide">{currentPage}</h1>
             
-            {/* Language selector removed for Mentor portal */}
-
-            {/* Announcement Bell */}
-            <AnnouncementBell />
+            {/* Header Right Actions */}
+            <div className="flex items-center gap-3">
+              <UniversalLanguageSelector variant="compact" />
+              <GuideBotLauncher tourId="mentor-overview-v1" />
+              <AnnouncementBell />
+            </div>
           </div>
         </header>
 
@@ -308,10 +312,8 @@ const MentorLayout = ({ children }) => {
       {/* ================= QUOTA MODAL (OVERLAY) ================= */}
       <QuotaLimitModal isOpen={showQuotaModal} onClose={() => setShowQuotaModal(false)} quotaDetails={quotaDetails} />
 
-      {/* GuideBot Launcher — one shared instance for both desktop and mobile */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <GuideBotLauncher tourId="mentor-overview-v1" />
-      </div>
+      {/* Mentor Chatbot */}
+      <LMSChatbot role="mentor" />
     </div>
   );
 };

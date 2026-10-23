@@ -61,8 +61,13 @@ function parseSnapshot(schedule) {
   }));
 }
 
+/** A usable university id is a positive integer; anything else is "no tenant" (null). */
+function toTenantId(value) {
+  return /^[1-9]\d{0,14}$/.test(String(value ?? '').trim()) ? Number(value) : null;
+}
+
 function getValidStudent(conn, studentId) {
-  const user = conn.get(`SELECT id, name, email, role FROM users WHERE id = ?`, [studentId]);
+  const user = conn.get(`SELECT id, name, email, role, university_id FROM users WHERE id = ?`, [studentId]);
   if (!user) {
     throw new PaymentError(404, 'STUDENT_NOT_FOUND', `Student with ID ${studentId} not found.`);
   }
@@ -81,16 +86,33 @@ function getClassroomAssignment(conn, studentId) {
   );
 }
 
-// Primary (grades 1-4) / Secondary fee structure for the student's classroom.
-function resolveApplicableFeeStructure(conn, classroomAssignment) {
+// Primary (grades 1-4) / Secondary fee structure for the student's classroom,
+// chosen only among the student's own university's structures. A student with
+// no university, or a university with no structure, resolves to none.
+function resolveApplicableFeeStructure(conn, classroomAssignment, student) {
+  const universityId = toTenantId(student?.university_id);
+  if (universityId === null) return null;
+
   const gradeNum = parseInt(classroomAssignment?.grade || '1', 10);
   const isPrimary = !isNaN(gradeNum) && gradeNum >= 1 && gradeNum <= 4;
   const targetCategory = isPrimary ? 'Primary' : 'Secondary';
 
-  const feeStructure = conn.get(`SELECT * FROM feeStructures WHERE LOWER(category) = LOWER(?) ORDER BY id DESC LIMIT 1`,
-    [targetCategory]
+  const feeStructure = conn.get(`SELECT * FROM feeStructures WHERE university_id = ? AND LOWER(category) = LOWER(?) ORDER BY id DESC LIMIT 1`,
+    [universityId, targetCategory]
   );
-  return feeStructure || conn.get(`SELECT * FROM feeStructures ORDER BY id ASC LIMIT 1`);
+  return feeStructure || conn.get(`SELECT * FROM feeStructures WHERE university_id = ? ORDER BY id ASC LIMIT 1`, [universityId]) || null;
+}
+
+/** An explicitly requested fee structure must exist AND belong to the student's university. */
+function getRequestedFeeStructure(conn, feeStructureId, student) {
+  const universityId = toTenantId(student?.university_id);
+  const feeStructure = universityId === null
+    ? null
+    : conn.get(`SELECT * FROM feeStructures WHERE id = ? AND university_id = ?`, [feeStructureId, universityId]);
+  if (!feeStructure) {
+    throw new PaymentError(404, 'FEE_STRUCTURE_NOT_FOUND', `Fee structure with ID ${feeStructureId} not found.`);
+  }
+  return feeStructure;
 }
 
 /** All of a student's active schedules must be exactly zero or one. */
@@ -224,7 +246,7 @@ function buildStudentInstallmentSummary(db, studentId) {
 
   const feeStructure = activeSchedule
     ? db.get(`SELECT * FROM feeStructures WHERE id = ?`, [activeSchedule.feeStructureId])
-    : resolveApplicableFeeStructure(db, classroomAssignment);
+    : resolveApplicableFeeStructure(db, classroomAssignment, student);
 
   const allPayments = db.all(`SELECT id, studentId, amount, ${ROW_PAISE_SQL} AS paise, type, status, transactionId, razorpay_payment_id,
             description, createdAt, scheduleId, feeStructureId, planId, installmentStage,
@@ -394,16 +416,28 @@ function findPaymentByIdempotencyKey(conn, key) {
  * transaction on a dedicated connection.
  */
 async function recordOfflineInstallmentPayment(db, payload, actor = {}) {
+  // The collecting staff member's university is mandatory: there is no default tenant
+  const actorUniversityId = toTenantId(actor.universityId);
+  if (actorUniversityId === null) {
+    throw new PaymentError(403, 'TENANT_REQUIRED', 'Access denied: Tenant association missing or invalid');
+  }
   const req = validateOfflinePayload(payload);
 
   try {
     return await withWriteTransaction(db, (conn) => {
+      // 0. A known student of another university is refused before anything else is revealed
+      //    (an unknown id still falls through to the usual not-found handling in step 2)
+      const target = conn.get(`SELECT university_id FROM users WHERE id = ?`, [req.studentId]);
+      if (target && toTenantId(target.university_id) !== actorUniversityId) {
+        throw new PaymentError(403, 'CROSS_TENANT_FORBIDDEN', 'Access denied: This student does not belong to your university.');
+      }
+
       // 1. Idempotent replay (inside the write lock, so concurrent retries serialize here)
       const existing = findPaymentByIdempotencyKey(conn, req.idempotencyKey);
       if (existing) return resolveExistingIdempotentPayment(existing, req);
 
       // 2. Student must exist and be a student
-      getValidStudent(conn, req.studentId);
+      const student = getValidStudent(conn, req.studentId);
 
       // 3. Historical payments that were never allocated block further collection
       const unallocated = getUnallocatedSuccessfulPayments(conn, req.studentId);
@@ -433,12 +467,9 @@ async function recordOfflineInstallmentPayment(db, payload, actor = {}) {
         }
         let feeStructure;
         if (req.feeStructureId !== null) {
-          feeStructure = conn.get(`SELECT * FROM feeStructures WHERE id = ?`, [req.feeStructureId]);
-          if (!feeStructure) {
-            throw new PaymentError(404, 'FEE_STRUCTURE_NOT_FOUND', `Fee structure with ID ${req.feeStructureId} not found.`);
-          }
+          feeStructure = getRequestedFeeStructure(conn, req.feeStructureId, student);
         } else {
-          feeStructure = resolveApplicableFeeStructure(conn, getClassroomAssignment(conn, req.studentId));
+          feeStructure = resolveApplicableFeeStructure(conn, getClassroomAssignment(conn, req.studentId), student);
           if (!feeStructure) {
             throw new PaymentError(409, 'FEE_STRUCTURE_NOT_FOUND', 'Could not determine applicable fee structure for student.');
           }
@@ -539,11 +570,333 @@ async function recordOfflineInstallmentPayment(db, payload, actor = {}) {
   }
 }
 
+async function prepareOrderDetails(db, payload) {
+  const p = payload && typeof payload === 'object' ? payload : {};
+  const studentId = parsePositiveInt(p.studentId);
+  if (studentId === null) {
+    throw new PaymentError(400, 'INVALID_STUDENT_ID', 'A valid student ID is required.');
+  }
+  const stage = p.installmentStage !== undefined ? parsePositiveInt(p.installmentStage) : 1;
+  if (stage === null) {
+    throw new PaymentError(400, 'INVALID_STAGE', 'A valid positive installment stage number is required.');
+  }
+  const requestedPaise = p.amount !== undefined && p.amount !== null ? parseRupeesToPaise(p.amount) : null;
+  if (p.amount !== undefined && p.amount !== null && requestedPaise === null) {
+    throw new PaymentError(400, 'INVALID_AMOUNT', 'Requested amount must be a positive rupee value with at most 2 decimals.');
+  }
+  const planId = typeof p.planId === 'string' && p.planId.trim() !== '' ? p.planId.trim() : null;
+  const feeStructureId = p.feeStructureId !== undefined ? parsePositiveInt(p.feeStructureId) : null;
+
+  return withWriteTransaction(db, (conn) => {
+    const student = getValidStudent(conn, studentId);
+
+    const unallocated = getUnallocatedSuccessfulPayments(conn, studentId);
+    if (unallocated.length > 0) {
+      const total = paiseToRupees(unallocated.reduce((sum, item) => sum + item.paise, 0));
+      throw new PaymentError(
+        409,
+        'LEGACY_RECONCILIATION_REQUIRED',
+        `This student has ${unallocated.length} earlier payment(s) totalling ₹${total} that are not allocated to any installment. Online order creation is blocked until they are reconciled.`
+      );
+    }
+
+    let schedule = getActiveSchedule(conn, studentId);
+    let stages;
+    if (schedule) {
+      if (planId !== null && planId !== String(schedule.planId)) {
+        throw new PaymentError(409, 'PLAN_LOCKED', `Student is already locked to plan '${schedule.planName}'; the plan cannot be changed.`);
+      }
+      if (feeStructureId !== null && feeStructureId !== Number(schedule.feeStructureId)) {
+        throw new PaymentError(409, 'PLAN_LOCKED', 'Student already has an active schedule under a different fee structure.');
+      }
+      stages = parseSnapshot(schedule);
+    } else {
+      if (planId === null) {
+        throw new PaymentError(400, 'INVALID_REQUEST', 'A payment plan must be selected for the first payment.');
+      }
+      let feeStructure;
+      if (feeStructureId !== null) {
+        feeStructure = getRequestedFeeStructure(conn, feeStructureId, student);
+      } else {
+        feeStructure = resolveApplicableFeeStructure(conn, getClassroomAssignment(conn, studentId), student);
+        if (!feeStructure) {
+          throw new PaymentError(409, 'FEE_STRUCTURE_NOT_FOUND', 'Could not determine applicable fee structure for student.');
+        }
+      }
+
+      const snapshot = buildScheduleSnapshot(feeStructure, planId);
+      if (!snapshot.stages.some(s => s.stageNumber === stage)) {
+        throw new PaymentError(400, 'STAGE_NOT_FOUND', `Stage ${stage} does not exist in plan '${snapshot.planName}'.`);
+      }
+
+      const snapshotJson = JSON.stringify(snapshot.stages);
+      const inserted = conn.run(
+        `INSERT INTO student_fee_schedules (studentId, feeStructureId, planId, planName, totalFee, totalFeePaise, scheduleSnapshot, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+        [studentId, feeStructure.id, planId, snapshot.planName, paiseToRupees(snapshot.totalFeePaise), snapshot.totalFeePaise, snapshotJson]
+      );
+      schedule = { id: inserted.lastID, feeStructureId: feeStructure.id, planId: planId, planName: snapshot.planName };
+      stages = snapshot.stages;
+    }
+
+    const targetStage = stages.find(s => Number(s.stageNumber) === stage);
+    if (!targetStage) {
+      throw new PaymentError(400, 'STAGE_NOT_FOUND', `Stage ${stage} does not exist in the student's active schedule.`);
+    }
+
+    const paidRow = conn.get(
+      `SELECT COALESCE(SUM(${ROW_PAISE_SQL}), 0) AS paid FROM payments
+       WHERE scheduleId = ? AND installmentStage = ? AND status IN ${SUCCESS_STATUSES_SQL}`,
+      [schedule.id, stage]
+    );
+    const currentlyPaidPaise = Number(paidRow.paid);
+    const remainingPaise = Math.max(0, targetStage.expectedAmountPaise - currentlyPaidPaise);
+
+    if (remainingPaise <= 0) {
+      throw new PaymentError(409, 'STAGE_ALREADY_PAID', `Installment Stage ${stage} is already fully cleared.`);
+    }
+
+    let orderAmountPaise = remainingPaise;
+    if (requestedPaise !== null) {
+      if (requestedPaise > remainingPaise) {
+        throw new PaymentError(
+          400,
+          'OVERPAYMENT',
+          `Requested payment of ₹${paiseToRupees(requestedPaise)} exceeds the remaining balance of ₹${paiseToRupees(remainingPaise)} for Stage ${stage}.`
+        );
+      }
+      orderAmountPaise = requestedPaise;
+    }
+
+    // Check for existing active created order within last 15 minutes
+    const orderAmountRupees = paiseToRupees(orderAmountPaise);
+    const recentActiveOrder = conn.get(
+      `SELECT * FROM payment_orders 
+       WHERE studentId = ? AND scheduleId = ? AND installmentStage = ? AND amount = ? AND status = 'created'
+         AND createdAt >= datetime('now', '-15 minutes')
+       ORDER BY id DESC LIMIT 1`,
+      [studentId, schedule.id, stage, orderAmountRupees]
+    );
+
+    return {
+      studentId,
+      scheduleId: schedule.id,
+      feeStructureId: schedule.feeStructureId,
+      planId: schedule.planId,
+      planName: schedule.planName,
+      stageNumber: stage,
+      orderAmountPaise,
+      orderAmountRupees,
+      recentActiveOrder
+    };
+  });
+}
+
+async function recordCreatedPaymentOrder(db, orderData) {
+  return withWriteTransaction(db, (conn) => {
+    conn.run(
+      `INSERT INTO payment_orders (orderId, studentId, scheduleId, installmentStage, feeStructureId, amount, currency, status, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'created', CURRENT_TIMESTAMP)`,
+      [
+        orderData.orderId,
+        orderData.studentId,
+        orderData.scheduleId,
+        orderData.installmentStage,
+        orderData.feeStructureId,
+        orderData.amount,
+        orderData.currency || 'INR'
+      ]
+    );
+  });
+}
+
+async function reconcileGatewayPayment(db, { orderId, paymentId, signature, gatewayPayment, authUser }) {
+  if (!orderId || typeof orderId !== 'string' || !orderId.trim()) {
+    throw new PaymentError(400, 'INVALID_ORDER_ID', 'A valid Razorpay order ID is required.');
+  }
+  if (!paymentId || typeof paymentId !== 'string' || !paymentId.trim()) {
+    throw new PaymentError(400, 'INVALID_PAYMENT_ID', 'A valid Razorpay payment ID is required.');
+  }
+
+  const cleanOrderId = orderId.trim();
+  const cleanPaymentId = paymentId.trim();
+
+  try {
+    return await withWriteTransaction(db, (conn) => {
+      // 1. Check if this paymentId has already been reconciled (Idempotency replay)
+      const existingPayment = conn.get(
+        `SELECT *, ${ROW_PAISE_SQL} AS paise FROM payments WHERE razorpay_payment_id = ?`,
+        [cleanPaymentId]
+      );
+
+      if (existingPayment) {
+        const sameOrder = existingPayment.razorpay_order_id === cleanOrderId;
+        const sameStudent = Number(existingPayment.studentId) === Number(gatewayPayment?.notes?.studentId || existingPayment.studentId);
+        if (!sameOrder || (authUser?.role === 'student' && Number(existingPayment.studentId) !== Number(authUser.userId))) {
+          throw new PaymentError(409, 'PAYMENT_ID_CONFLICT', 'This payment ID is already associated with a different order or student.');
+        }
+        return {
+          success: true,
+          isDuplicate: true,
+          message: 'Payment already reconciled. Returned existing receipt.',
+          receiptNo: existingPayment.receiptNo,
+          payment: existingPayment
+        };
+      }
+
+      // 2. Fetch the persisted payment_orders record
+      const order = conn.get(`SELECT * FROM payment_orders WHERE orderId = ?`, [cleanOrderId]);
+      if (!order) {
+        throw new PaymentError(404, 'ORDER_NOT_FOUND', `Payment order ${cleanOrderId} not found.`);
+      }
+
+      // 3. Enforce student ownership and tenant scope
+      const studentId = Number(order.studentId);
+      if (authUser?.role === 'student' && studentId !== Number(authUser.userId)) {
+        throw new PaymentError(403, 'FORBIDDEN', 'Access denied: You cannot verify payment orders for another student.');
+      }
+
+      getValidStudent(conn, studentId);
+
+      // 4. Verify gateway payment details against persisted order
+      const orderAmountPaise = storedRupeesToPaise(order.amount);
+      const gatewayAmountPaise = Number(gatewayPayment?.amount || 0);
+      if (gatewayAmountPaise !== orderAmountPaise) {
+        throw new PaymentError(400, 'AMOUNT_MISMATCH', `Gateway payment amount (₹${paiseToRupees(gatewayAmountPaise)}) does not match order amount (₹${order.amount}).`);
+      }
+
+      if (gatewayPayment?.order_id && gatewayPayment.order_id !== cleanOrderId) {
+        throw new PaymentError(400, 'ORDER_MISMATCH', 'Gateway payment order_id does not match the requested order.');
+      }
+
+      const gatewayCurrency = (gatewayPayment?.currency || 'INR').toUpperCase();
+      if (gatewayCurrency !== 'INR') {
+        throw new PaymentError(400, 'CURRENCY_MISMATCH', `Unsupported currency: ${gatewayCurrency}`);
+      }
+
+      // 5. Check legacy unallocated payments block
+      const unallocated = getUnallocatedSuccessfulPayments(conn, studentId);
+      if (unallocated.length > 0) {
+        const total = paiseToRupees(unallocated.reduce((sum, item) => sum + item.paise, 0));
+        throw new PaymentError(
+          409,
+          'LEGACY_RECONCILIATION_REQUIRED',
+          `This student has ${unallocated.length} earlier payment(s) totalling ₹${total} that are not allocated to any installment. Reconciliation is blocked until resolved.`
+        );
+      }
+
+      // 6. Fetch active schedule and target stage
+      const schedule = conn.get(`SELECT * FROM student_fee_schedules WHERE id = ? AND studentId = ?`, [order.scheduleId, studentId]);
+      if (!schedule) {
+        throw new PaymentError(404, 'SCHEDULE_NOT_FOUND', 'Active fee schedule associated with this order could not be found.');
+      }
+
+      const stages = parseSnapshot(schedule);
+      const targetStage = stages.find(s => Number(s.stageNumber) === Number(order.installmentStage));
+      if (!targetStage) {
+        throw new PaymentError(400, 'STAGE_NOT_FOUND', `Installment Stage ${order.installmentStage} not found in schedule snapshot.`);
+      }
+
+      // 7. Re-verify remaining stage balance in integer paise immediately before write
+      const paidRow = conn.get(
+        `SELECT COALESCE(SUM(${ROW_PAISE_SQL}), 0) AS paid FROM payments
+         WHERE scheduleId = ? AND installmentStage = ? AND status IN ${SUCCESS_STATUSES_SQL}`,
+        [schedule.id, order.installmentStage]
+      );
+      const currentlyPaidPaise = Number(paidRow.paid);
+      const remainingPaise = Math.max(0, targetStage.expectedAmountPaise - currentlyPaidPaise);
+
+      if (orderAmountPaise > remainingPaise) {
+        throw new PaymentError(
+          409,
+          'OVERPAYMENT_CONFLICT',
+          `Stage ${order.installmentStage} has a remaining balance of ₹${paiseToRupees(remainingPaise)}, which is less than the paid amount of ₹${paiseToRupees(orderAmountPaise)}. Payment is captured at gateway but cannot be credited to stage. Manual reconciliation required.`
+        );
+      }
+
+      // 8. Insert into payments table
+      const paymentMethod = gatewayPayment?.method ? String(gatewayPayment.method).toUpperCase() : 'ONLINE';
+      const insertResult = conn.run(
+        `INSERT INTO payments (
+          studentId, amount, amountPaise, type, paymentMethod, status, referenceNo, description, createdAt,
+          scheduleId, feeStructureId, planId, installmentStage, allocationStatus,
+          razorpay_payment_id, razorpay_order_id, razorpay_signature
+        ) VALUES (?, ?, ?, ?, ?, 'success', ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, 'allocated', ?, ?, ?)`,
+        [
+          studentId,
+          paiseToRupees(orderAmountPaise),
+          orderAmountPaise,
+          'Online (Razorpay)',
+          paymentMethod,
+          cleanPaymentId,
+          `Online fee payment for ${schedule.planName} - Stage ${order.installmentStage}`,
+          schedule.id,
+          order.feeStructureId,
+          schedule.planId,
+          order.installmentStage,
+          cleanPaymentId,
+          cleanOrderId,
+          signature || null
+        ]
+      );
+
+      const receiptNo = `RCPT-${String(insertResult.lastID).padStart(8, '0')}`;
+      conn.run(`UPDATE payments SET receiptNo = ?, transactionId = ? WHERE id = ?`, [receiptNo, receiptNo, insertResult.lastID]);
+
+      // 9. Update payment_orders status to 'captured'
+      conn.run(`UPDATE payment_orders SET status = 'captured' WHERE orderId = ?`, [cleanOrderId]);
+
+      const insertedPayment = conn.get(`SELECT *, ${ROW_PAISE_SQL} AS paise FROM payments WHERE id = ?`, [insertResult.lastID]);
+
+      return {
+        success: true,
+        isDuplicate: false,
+        message: `Online payment of ₹${paiseToRupees(orderAmountPaise).toLocaleString('en-IN')} verified and credited successfully.`,
+        receiptNo,
+        payment: insertedPayment,
+        stageUpdated: {
+          stageNumber: order.installmentStage,
+          paidNow: paiseToRupees(orderAmountPaise),
+          totalStagePaid: paiseToRupees(currentlyPaidPaise + orderAmountPaise),
+          remainingBalance: paiseToRupees(remainingPaise - orderAmountPaise),
+          remainingBalancePaise: remainingPaise - orderAmountPaise
+        }
+      };
+    });
+  } catch (err) {
+    if (err instanceof PaymentError) throw err;
+    if (isBusyError(err)) {
+      throw new PaymentError(503, 'PAYMENT_SYSTEM_BUSY', 'The payment system is busy. Please retry in a moment.');
+    }
+    if (isConstraintError(err)) {
+      // Check if duplicate race was committed
+      const existing = await withReadConnection(db, (conn) =>
+        conn.get(`SELECT *, ${ROW_PAISE_SQL} AS paise FROM payments WHERE razorpay_payment_id = ?`, [cleanPaymentId])
+      ).catch(() => null);
+
+      if (existing) {
+        return {
+          success: true,
+          isDuplicate: true,
+          message: 'Payment already reconciled. Returned existing receipt.',
+          receiptNo: existing.receiptNo,
+          payment: existing
+        };
+      }
+    }
+    console.error('Gateway reconciliation failed:', err);
+    throw new PaymentError(500, 'RECONCILIATION_FAILED', 'Could not reconcile payment. Please retry.');
+  }
+}
+
 module.exports = {
   PaymentError,
   PAYMENT_METHODS,
   normalizeIdempotencyKey,
   buildScheduleSnapshot,
   calculateStudentInstallmentSummary,
-  recordOfflineInstallmentPayment
+  recordOfflineInstallmentPayment,
+  prepareOrderDetails,
+  recordCreatedPaymentOrder,
+  reconcileGatewayPayment
 };

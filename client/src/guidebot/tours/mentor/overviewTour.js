@@ -69,8 +69,6 @@ export const mentorOverviewTour = {
     allowScroll: false,
     // Targets far down a page must be in place before the spotlight is drawn.
     smoothScroll: false,
-    nextBtnText: 'Next',
-    doneBtnText: 'Finish',
   },
   steps: [
     // ---- Dashboard ----

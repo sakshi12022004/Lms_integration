@@ -23,7 +23,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useAuth } from "../../auth/auth";
-import { useTranslation } from "../../context/TranslationContext";
+import { useTranslation } from "react-i18next";
 import AdminLayout from "../../components/AdminLayout";
 import { toast } from 'react-toastify';
 
@@ -82,7 +82,7 @@ const defaultStarterPlans: InstallmentPlan[] = [
 
 const FeeStructure = () => {
   const { API, token } = useAuth();
-  const { t } = useTranslation();
+  const { t } = useTranslation(['forms', 'common']);
   const [feeBreakdown, setFeeBreakdown] = useState({
     tuitionFee: 5000,
     transportFee: 1000,
@@ -463,10 +463,10 @@ const FeeStructure = () => {
         <div>
           <h4 className="text-xs font-bold uppercase tracking-wider text-[#1e1b4b] flex items-center gap-2">
             <Sparkles size={16} className="text-[#B99652]" />
-            Dynamic Student Installment & Payment Plans
+            {t('dynamic_installment_plans_title', 'Dynamic Student Installment & Payment Plans')}
           </h4>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Configure custom installment schedules (equal split or custom percentages). Active plans will be displayed on the Student Portal.
+            {t('dynamic_installment_plans_desc', 'Configure custom installment schedules (equal split or custom percentages). Active plans will be displayed on the Student Portal.')}
           </p>
         </div>
         <button
@@ -474,7 +474,7 @@ const FeeStructure = () => {
           onClick={handleOpenAddPlan}
           className="bg-[#B99652] hover:bg-[#a38241] text-white font-bold text-xs uppercase tracking-wider px-3.5 py-2 rounded-none flex items-center gap-1.5 transition-all shadow-2xs shrink-0 cursor-pointer"
         >
-          <Plus size={15} /> Add Installment Plan
+          <Plus size={15} /> {t('add_installment_plan', 'Add Installment Plan')}
         </button>
       </div>
 
@@ -496,10 +496,10 @@ const FeeStructure = () => {
                       ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
                       : 'bg-slate-100 text-slate-600 border-slate-300'
                   }`}>
-                    {plan.isActive ? 'Active (Visible to Students)' : 'Inactive (Hidden)'}
+                    {plan.isActive ? t('active_visible_to_students', 'Active (Visible to Students)') : t('inactive_hidden', 'Inactive (Hidden)')}
                   </span>
                   <span className="text-[10px] text-slate-500 bg-white border border-[#ebdcaa] px-2 py-0.5 font-semibold">
-                    {plan.installmentsCount} {plan.installmentsCount === 1 ? 'Installment' : 'Installments'} ({plan.splitType === 'equal' ? 'Equal Split' : 'Custom Split'})
+                    {plan.installmentsCount} {plan.installmentsCount === 1 ? t('installment_single', 'Installment') : t('installments_plural', 'Installments')} ({plan.splitType === 'equal' ? t('equal_split', 'Equal Split') : t('custom_split', 'Custom Split')})
                   </span>
                 </div>
 

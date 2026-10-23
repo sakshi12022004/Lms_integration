@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
-const { requirePaymentAuth, requireRoles, resolveStudentScope, STAFF_ROLES } = require('../middleware/paymentAuth');
+const { requirePaymentAuth, requireRoles, requireTenant, toTenantId, resolveStudentScope, STAFF_ROLES } = require('../middleware/paymentAuth');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { getCurrentConfig } = require('../config/razorpay-config');
@@ -45,7 +45,10 @@ router.get('/dashboard', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, re
         return res.status(404).json({ success: false, message: 'Accountant not found' });
       }
 
-      const universityId = user.university_id || 1;
+      const universityId = toTenantId(user.university_id);
+      if (universityId === null) {
+        return res.status(403).json({ success: false, message: 'Access denied: Tenant association missing or invalid' });
+      }
       console.log(' Accountant Dashboard - User ID:', userId, 'University ID:', universityId);
 
       // Get real dashboard stats from database
@@ -115,16 +118,73 @@ router.get('/dashboard', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, re
  * GET /api/accountant/payments
  * Get all payments for accountant's university
  */
-router.get('/payments', authMiddleware, (req, res) => {
+router.get('/payments', requirePaymentAuth, requireRoles(STAFF_ROLES), requireTenant, (req, res) => {
   try {
-    // TODO: Get payments filtered by university_id
-    const mockPayments = [
-      { id: 1, studentName: 'Ali Ahmed', amount: 5000, date: '2026-01-15', status: 'Paid' },
-      { id: 2, studentName: 'Sara Khan', amount: 5000, date: '2026-01-16', status: 'Pending' },
-      { id: 3, studentName: 'Muhammad Hassan', amount: 5000, date: '2026-01-17', status: 'Paid' },
-    ];
+    const universityId = req.user.universityId;
 
-    res.status(200).json({ success: true, data: mockPayments });
+    const query = `
+      SELECT 
+        p.id,
+        p.studentId,
+        u.name AS studentName,
+        u.email AS studentEmail,
+        p.amount,
+        p.type,
+        p.paymentMethod,
+        p.status,
+        p.transactionId,
+        p.receiptNo,
+        p.description,
+        p.createdAt
+      FROM payments p
+      JOIN users u ON u.id = p.studentId
+      WHERE u.university_id = ?
+      ORDER BY p.createdAt DESC
+    `;
+
+    getDatabaseFromRequest(req).all(query, [universityId], (err, rows) => {
+      if (err) {
+        console.error('Error fetching accountant payments:', err);
+        return res.status(500).json({ success: false, message: 'Failed to load payments' });
+      }
+
+      const formatDate = (r) => {
+        if (!r.createdAt) return null; // unknown date stays unknown; never shown as today
+        try {
+          const d = new Date(r.createdAt);
+          return isNaN(d.getTime()) ? String(r.createdAt) : d.toISOString().split('T')[0];
+        } catch {
+          return String(r.createdAt);
+        }
+      };
+
+      const formatStatus = (s) => {
+        if (!s) return 'Pending';
+        const lower = String(s).toLowerCase();
+        if (lower === 'paid' || lower === 'success') return 'Paid';
+        if (lower === 'pending') return 'Pending';
+        if (lower === 'failed') return 'Failed';
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      };
+
+      const formattedPayments = (rows || []).map(r => ({
+        id: r.id,
+        studentId: r.studentId,
+        studentName: r.studentName || 'Student',
+        studentEmail: r.studentEmail || '',
+        amount: r.amount,
+        date: formatDate(r),
+        status: formatStatus(r.status),
+        rawStatus: r.status,
+        type: r.type,
+        paymentMethod: r.paymentMethod,
+        transactionId: r.transactionId || r.receiptNo || String(r.id),
+        description: r.description,
+        createdAt: r.createdAt
+      }));
+
+      res.status(200).json({ success: true, data: formattedPayments });
+    });
   } catch (error) {
     console.error('Get payments error:', error);
     res.status(500).json({ success: false, message: 'Failed to load payments' });
@@ -133,22 +193,16 @@ router.get('/payments', authMiddleware, (req, res) => {
 
 /**
  * GET /api/accountant/expenses
- * Get all expenses for accountant's university
+ * Not implemented. This route used to return hard-coded sample expenses, which must never be
+ * shown as real financial data. It is kept (not deleted) so any caller gets an explicit answer
+ * instead of a 404; no frontend page calls it. Real data: /api/accountant/vendor-invoices and /api/expenses.
  */
-router.get('/expenses', authMiddleware, (req, res) => {
-  try {
-    // TODO: Get expenses filtered by university_id
-    const mockExpenses = [
-      { id: 1, description: 'Staff Salaries', amount: 15000, date: '2026-01-01', category: 'Salaries' },
-      { id: 2, description: 'Utilities Bill', amount: 2000, date: '2026-01-05', category: 'Utilities' },
-      { id: 3, description: 'Office Supplies', amount: 500, date: '2026-01-10', category: 'Materials' },
-    ];
-
-    res.status(200).json({ success: true, data: mockExpenses });
-  } catch (error) {
-    console.error('Get expenses error:', error);
-    res.status(500).json({ success: false, message: 'Failed to load expenses' });
-  }
+router.get('/expenses', requirePaymentAuth, requireRoles(STAFF_ROLES), requireTenant, (req, res) => {
+  res.status(501).json({
+    success: false,
+    code: 'NOT_IMPLEMENTED',
+    message: 'Accountant expense records are not available from this endpoint. Use /api/accountant/vendor-invoices or /api/expenses.'
+  });
 });
 
 /**
@@ -186,7 +240,13 @@ router.get('/vendor-invoices', authMiddleware, (req, res) => {
         }
       }
 
-      const universityId = user.university_id || 1;
+      const universityId = toTenantId(user.university_id);
+      if (universityId === null) {
+        if (!res.headersSent) {
+          res.status(403).json({ success: false, message: 'Access denied: Tenant association missing or invalid' });
+        }
+        return;
+      }
       console.log(' Accountant Vendor Invoices - User ID:', userId, 'University ID:', universityId);
 
       // Get all invoices from database filtered by university with timeout
@@ -216,17 +276,18 @@ router.get('/vendor-invoices', authMiddleware, (req, res) => {
  * POST /api/accountant/pay-invoice/:invoiceId
  * Process payment for a vendor invoice
  */
-router.post('/pay-invoice/:invoiceId', authMiddleware, (req, res) => {
+router.post('/pay-invoice/:invoiceId', requirePaymentAuth, requireRoles(STAFF_ROLES), requireTenant, (req, res) => {
   try {
     const { invoiceId } = req.params;
-    const userId = req.user?.userId;
+    const userId = req.user.userId;
+    const universityId = req.user.universityId;
     
     if (!invoiceId) {
       return res.status(400).json({ success: false, message: 'Invoice ID is required' });
     }
 
-    // First check if invoice exists and is pending
-    getDatabaseFromRequest(req).get('SELECT * FROM invoices WHERE id = ?', [invoiceId], (err, invoice) => {
+    // First check if invoice exists for this university and is pending
+    getDatabaseFromRequest(req).get('SELECT * FROM invoices WHERE id = ? AND university_id = ?', [invoiceId, universityId], (err, invoice) => {
       if (err) {
         console.error('Check invoice error:', err);
         return res.status(500).json({ success: false, message: 'Database error' });
@@ -240,30 +301,37 @@ router.post('/pay-invoice/:invoiceId', authMiddleware, (req, res) => {
         return res.status(400).json({ success: false, message: 'Invoice is already paid or processed' });
       }
 
-      // Update invoice status to paid
+      // Update invoice status to paid for this university
       const paidDate = new Date().toISOString();
-      getDatabaseFromRequest(req).run(
-        'UPDATE invoices SET status = ?, paidDate = ?, updatedAt = ? WHERE id = ?',
-        ['paid', paidDate, paidDate, invoiceId],
-        function(err) {
+      const db = getDatabaseFromRequest(req);
+      db.all("PRAGMA table_info('invoices')", (pragmaErr, cols) => {
+        const hasPaidDate = !pragmaErr && Array.isArray(cols) && cols.some(c => c.name === 'paidDate');
+        const updateSql = hasPaidDate
+          ? 'UPDATE invoices SET status = ?, paidDate = ?, updatedAt = ? WHERE id = ? AND university_id = ?'
+          : 'UPDATE invoices SET status = ?, updatedAt = ? WHERE id = ? AND university_id = ?';
+        const params = hasPaidDate
+          ? ['paid', paidDate, paidDate, invoiceId, universityId]
+          : ['paid', paidDate, invoiceId, universityId];
+
+        db.run(updateSql, params, function(err) {
           if (err) {
             console.error('Update invoice error:', err);
             return res.status(500).json({ success: false, message: 'Failed to process payment' });
           }
 
-          // Log the payment transaction
-          getDatabaseFromRequest(req).run(
+          // Log the payment transaction with verified userId
+          db.run(
             'INSERT INTO payment_transactions (invoice_id, user_id, amount, payment_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
             [invoiceId, userId, invoice.amount, paidDate, 'completed', paidDate],
-            function(err) {
-              if (err) {
-                console.error('Log payment transaction error:', err);
+            function(logErr) {
+              if (logErr) {
+                console.error('Log payment transaction error:', logErr);
                 // Don't fail the whole operation if logging fails
               }
             }
           );
 
-          console.log(`Invoice ${invoiceId} paid by accountant ${userId} on ${paidDate}`);
+          console.log(`Invoice ${invoiceId} paid by accountant ${userId} (university ${universityId}) on ${paidDate}`);
           
           res.status(200).json({ 
             success: true, 
@@ -275,8 +343,8 @@ router.post('/pay-invoice/:invoiceId', authMiddleware, (req, res) => {
               amount: invoice.amount
             }
           });
-        }
-      );
+        });
+      });
     });
   } catch (error) {
     console.error('Process payment error:', error);
@@ -490,32 +558,10 @@ router.post('/download-invoice', authMiddleware, async (req, res) => {
  * GET /api/accountant/fees-stats
  * Get fee collection statistics
  */
-router.get('/fees-stats', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, res) => {
+router.get('/fees-stats', requirePaymentAuth, requireRoles(STAFF_ROLES), requireTenant, (req, res) => {
   try {
-    const userId = req.user?.userId;
-    
-    if (!userId) {
-      return res.status(401).json({ success: false, message: 'Accountant not authenticated' });
-    }
-
-    // Get accountant's university_id from users table
-    getDatabaseFromRequest(req).get('SELECT university_id FROM users WHERE id = ? AND role = "accountant"', [userId], (err, user) => {
-      if (err) {
-        console.error('Get accountant university error:', err);
-        // If users table doesn't exist, use default university_id
-        const universityId = 1;
-        console.log('Users table not found, using default university_id:', universityId);
-        fetchFeesStats(req, universityId, res);
-      } else if (!user) {
-        const universityId = 1;
-        console.log('Accountant user not found, using default university_id:', universityId);
-        fetchFeesStats(req, universityId, res);
-      } else {
-        const universityId = user.university_id || 1;
-        console.log(' Accountant Fees Stats - User ID:', userId, 'University ID:', universityId);
-        fetchFeesStats(req, universityId, res);
-      }
-    });
+    // University comes from the caller's users row (loaded by requireRoles); there is no default tenant
+    fetchFeesStats(req, req.user.universityId, res);
   } catch (error) {
     console.error('Accountant fees stats error:', error);
     res.status(500).json({ success: false, message: 'Failed to load fee statistics' });
@@ -530,32 +576,23 @@ function fetchFeesStats(req, universityId, res) {
     averageFeesPerStudent: 0
   };
 
-  // Get total fees collected from payments table
-  getDatabaseFromRequest(req).all('SELECT SUM(amount) as totalFeesCollected FROM payments WHERE status = "success"', [], (err, feesResult) => {
+  // payments has no university column: a payment's tenant is its student's users.university_id
+  getDatabaseFromRequest(req).all(`SELECT SUM(p.amount) as totalFeesCollected FROM payments p JOIN users u ON u.id = p.studentId WHERE p.status = 'success' AND u.university_id = ?`, [universityId], (err, feesResult) => {
     if (err) {
       console.error('Get paid fees error:', err);
     } else {
       stats.totalFeesCollected = feesResult[0]?.totalFeesCollected || 0;
     }
 
-    // Get total students count - try users table first, then fallback
-    getDatabaseFromRequest(req).all('SELECT COUNT(*) as totalStudents FROM users WHERE role = "student" AND university_id = ?', [universityId], (err, studentResult) => {
+    // Get total students count for this university
+    getDatabaseFromRequest(req).all(`SELECT COUNT(*) as totalStudents FROM users WHERE role = 'student' AND university_id = ?`, [universityId], (err, studentResult) => {
       if (err) {
         console.error('Get student count error:', err);
-        // Fallback: count unique studentIds from payments table
-        getDatabaseFromRequest(req).all('SELECT COUNT(DISTINCT studentId) as totalStudents FROM payments', [], (err, paymentStudentResult) => {
-          if (err) {
-            console.error('Get student count from payments error:', err);
-            stats.totalStudents = 0;
-          } else {
-            stats.totalStudents = paymentStudentResult[0]?.totalStudents || 0;
-          }
-          calculateAverageAndRespond();
-        });
+        stats.totalStudents = 0;
       } else {
-        stats.totalStudents = studentResult[0]?.total || 0;
-        calculateAverageAndRespond();
+        stats.totalStudents = studentResult[0]?.totalStudents || 0;
       }
+      calculateAverageAndRespond();
     });
 
     function calculateAverageAndRespond() {
@@ -563,7 +600,7 @@ function fetchFeesStats(req, universityId, res) {
       stats.averageFeesPerStudent = stats.totalStudents > 0 ? Math.round(stats.totalFeesCollected / stats.totalStudents) : 0;
 
       // Get recent payments from payments table
-      getDatabaseFromRequest(req).all('SELECT p.*, "Student " || p.studentId as studentName, "student@demo.com" as studentEmail FROM payments p WHERE p.status = "success" ORDER BY p.createdAt DESC LIMIT 10', [], (err, paymentsResult) => {
+      getDatabaseFromRequest(req).all(`SELECT p.*, 'Student ' || p.studentId as studentName, 'student@demo.com' as studentEmail FROM payments p JOIN users u ON u.id = p.studentId WHERE p.status = 'success' AND u.university_id = ? ORDER BY p.createdAt DESC LIMIT 10`, [universityId], (err, paymentsResult) => {
         if (err) {
           console.error('Get recent payments error:', err);
           stats.recentPayments = [];
@@ -592,18 +629,18 @@ function fetchFeesStats(req, universityId, res) {
  * GET /api/accountant/students
  * Fetch all students for offline fee collection dropdown and fee management
  */
-router.get('/students', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, res) => {
+router.get('/students', requirePaymentAuth, requireRoles(STAFF_ROLES), requireTenant, (req, res) => {
   try {
     getDatabaseFromRequest(req).all(
       `SELECT u.id, u.name, u.email, u.role, c.grade, c.name as className,
               COALESCE(c.grade, '1') as studentGrade
-       FROM users u 
-       LEFT JOIN student_classroom_assignment sca ON u.id = sca.studentId 
-       LEFT JOIN classrooms c ON sca.classroomId = c.id 
-       WHERE u.role = 'student' 
+       FROM users u
+       LEFT JOIN student_classroom_assignment sca ON u.id = sca.studentId
+       LEFT JOIN classrooms c ON sca.classroomId = c.id
+       WHERE u.role = 'student' AND u.university_id = ?
        GROUP BY u.id
        ORDER BY u.name ASC`,
-      [],
+      [req.user.universityId],
       (err, rows) => {
         if (err) {
           console.error('Error fetching students list:', err);
@@ -615,6 +652,180 @@ router.get('/students', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, res
   } catch (error) {
     console.error('Error in /api/accountant/students:', error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+/**
+ * GET /api/accountant/unallocated-payments
+ * Phase 2C Step 1: Read-only endpoint to list successful historical payments with missing schedule/stage linkage.
+ * Strictly read-only: no allocation mutations, no automatic academic-session inference.
+ * Scoped to the authenticated user's university.
+ */
+router.get('/unallocated-payments', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, res) => {
+  try {
+    const db = getDatabaseFromRequest(req);
+    const userId = req.user?.userId;
+
+    if (!/^\d+$/.test(String(userId))) {
+      return res.status(403).json({ success: false, message: 'Access denied: Invalid user context' });
+    }
+
+    db.get('SELECT university_id FROM users WHERE id = ?', [userId], (err, user) => {
+      if (err) {
+        console.error('Error fetching accountant university:', err);
+        return res.status(500).json({ success: false, message: 'Database query failed' });
+      }
+
+      if (!user || user.university_id === null || user.university_id === undefined) {
+        return res.status(403).json({ success: false, message: 'Access denied: Tenant association missing or invalid' });
+      }
+
+      const universityId = user.university_id;
+
+      const sql = `
+        SELECT 
+          p.id AS paymentId,
+          p.studentId,
+          u.name AS studentName,
+          u.email AS studentEmail,
+          u.university_id AS studentUniversityId,
+          p.amount,
+          p.amountPaise,
+          p.type AS paymentType,
+          p.paymentMethod,
+          p.status,
+          p.transactionId,
+          p.razorpay_payment_id,
+          p.razorpay_order_id,
+          p.receiptNo,
+          p.referenceNo,
+          p.description,
+          p.createdAt,
+          p.scheduleId,
+          p.installmentStage,
+          p.feeStructureId AS paymentFeeStructureId,
+          p.allocationStatus,
+          curr_class.classroomId,
+          curr_class.classroomName,
+          curr_class.studentGrade,
+          sfs_agg.activeScheduleCount,
+          sfs_agg.singleScheduleId,
+          sfs_agg.singlePlanName,
+          fs_curr.id AS currentFeeStructureId,
+          fs_curr.category AS currentFeeStructureCategory,
+          fs_curr.totalFee AS currentFeeStructureTotalFee
+        FROM payments p
+        JOIN users u ON u.id = p.studentId
+        LEFT JOIN (
+          SELECT sca.studentId, c.id AS classroomId, c.name AS classroomName, c.grade AS studentGrade
+          FROM student_classroom_assignment sca
+          JOIN classrooms c ON sca.classroomId = c.id
+          WHERE sca.id = (
+            SELECT MAX(sca2.id) 
+            FROM student_classroom_assignment sca2 
+            WHERE sca2.studentId = sca.studentId
+          )
+        ) curr_class ON curr_class.studentId = u.id
+        LEFT JOIN (
+          SELECT 
+            studentId,
+            COUNT(*) AS activeScheduleCount,
+            MIN(id) AS singleScheduleId,
+            MIN(planName) AS singlePlanName,
+            MIN(feeStructureId) AS singleFeeStructureId
+          FROM student_fee_schedules
+          WHERE status = 'active'
+          GROUP BY studentId
+        ) sfs_agg ON sfs_agg.studentId = u.id
+        LEFT JOIN feeStructures fs_curr ON (
+          sfs_agg.activeScheduleCount = 1 
+          AND fs_curr.id = sfs_agg.singleFeeStructureId
+          AND fs_curr.university_id = u.university_id
+        )
+        WHERE u.university_id = ?
+          AND p.status IN ('success', 'paid')
+          AND (p.scheduleId IS NULL OR p.installmentStage IS NULL)
+        ORDER BY p.createdAt DESC, p.id DESC
+      `;
+
+      db.all(sql, [universityId], (err, rows) => {
+        if (err) {
+          console.error('Error fetching unallocated payments:', err);
+          return res.status(500).json({ success: false, message: 'Database query failed' });
+        }
+
+        const unallocatedPayments = (rows || []).map(r => {
+          const activeScheduleCount = Number(r.activeScheduleCount || 0);
+          const hasSingleActiveSchedule = activeScheduleCount === 1;
+          const isMultipleActiveSchedules = activeScheduleCount > 1;
+          const hasActiveFeeStructure = hasSingleActiveSchedule && Boolean(r.currentFeeStructureId);
+
+          return {
+            paymentId: r.paymentId,
+            studentId: r.studentId,
+            studentName: r.studentName || `Student #${r.studentId}`,
+            studentEmail: r.studentEmail || '',
+            universityId: r.studentUniversityId,
+            amount: Number(r.amount || 0),
+            amountPaise: r.amountPaise !== null && r.amountPaise !== undefined ? Number(r.amountPaise) : Math.round(Number(r.amount || 0) * 100),
+            paymentType: r.paymentType || 'full',
+            paymentMethod: r.paymentMethod || (r.razorpay_payment_id ? 'online_razorpay' : 'offline_manual'),
+            status: r.status,
+            transactionId: r.transactionId || r.razorpay_payment_id || `PAY-${r.paymentId}`,
+            razorpayPaymentId: r.razorpay_payment_id || null,
+            razorpayOrderId: r.razorpay_order_id || null,
+            receiptNo: r.receiptNo || null,
+            referenceNo: r.referenceNo || null,
+            description: r.description || null,
+            createdAt: r.createdAt,
+            paymentDate: r.createdAt ? new Date(r.createdAt).toISOString() : null,
+            scheduleId: r.scheduleId || null,
+            installmentStage: r.installmentStage || null,
+            allocationStatus: 'unallocated',
+            currentAcademicContext: {
+              classroomId: r.classroomId || null,
+              classroomName: r.classroomName || null,
+              grade: r.studentGrade || null,
+              activeScheduleId: hasSingleActiveSchedule ? r.singleScheduleId : null,
+              activePlanName: hasSingleActiveSchedule ? r.singlePlanName : null,
+              currentFeeStructureId: hasSingleActiveSchedule ? r.currentFeeStructureId : null,
+              currentFeeStructureCategory: hasSingleActiveSchedule ? r.currentFeeStructureCategory : null,
+              currentAnnualFee: hasSingleActiveSchedule && r.currentFeeStructureTotalFee ? Number(r.currentFeeStructureTotalFee) : null,
+              isStructureDeterminedSafely: hasActiveFeeStructure,
+              scheduleAmbiguity: isMultipleActiveSchedules 
+                ? 'MULTIPLE_ACTIVE_SCHEDULES' 
+                : (!hasSingleActiveSchedule ? 'NO_ACTIVE_SCHEDULE' : null),
+              ambiguityNotice: isMultipleActiveSchedules
+                ? 'Multiple active installment schedules detected. Fee context cannot be determined safely.'
+                : null
+            },
+            reconciliationRequirement: {
+              status: 'ACADEMIC_SESSION_UNCONFIRMED',
+              academicSessionConfirmed: false,
+              readOnlyNotice: 'Academic-session confirmation is required before this historical payment can be allocated. Automatic inference from current grade is disabled for financial safety.'
+            }
+          };
+        });
+
+        const totalUnallocatedAmount = unallocatedPayments.reduce((sum, item) => sum + item.amount, 0);
+        const uniqueStudentIds = new Set(unallocatedPayments.map(item => item.studentId));
+
+        res.status(200).json({
+          success: true,
+          data: unallocatedPayments,
+          summary: {
+            totalUnallocatedCount: unallocatedPayments.length,
+            totalUnallocatedAmount,
+            affectedStudentsCount: uniqueStudentIds.size,
+            reconciliationMode: 'READ_ONLY_REVIEW',
+            academicSessionConfirmationRequired: true
+          }
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Error in /api/accountant/unallocated-payments:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching unallocated payments' });
   }
 });
 
@@ -636,14 +847,47 @@ function sendPaymentError(res, error, fallbackMessage) {
 }
 
 /**
+ * Staff may only read fee records of students in their own university, checked
+ * against the users table. Students are already limited to themselves by
+ * resolveStudentScope. Resolves true when allowed; otherwise sends the error and resolves false.
+ */
+function authorizeStudentAccess(req, res, studentId) {
+  return new Promise((resolve) => {
+    if (req.user.role === 'student') return resolve(true);
+
+    const deny = () => {
+      res.status(403).json({ success: false, message: 'Access denied: This student does not belong to your university.' });
+      resolve(false);
+    };
+    const staffUniversityId = toTenantId(req.user.universityId);
+    if (staffUniversityId === null) {
+      res.status(403).json({ success: false, message: 'Access denied: Tenant association missing or invalid' });
+      return resolve(false);
+    }
+
+    getDatabaseFromRequest(req).get('SELECT university_id FROM users WHERE id = ?', [studentId], (err, target) => {
+      if (err) {
+        console.error('Student tenant check failed:', err.message);
+        res.status(500).json({ success: false, message: 'Authorization check failed.' });
+        return resolve(false);
+      }
+      // An unknown id is left to the caller's own not-found handling; a known user must be same-university
+      if (target && toTenantId(target.university_id) !== staffUniversityId) return deny();
+      resolve(true);
+    });
+  });
+}
+
+/**
  * GET /api/accountant/student-installment-status
  * Fetch detailed installment summary, schedule snapshot, and stage balances for a student.
- * Students always get their own record; staff must pass ?studentId=. Read-only.
+ * Students always get their own record; staff must pass ?studentId= of a student in their own university. Read-only.
  */
 router.get('/student-installment-status', requirePaymentAuth, requireRoles(FEE_VIEW_ROLES), async (req, res) => {
   try {
     const studentId = resolveStudentScope(req, res, req.query.studentId);
     if (studentId === null) return;
+    if (!(await authorizeStudentAccess(req, res, studentId))) return;
 
     const db = getDatabaseFromRequest(req);
     const summary = await calculateStudentInstallmentSummary(db, studentId);
@@ -658,10 +902,10 @@ router.get('/student-installment-status', requirePaymentAuth, requireRoles(FEE_V
  * Record an offline fee collection (Cash, Cheque, DD, Bank Transfer, UPI)
  * with strict atomic stage validation, partial payment support, and idempotency protection.
  */
-router.post('/collect-offline-fee', requirePaymentAuth, requireRoles(STAFF_ROLES), async (req, res) => {
+router.post('/collect-offline-fee', requirePaymentAuth, requireRoles(STAFF_ROLES), requireTenant, async (req, res) => {
   try {
     const db = getDatabaseFromRequest(req);
-    const result = await recordOfflineInstallmentPayment(db, req.body, { userId: req.user.userId });
+    const result = await recordOfflineInstallmentPayment(db, req.body, { userId: req.user.userId, universityId: req.user.universityId });
 
     res.status(result.isDuplicate ? 200 : 201).json({
       success: true,
@@ -678,12 +922,13 @@ router.post('/collect-offline-fee', requirePaymentAuth, requireRoles(STAFF_ROLES
 /**
  * GET /api/accountant/student-payments-history
  * Fetch all payments (online + offline) for a student.
- * Students always get their own history; staff must pass ?studentId=.
+ * Students always get their own history; staff must pass ?studentId= of a student in their own university.
  */
-router.get('/student-payments-history', requirePaymentAuth, requireRoles(FEE_VIEW_ROLES), (req, res) => {
+router.get('/student-payments-history', requirePaymentAuth, requireRoles(FEE_VIEW_ROLES), async (req, res) => {
   try {
     const studentId = resolveStudentScope(req, res, req.query.studentId);
     if (studentId === null) return;
+    if (!(await authorizeStudentAccess(req, res, studentId))) return;
 
     getDatabaseFromRequest(req).all(
       `SELECT * FROM payments WHERE studentId = ? ORDER BY createdAt DESC`,

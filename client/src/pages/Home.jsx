@@ -49,6 +49,7 @@ import { useAuth } from '../auth/auth';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import core5Logo from '../assets/core5-final-rbg.png';
+import PersonaOrbit, { PERSONAS } from '../components/home/PersonaOrbit';
 
 import studentReading from '../assets/student_reading.jpg';
 import schoolgirlTransparent from '../assets/schoolgirl_transparent.png';
@@ -124,6 +125,7 @@ function Home() {
   const [activeShowcaseTab, setActiveShowcaseTab] = useState('student');
   const [isLoginDropdownOpen, setIsLoginDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activePersona, setActivePersona] = useState(0);
   const dropdownRef = useRef(null);
 
   // Hero Login Card States
@@ -166,7 +168,25 @@ function Home() {
         setHeroError('Invalid server response.');
       }
     } catch (err) {
-      setHeroError(err.response?.data?.message || 'Login failed. Check your credentials.');
+      if (err.response?.status === 429) {
+        const retryAfterHeader = err.response.headers?.['retry-after'];
+        const retrySec = parseInt(retryAfterHeader, 10) || 
+                         (typeof err.response.data?.remainingTime === 'number' ? err.response.data.remainingTime : null);
+        let rateLimitMsg = 'Too many login attempts. Please try again later.';
+        if (retrySec && retrySec > 0) {
+          if (retrySec >= 60) {
+            const mins = Math.ceil(retrySec / 60);
+            rateLimitMsg = `Too many login attempts. Please try again in ${mins} minute${mins > 1 ? 's' : ''}.`;
+          } else {
+            rateLimitMsg = `Too many login attempts. Please try again in ${retrySec} second${retrySec > 1 ? 's' : ''}.`;
+          }
+        } else if (err.response.data?.message) {
+          rateLimitMsg = err.response.data.message;
+        }
+        setHeroError(rateLimitMsg);
+      } else {
+        setHeroError(err.response?.data?.message || 'Login failed. Check your credentials.');
+      }
     } finally {
       setHeroLoading(false);
     }
@@ -276,11 +296,11 @@ function Home() {
 
             {/* Desktop Navigation Links (Polymath font, 15px, 600 weight, Uppercase & Gold Active Link) */}
             <nav className="hidden lg:flex items-center space-x-8 text-[15px] font-['Polymath',sans-serif] font-semibold tracking-[0.5px] uppercase text-slate-200 upper-nav-link">
-              <a href="#why-us" className="hover:text-[#B99652] transition-colors">WHY US</a>
-              <a href="#showcase" className="hover:text-[#B99652] transition-colors">PORTALS</a>
-              <a href="#features" className="hover:text-[#B99652] transition-colors">FEATURES</a>
-              <a href="#pricing" className="text-[#B99652] hover:text-[#a68443] transition-colors">PRICING</a>
-              <a href="#partners" className="hover:text-[#B99652] transition-colors">PARTNERS</a>
+              <a href="#why-us" className="hover:text-[#B99652] transition-colors">{t('nav_why_us', 'WHY US')}</a>
+              <a href="#showcase" className="hover:text-[#B99652] transition-colors">{t('nav_portals', 'PORTALS')}</a>
+              <a href="#features" className="hover:text-[#B99652] transition-colors">{t('nav_features', 'FEATURES')}</a>
+              <a href="#pricing" className="text-[#B99652] hover:text-[#a68443] transition-colors">{t('nav_pricing', 'PRICING')}</a>
+              <a href="#partners" className="hover:text-[#B99652] transition-colors">{t('nav_partners', 'PARTNERS')}</a>
             </nav>
 
             {/* Right Actions: Login Dropdown, Book a Demo Button & Mobile Hamburger */}
@@ -291,7 +311,7 @@ function Home() {
                 onClick={() => handleOpenLogin('student')}
                 className="hidden sm:inline-flex items-center space-x-1.5 px-4 py-2 rounded-none text-sm font-bold text-white bg-white/10 hover:bg-white/20 transition-all border border-white/20 shadow-sm"
               >
-                <span>Login</span>
+                <span>{t('nav_login', 'Login')}</span>
               </button>
 
               {/* Main CTA Button: Book a Demo (Header-Button Specification) */}
@@ -299,7 +319,7 @@ function Home() {
                 onClick={handleOpenDemo}
                 className="hidden sm:inline-flex px-5 py-2.5 header-button bg-[#B99652] hover:bg-[#a68443] text-white font-['Poppins'] font-semibold text-[13px] uppercase tracking-[0.5px] border-none rounded-none shadow-md transition-all duration-300 transform hover:-translate-y-0.5"
               >
-                Book a Demo
+                {t('book_a_demo', 'Book a Demo')}
               </button>
 
               {/* Language Selector */}
@@ -349,11 +369,11 @@ function Home() {
               </div>
 
               <nav className="flex flex-col space-y-4 mb-8 text-[15px] font-['Polymath',sans-serif] font-semibold tracking-[0.5px] uppercase text-slate-800 upper-nav-link">
-                <a href="#why-us" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#B99652] transition-colors">WHY US</a>
-                <a href="#showcase" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#B99652] transition-colors">PORTALS</a>
-                <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#B99652] transition-colors">FEATURES</a>
-                <a href="#pricing" onClick={() => setIsMobileMenuOpen(false)} className="text-[#B99652] hover:text-[#a68443] transition-colors">PRICING</a>
-                <a href="#partners" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#B99652] transition-colors">PARTNERS</a>
+                <a href="#why-us" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#B99652] transition-colors">{t('nav_why_us', 'WHY US')}</a>
+                <a href="#showcase" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#B99652] transition-colors">{t('nav_portals', 'PORTALS')}</a>
+                <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#B99652] transition-colors">{t('nav_features', 'FEATURES')}</a>
+                <a href="#pricing" onClick={() => setIsMobileMenuOpen(false)} className="text-[#B99652] hover:text-[#a68443] transition-colors">{t('nav_pricing', 'PRICING')}</a>
+                <a href="#partners" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#B99652] transition-colors">{t('nav_partners', 'PARTNERS')}</a>
               </nav>
 
               <div className="border-t border-slate-100 pt-4 mb-6">
@@ -364,7 +384,7 @@ function Home() {
                   }}
                   className="w-full flex items-center justify-center space-x-2 p-3 rounded-none bg-[#B99652] hover:bg-[#a68443] text-white font-bold text-sm uppercase tracking-wider transition-all shadow-md"
                 >
-                  <span>LOGIN</span>
+                  <span>{t('nav_login', 'LOGIN')}</span>
                 </button>
               </div>
             </div>
@@ -377,7 +397,7 @@ function Home() {
                 }}
                 className="w-full block py-3.5 text-center rounded-xl bg-gradient-to-r from-amber-500 to-[#D97706] text-white font-bold text-sm shadow-md"
               >
-                Book a Demo
+                {t('book_a_demo', 'Book a Demo')}
               </button>
               <div className="flex justify-center pt-1">
                 <LanguageSelector />
@@ -412,11 +432,13 @@ function Home() {
               className="lg:col-span-6 space-y-6"
             >
               {/* Elegant Corporate Headline */}
-              <h1 className="text-4xl md:text-5xl lg:text-6xl hero-headline-font font-semibold leading-[1.15] tracking-tight text-[#1d528f]">
+              {/* Hero copy is English in every language (product requirement); lang/dir
+                  keep its punctuation and alignment correct inside RTL pages. */}
+              <h1 lang="en" dir="ltr" className="text-4xl md:text-5xl lg:text-6xl hero-headline-font font-semibold leading-[1.15] tracking-tight text-[#1d528f]">
                 Learning that moves everyone forward.
               </h1>
 
-              <p className="text-base md:text-xl text-slate-600 leading-relaxed font-normal max-w-xl">
+              <p lang="en" dir="ltr" className="text-base md:text-xl text-slate-600 leading-relaxed font-normal max-w-xl">
                 Give educators the clarity to teach their best and every learner the support to reach what's next in their academic journey.
               </p>
 
@@ -426,7 +448,7 @@ function Home() {
                   onClick={handleOpenDemo}
                   className="inline-flex items-center justify-center px-8 py-3.5 header-button bg-[#B99652] hover:bg-[#a68443] text-white font-['Poppins'] font-semibold text-[13px] uppercase tracking-[0.5px] border-none rounded-none shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
                 >
-                  <span>Book a Live Demo</span>
+                  <span>{t('book_live_demo', 'Book a Live Demo')}</span>
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </button>
 
@@ -434,7 +456,7 @@ function Home() {
                   href="#pricing"
                   className="inline-flex items-center justify-center px-8 py-3.5 btn-gold-outline rounded-none border-2 border-[#B99652] bg-white hover:bg-[#B99652] text-[#B99652] hover:text-white font-['Poppins'] font-semibold text-[13px] uppercase tracking-[0.5px] shadow-sm transition-all duration-300"
                 >
-                  View Enterprise Pricing →
+                  {t('view_enterprise_pricing', 'View Enterprise Pricing →')}
                 </a>
               </div>
 
@@ -444,19 +466,19 @@ function Home() {
                   <div className="text-2xl md:text-3xl font-serif-heading font-bold text-slate-900">
                     {counts.universities}+
                   </div>
-                  <div className="text-xs text-slate-500 font-medium">Universities</div>
+                  <div className="text-xs text-slate-500 font-medium">{t('counter_universities', 'Universities')}</div>
                 </div>
                 <div>
                   <div className="text-2xl md:text-3xl font-serif-heading font-bold text-slate-900">
                     {counts.students}k+
                   </div>
-                  <div className="text-xs text-slate-500 font-medium">Active Students</div>
+                  <div className="text-xs text-slate-500 font-medium">{t('counter_active_students', 'Active Students')}</div>
                 </div>
                 <div>
                   <div className="text-2xl md:text-3xl font-serif-heading font-bold text-amber-600">
                     {counts.uptime}%
                   </div>
-                  <div className="text-xs text-slate-500 font-medium">System Uptime</div>
+                  <div className="text-xs text-slate-500 font-medium">{t('counter_uptime', 'System Uptime')}</div>
                 </div>
               </div>
             </motion.div>
@@ -471,8 +493,12 @@ function Home() {
               <div className="w-full max-w-md lg:max-w-lg lg:ml-auto">
                 {/* Login Form — blended with page */}
                 <div className="bg-white/60 backdrop-blur-sm rounded-none border border-slate-200/50 px-8 md:px-10 py-8 md:py-10">
-                  <h2 className="text-2xl md:text-3xl hero-headline-font font-semibold tracking-tight text-[#1d528f] mb-1">Log In to Your Account</h2>
-                  <p className="text-slate-500 text-sm mb-7">Enter your credentials to access your dashboard.</p>
+                  <h2 className="text-2xl md:text-3xl hero-headline-font font-semibold tracking-tight text-[#1d528f] mb-1">
+                    {t('login_to_account', 'Log In to Your Account')}
+                  </h2>
+                  <p className="text-slate-500 text-sm mb-7">
+                    {t('enter_credentials_desc', 'Enter your credentials to access your dashboard.')}
+                  </p>
 
                   {/* Error Banner */}
                   {heroError && (
@@ -486,12 +512,14 @@ function Home() {
                   <form onSubmit={handleHeroLogin} className="space-y-5">
                     {/* Email Field */}
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email or Username <span className="text-rose-500">*</span></label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        {t('email_or_username', 'Email or Username')} <span className="text-rose-500">*</span>
+                      </label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
                         <input
                           type="text"
-                          placeholder="Enter your email or username"
+                          placeholder={t('email_or_username_placeholder', 'Enter your email or username')}
                           value={heroLogin.email}
                           onChange={(e) => setHeroLogin(prev => ({ ...prev, email: e.target.value }))}
                           className="w-full pl-11 pr-4 py-3 rounded-none border border-slate-300/80 bg-white text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#B99652]/40 focus:border-[#B99652] transition-all"
@@ -502,12 +530,14 @@ function Home() {
 
                     {/* Password Field */}
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password <span className="text-rose-500">*</span></label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        {t('password_label', 'Password')} <span className="text-rose-500">*</span>
+                      </label>
                       <div className="relative">
                         <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
                         <input
                           type={heroShowPassword ? 'text' : 'password'}
-                          placeholder="Enter your password"
+                          placeholder={t('password_placeholder_hero', 'Enter your password')}
                           value={heroLogin.password}
                           onChange={(e) => setHeroLogin(prev => ({ ...prev, password: e.target.value }))}
                           className="w-full pl-11 pr-12 py-3 rounded-none border border-slate-300/80 bg-white text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#B99652]/40 focus:border-[#B99652] transition-all"
@@ -532,14 +562,14 @@ function Home() {
                           onChange={(e) => setHeroRememberMe(e.target.checked)}
                           className="w-4 h-4 rounded border-slate-300 text-[#B99652] focus:ring-[#B99652]/30"
                         />
-                        <span className="text-sm text-slate-600">Remember me</span>
+                        <span className="text-sm text-slate-600">{t('remember_me', 'Remember me')}</span>
                       </label>
                       <button
                         type="button"
                         onClick={() => navigate('/login')}
                         className="text-sm font-semibold text-[#B99652] hover:text-[#a68443] transition-colors"
                       >
-                        Forgot password?
+                        {t('forgot_password', 'Forgot password?')}
                       </button>
                     </div>
 
@@ -553,7 +583,7 @@ function Home() {
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
                         <>
-                          <span>SIGN IN</span>
+                          <span>{t('sign_in_portal_btn', 'SIGN IN')}</span>
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
@@ -563,7 +593,7 @@ function Home() {
                   {/* Divider */}
                   <div className="flex items-center my-5">
                     <div className="flex-1 border-t border-slate-300/60"></div>
-                    <span className="px-4 text-xs text-slate-400 font-medium">or</span>
+                    <span className="px-4 text-xs text-slate-400 font-medium">{t('or_divider', 'or')}</span>
                     <div className="flex-1 border-t border-slate-300/60"></div>
                   </div>
 
@@ -574,14 +604,14 @@ function Home() {
                     className="w-full flex items-center justify-center gap-2.5 py-3 rounded-none border-2 border-slate-300/80 hover:border-[#B99652] bg-white/80 text-slate-700 hover:text-[#B99652] font-semibold text-sm transition-all duration-200"
                   >
                     <Globe className="w-4 h-4" />
-                    <span>Request Enterprise Demo</span>
+                    <span>{t('request_enterprise_demo', 'Request Enterprise Demo')}</span>
                   </button>
 
                   {/* Footer Link */}
                   <p className="text-center text-xs text-slate-500 mt-5">
-                    New to Core5?{' '}
+                    {t('new_to_core5', 'New to Core5?')}{' '}
                     <Link to="/register" className="font-semibold text-[#B99652] hover:text-[#a68443] hover:underline transition-colors">
-                      Request access
+                      {t('request_access', 'Request access')}
                     </Link>
                   </p>
                 </div>
@@ -597,7 +627,7 @@ function Home() {
       <section id="partners" className="py-10 bg-transparent overflow-hidden">
         <div className="container mx-auto px-4 mb-4 text-center">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-            TRUSTED BY LEADING GLOBAL UNIVERSITIES & INSTITUTIONS
+            {t('trusted_by_universities', 'TRUSTED BY LEADING GLOBAL UNIVERSITIES & INSTITUTIONS')}
           </p>
         </div>
 
@@ -673,13 +703,40 @@ function Home() {
                 We combine course delivery, campus logistics, and financial management into one cohesive interface, eliminating tool fragmentation across your university.
               </p>
 
+              {/* Persona note with 3D bottom-to-top rotational roll transition */}
+              <div
+                className="min-h-[46px] my-2 border-l-[3px] border-[#B99652] pl-3 overflow-hidden flex items-center"
+                style={{ perspective: 800 }}
+              >
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={activePersona}
+                    initial={{ opacity: 0, y: 24, rotateX: 70, filter: 'blur(2px)' }}
+                    animate={{ opacity: 1, y: 0, rotateX: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, y: -24, rotateX: -70, filter: 'blur(2px)' }}
+                    transition={{
+                      duration: 0.45,
+                      ease: [0.25, 1, 0.5, 1],
+                    }}
+                    style={{
+                      transformOrigin: '50% 50% -10px',
+                      backfaceVisibility: 'hidden',
+                      willChange: 'transform, opacity',
+                    }}
+                    className="text-sm text-[#1D528F] leading-relaxed"
+                  >
+                    {PERSONAS[activePersona]?.note}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+
               {/* 4 Feature Items (plain, no cards) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 pt-2">
                 {[
-                  { icon: Layers, title: 'Unified Portal', desc: 'Single secure login for Students, Mentors, Admins, and Faculty.' },
-                  { icon: Bot, title: 'AI Guided Learning', desc: 'Personalized support, smarter recommendations, better outcomes.' },
-                  { icon: Package, title: 'Campus Logistics', desc: 'Manage housing, transport, IT and campus resources seamlessly.' },
-                  { icon: ShieldCheck, title: 'Digital Credentials', desc: 'Verified certificates, transcripts and academic records — all in one place.' },
+                  { icon: Layers, title: t('feat_unified_portal', 'Unified Portal'), desc: t('feat_unified_portal_desc', 'Single secure login for Students, Mentors, Admins, and Faculty.') },
+                  { icon: Bot, title: t('feat_ai_learning', 'AI Guided Learning'), desc: t('feat_ai_learning_desc', 'Personalized support, smarter recommendations, better outcomes.') },
+                  { icon: Package, title: t('feat_campus_logistics', 'Campus Logistics'), desc: t('feat_campus_logistics_desc', 'Manage housing, transport, IT and campus resources seamlessly.') },
+                  { icon: ShieldCheck, title: t('feat_digital_credentials', 'Digital Credentials'), desc: t('feat_digital_credentials_desc', 'Verified certificates, transcripts and academic records — all in one place.') },
                 ].map(({ icon: Icon, title, desc }) => (
                   <div key={title} className="flex items-start space-x-3.5 group">
                     <div className="w-11 h-11 shrink-0 rounded-full bg-[#1d528f]/5 border border-[#1d528f]/10 flex items-center justify-center transition-colors group-hover:bg-[#B99652]/10 group-hover:border-[#B99652]/30">
@@ -699,92 +756,21 @@ function Home() {
                   onClick={handleOpenDemo}
                   className="inline-flex items-center justify-center px-8 py-3.5 bg-[#B99652] hover:bg-[#a68443] text-white font-['Poppins'] font-semibold text-[13px] uppercase tracking-[0.5px] rounded-none shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
                 >
-                  <span>Explore the Platform</span>
+                  <span>{t('explore_the_platform', 'Explore the Platform')}</span>
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </button>
               </div>
             </motion.div>
 
-            {/* Right Column: Rounded Hex Photo + Curved Connector + 3 Role Badges */}
+            {/* Right Column: Persona Orbit */}
             <motion.div
               initial={{ opacity: 0, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.7 }}
-              className="lg:col-span-6 flex items-center justify-center"
+              className="lg:col-span-6 flex items-center justify-center w-full"
             >
-              <div className="relative w-full max-w-[600px] aspect-[360/300]">
-                {/* Faint decorative background hexagons */}
-                <div
-                  className="absolute -left-[4%] top-[18%] w-[50%] h-[78%] bg-[#1d528f]/[0.035] border border-[#1d528f]/10"
-                  style={{ clipPath: 'url(#hexFlatRounded)' }}
-                />
-                <div
-                  className="absolute left-[60%] -top-[4%] w-[44%] h-[104%] bg-[#1d528f]/[0.03]"
-                  style={{ clipPath: 'url(#hexPointyRounded)' }}
-                />
-
-                {/* Connector lines between the role badges */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none">
-                  <g stroke="#1d528f" strokeOpacity="0.25" strokeWidth="1.2" vectorEffect="non-scaling-stroke">
-                    {/* Main photo to Students */}
-                    <path d="M 52 20 L 58 12" vectorEffect="non-scaling-stroke" />
-                    {/* Students -> Faculty */}
-                    <path d="M 68 12 C 78 12, 85 24, 88 40" vectorEffect="non-scaling-stroke" strokeDasharray="3 3" />
-                    {/* Faculty -> University */}
-                    <path d="M 88 60 C 85 76, 78 88, 68 88" vectorEffect="non-scaling-stroke" strokeDasharray="3 3" />
-                    {/* Main photo to University */}
-                    <path d="M 54 78 L 62 88" vectorEffect="non-scaling-stroke" />
-                  </g>
-                </svg>
-
-                {/* Main rounded hexagon photo (positioned on left to leave clear space for badges) */}
-                <div
-                  className="absolute left-0 top-[12%] w-[60%] h-[76%] z-0"
-                  style={{ filter: 'drop-shadow(0 20px 35px rgba(29, 82, 143, 0.16))' }}
-                >
-                  <div
-                    className="w-full h-full overflow-hidden bg-slate-200 transition-transform duration-500 hover:scale-[1.015]"
-                    style={{ clipPath: 'url(#hexFlatRounded)' }}
-                  >
-                    <img
-                      src={studentReading}
-                      alt="Student engaged in digital learning"
-                      className="w-full h-full object-cover object-[center_62%]"
-                    />
-                  </div>
-                </div>
-
-                {/* 3 Role badges (completely outside main photo, zero overlap!) */}
-                {[
-                  { icon: Users, label: 'Students', sub: 'Learn & Grow', pos: 'left-[58%] top-[10%]' },
-                  { icon: GraduationCap, label: 'Faculty', sub: 'Teach & Inspire', pos: 'left-[88%] top-[50%]' },
-                  { icon: Building2, label: 'University', sub: 'Manage & Scale', pos: 'left-[64%] top-[90%]' },
-                ].map(({ icon: Icon, label, sub, pos }) => (
-                  <div
-                    key={label}
-                    className={`absolute ${pos} w-[20%] sm:w-[19%] -translate-x-1/2 -translate-y-1/2 z-20`}
-                  >
-                    <motion.div
-                      whileHover={{ scale: 1.08 }}
-                      className="relative w-full aspect-[70/78] cursor-pointer"
-                      style={{ filter: 'drop-shadow(0 10px 18px rgba(29, 82, 143, 0.14))' }}
-                    >
-                      {/* Outline layer */}
-                      <div className="absolute inset-0 bg-[#1d528f]/15" style={{ clipPath: 'url(#hexPointyRounded)' }} />
-                      {/* Fill layer */}
-                      <div
-                        className="absolute inset-[1.5px] bg-white flex flex-col items-center justify-center text-center px-1"
-                        style={{ clipPath: 'url(#hexPointyRounded)' }}
-                      >
-                        <Icon className="w-4 h-4 sm:w-6 sm:h-6 text-[#1d528f] stroke-[1.75] mb-0.5 sm:mb-1" />
-                        <span className="text-[10px] sm:text-xs font-bold text-[#1d528f] font-['Poppins'] leading-tight">{label}</span>
-                        <span className="hidden sm:block text-[9px] sm:text-[10px] text-slate-500 font-normal leading-tight">{sub}</span>
-                      </div>
-                    </motion.div>
-                  </div>
-                ))}
-              </div>
+              <PersonaOrbit onChange={setActivePersona} />
             </motion.div>
 
           </div>
@@ -841,7 +827,7 @@ function Home() {
                       'Standard Email & Ticket Support',
                       '100 GB Secure Cloud Storage'
                     ],
-                    buttonText: 'Book a Live Demo',
+                    buttonText: t('book_live_demo', 'Book a Live Demo'),
                     buttonClass: 'btn-gold-outline rounded-none border-2 border-[#B99652] bg-white hover:bg-[#B99652] text-[#B99652] hover:text-white'
                   },
                   {
@@ -860,7 +846,7 @@ function Home() {
                       '1 TB Storage + Priority 24/7 SLA Support',
                       'Verifiable Digital Completion Certificates'
                     ],
-                    buttonText: 'Book a Live Demo →',
+                    buttonText: t('book_live_demo_arrow', 'Book a Live Demo →'),
                     buttonClass: 'header-button bg-[#B99652] hover:bg-[#a68443] text-white border-none'
                   },
                   {
@@ -878,7 +864,7 @@ function Home() {
                       'Custom ERP & Finance Integration',
                       'Dedicated Success Manager & Onboarding'
                     ],
-                    buttonText: 'Contact Enterprise Sales',
+                    buttonText: t('contact_enterprise_sales', 'Contact Enterprise Sales'),
                     buttonClass: 'btn-gold-outline rounded-none border-2 border-[#B99652] bg-white hover:bg-[#B99652] text-[#B99652] hover:text-white'
                   }
                 ];

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from "../../auth/auth";
 import AccountantLayout from "../../components/AccountantLayout";
-import { BarChart3, DollarSign, Users, TrendingUp, Calendar, RefreshCw, FileText, Download, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { useTranslation } from "../../context/TranslationContext";
+import { BarChart3, DollarSign, Users, TrendingUp, Calendar, RefreshCw, FileText, Download, CheckCircle2, AlertCircle, Clock, ShieldAlert } from "lucide-react";
 
 import OfflineFeeModal from '../../components/OfflineFeeModal';
 
 const FeesCollection = () => {
+  const { t } = useTranslation();
   const { token, API } = useAuth();
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
   const [feesData, setFeesData] = useState({
@@ -240,10 +243,10 @@ const FeesCollection = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#ebdcaa]">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-[#002366] tracking-tight">
-              Fee Collection & Financial Ledger
+              {t('fees_collection_ledger', 'Fee Collection & Financial Ledger')}
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 mt-1">
-              Monitor student tuition collections, record offline payments, and issue tax invoice receipts.
+              {t('fees_collection_subtitle', 'Monitor student tuition collections, record offline payments, and issue tax invoice receipts.')}
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -251,15 +254,29 @@ const FeesCollection = () => {
               onClick={() => setIsOfflineModalOpen(true)}
               className="bg-[#B99652] hover:bg-[#a58342] text-white px-5 py-2.5 rounded-none font-bold text-xs uppercase tracking-wider shadow-xs transition-all cursor-pointer border border-[#B99652]"
             >
-              Collect Offline Fee
+              {t('collect_offline_fee', 'Collect Offline Fee')}
             </button>
             <button
               onClick={fetchFeesData}
               className="bg-white hover:bg-[#fffdf4] text-[#002366] p-2.5 rounded-none border border-[#ebdcaa] shadow-xs transition-all cursor-pointer"
-              title="Refresh Data"
+              title={t('refresh', 'Refresh Data')}
             >
               <RefreshCw size={18} />
             </button>
+          </div>
+        </div>
+
+        {/* Informational Legacy Reconciliation Alert */}
+        <div className="p-4 rounded-none bg-blue-50/80 border border-blue-200 flex items-start gap-3 shadow-xs">
+          <div className="p-2 bg-[#002366] text-[#B99652] shrink-0 mt-0.5">
+            <ShieldAlert size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-bold text-[#002366]">{t('legacy_reconciliation_active', 'Legacy Payment Reconciliation Active')}</h4>
+            <p className="text-xs text-slate-700 mt-0.5 leading-relaxed">
+              Historical payments recorded prior to schedule tracking require academic-session confirmation before allocation. 
+              Review unallocated payments on the <Link to="/accountant/legacy-reconciliation" className="font-semibold underline text-[#002366] hover:text-[#B99652]">Legacy Reconciliation</Link> console.
+            </p>
           </div>
         </div>
 
@@ -267,53 +284,53 @@ const FeesCollection = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-2 border-t-emerald-600 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Fees Collected</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{t('total_fees_collected', 'Total Fees Collected')}</span>
               <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-none border border-emerald-500/20">
                 <DollarSign size={20} />
               </div>
             </div>
             <h3 className="text-2xl font-bold text-emerald-600">₹{Number(feesData.totalFeesCollected || 0).toLocaleString('en-IN')}</h3>
-            <p className="text-xs text-slate-500">Lifetime fee revenue</p>
+            <p className="text-xs text-slate-500">{t('lifetime_fee_revenue', 'Lifetime fee revenue')}</p>
           </div>
 
           <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-2 border-t-[#002366] shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Students</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{t('total_students', 'Total Students')}</span>
               <div className="p-2 bg-[#002366]/10 text-[#002366] rounded-none border border-[#002366]/20">
                 <Users size={20} />
               </div>
             </div>
             <h3 className="text-2xl font-bold text-slate-900">{feesData.totalStudents || 0}</h3>
-            <p className="text-xs text-slate-500">Enrolled accounts</p>
+            <p className="text-xs text-slate-500">{t('enrolled_accounts', 'Enrolled accounts')}</p>
           </div>
 
           <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-2 border-t-[#B99652] shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Average Fee / Student</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{t('average_fee_per_student', 'Average Fee / Student')}</span>
               <div className="p-2 bg-[#B99652]/15 text-[#8c6d31] rounded-none border border-[#B99652]/30">
                 <TrendingUp size={20} />
               </div>
             </div>
             <h3 className="text-2xl font-bold text-[#8c6d31]">₹{Number(feesData.averageFeesPerStudent || 0).toLocaleString('en-IN')}</h3>
-            <p className="text-xs text-[#8c6d31] font-medium">Average collection</p>
+            <p className="text-xs text-[#8c6d31] font-medium">{t('average_collection', 'Average collection')}</p>
           </div>
 
           <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-2 border-t-indigo-600 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Recent Transactions</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{t('recent_transactions', 'Recent Transactions')}</span>
               <div className="p-2 bg-indigo-500/10 text-indigo-600 rounded-none border border-indigo-500/20">
                 <FileText size={20} />
               </div>
             </div>
             <h3 className="text-2xl font-bold text-slate-900">{recentPaymentsList.length}</h3>
-            <p className="text-xs text-slate-500">Recorded payments</p>
+            <p className="text-xs text-slate-500">{t('recorded_payments', 'Recorded payments')}</p>
           </div>
         </div>
 
         {/* Payments Table */}
         <div className="bg-white rounded-none border border-[#ebdcaa] shadow-xs overflow-hidden">
           <div className="bg-[#fbf6e6] p-4 border-b border-[#ebdcaa] flex justify-between items-center">
-            <h3 className="text-base font-bold text-[#002366]">Recent Fee Payments & Tax Receipts</h3>
+            <h3 className="text-base font-bold text-[#002366]">{t('recent_fee_payments_receipts', 'Recent Fee Payments & Tax Receipts')}</h3>
             <span className="text-xs font-semibold text-[#8c6d31] uppercase tracking-wider">
               {recentPaymentsList.length} Total Receipts
             </span>
@@ -322,7 +339,7 @@ const FeesCollection = () => {
           {recentPaymentsList.length === 0 ? (
             <div className="p-12 text-center text-slate-500">
               <BarChart3 size={40} className="mx-auto text-slate-400 mb-2" />
-              <p className="text-base font-semibold">No fee payments recorded yet</p>
+              <p className="text-base font-semibold">{t('no_fee_payments_yet', 'No fee payments recorded yet')}</p>
               <p className="text-xs text-slate-400 mt-1">Use the "Collect Offline Fee" button above to register student payments.</p>
             </div>
           ) : (
@@ -330,13 +347,13 @@ const FeesCollection = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[#fbf6e6]/60 text-[#002366] text-xs uppercase tracking-wider font-bold border-b border-[#ebdcaa]">
-                    <th className="px-6 py-4">Student Name</th>
-                    <th className="px-6 py-4">Payment Type</th>
-                    <th className="px-6 py-4">Amount Paid</th>
-                    <th className="px-6 py-4">Payment Method</th>
-                    <th className="px-6 py-4">Date</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4 text-right">Tax Invoice</th>
+                    <th className="px-6 py-4">{t('student_name', 'Student Name')}</th>
+                    <th className="px-6 py-4">{t('payment_type', 'Payment Type')}</th>
+                    <th className="px-6 py-4">{t('amount_paid', 'Amount Paid')}</th>
+                    <th className="px-6 py-4">{t('payment_method', 'Payment Method')}</th>
+                    <th className="px-6 py-4">{t('date', 'Date')}</th>
+                    <th className="px-6 py-4">{t('status', 'Status')}</th>
+                    <th className="px-6 py-4 text-right">{t('tax_invoice', 'Tax Invoice')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#ebdcaa]/60 text-sm">

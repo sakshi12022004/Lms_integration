@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { getStorageItem, setStorageItem, removeStorageItem, getBrowserInfo } from '../utils/browserCompatibility';
+import { isTokenExpired, msUntilExpiry } from '../utils/jwtExpiry';
 
 const AuthContext = createContext();
 
@@ -22,9 +23,27 @@ const API = getBackendUrl();
 // Derive socket URL (strip trailing /api if present)
 const SOCKET_URL = API.replace(/\/api\/?$/, '');
 
+// An expired stored session must not render protected pages (the server
+// answers 401/403 or treats the request as a guest). Clear it before the
+// first render so ProtectedRoute sends the user to /login.
+const clearExpiredStoredSession = () => {
+  try {
+    const storedToken = getStorageItem('token');
+    if (storedToken && isTokenExpired(storedToken)) {
+      removeStorageItem('token');
+      removeStorageItem('user');
+      removeStorageItem('userId');
+      console.info('Stored session has expired; please sign in again.');
+    }
+  } catch {
+    // ignore storage errors
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => {
     try {
+      clearExpiredStoredSession();
       // Use compatibility utility for cross-browser support
       const storedToken = getStorageItem('token');
       return storedToken;
@@ -32,7 +51,7 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
   });
-  
+
   const [user, setUser] = useState(() => {
     try {
       // Use compatibility utility for cross-browser support
@@ -77,8 +96,9 @@ export const AuthProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   useEffect(() => {
     try {
-      const s = io({
-        url: SOCKET_URL,
+      // The URL must be the first argument: io({ url }) ignores `url` and
+      // connects to the page origin (the Vite dev server), which never answers.
+      const s = io(SOCKET_URL, {
         transports: ['websocket', 'polling'],
         timeout: 20000,
         forceNew: true
@@ -122,6 +142,24 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
+
+  // End the session when the token expires while the app is open.
+  useEffect(() => {
+    if (!token) return undefined;
+    const ms = msUntilExpiry(token);
+    if (ms === null) return undefined;
+    if (ms <= 0) {
+      logoutUser();
+      return undefined;
+    }
+    // setTimeout overflows above ~24.8 days; long-lived tokens re-check on reload.
+    if (ms > 2147483647) return undefined;
+    const timer = setTimeout(() => {
+      console.info('Session expired; signing out.');
+      logoutUser();
+    }, ms);
+    return () => clearTimeout(timer);
+  }, [token]);
 
   return (
     <AuthContext.Provider value={{ token, user, loginUser, logoutUser, API, socket }}>

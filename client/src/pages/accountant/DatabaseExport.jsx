@@ -1,24 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { 
-  FileSpreadsheet, 
-  Download, 
-  Search, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
-  DollarSign, 
-  Users, 
-  FileText, 
+import {
+  FileSpreadsheet,
+  Download,
+  Search,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  FileText,
   RefreshCw,
-  Filter,
-  Building,
-  TrendingUp,
-  PieChart
+  TrendingUp
 } from 'lucide-react';
 import AccountantLayout from '../../components/AccountantLayout';
 import { useAuth } from '../../auth/auth';
+import {
+  loadReportData,
+  summarizeFees,
+  summarizeInvoices,
+  invoiceFields,
+  isFeeConfigured,
+  isPaidRecord,
+  hasDues,
+  formatInr
+} from './reportData';
+
+// Status badge per fee row; anything without a resolved fee structure is labelled as such, never as paid
+const STATUS_BADGES = {
+  'Paid': { label: 'PAID', className: 'bg-emerald-50 text-emerald-800 border border-emerald-300' },
+  'Partial': { label: 'PARTIAL DUES', className: 'bg-[#B99652]/15 text-[#8c6d31] border border-[#B99652]/40' },
+  'Pending': { label: 'PENDING DUES', className: 'bg-[#B99652]/15 text-[#8c6d31] border border-[#B99652]/40' },
+  'Fee Not Configured': { label: 'FEE NOT CONFIGURED', className: 'bg-slate-100 text-slate-700 border border-slate-300' },
+  'Needs Review': { label: 'NEEDS REVIEW', className: 'bg-red-50 text-red-700 border border-red-300' }
+};
 
 export default function AccountantDatabaseExport() {
   const { token, API } = useAuth();
@@ -26,12 +40,10 @@ export default function AccountantDatabaseExport() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('fees'); // 'fees', 'funds', 'expenses'
 
-  // Data states
+  // Data states: only what the API returned
   const [students, setStudents] = useState([]);
   const [invoices, setInvoices] = useState([]);
-  const [funds, setFunds] = useState([]);
-
-  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  const [errors, setErrors] = useState({ fees: null, invoices: null });
 
   useEffect(() => {
     fetchAllData();
@@ -40,65 +52,11 @@ export default function AccountantDatabaseExport() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Student Fees Data
-      try {
-        const feesRes = await axios.get(`${API_URL}/api/classrooms/teacher/students-fees`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (feesRes.data?.success && feesRes.data?.students?.length > 0) {
-          setStudents(feesRes.data.students);
-        } else {
-          // Fallback realistic records
-          setStudents([
-            { id: 'STU-101', name: 'Rahul Sharma', email: 'rahul.s@university.edu', phone: '9876543210', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 15000, remainingBalance: 0, status: 'Paid', dueDate: '2026-10-31' },
-            { id: 'STU-102', name: 'Priya Verma', email: 'priya.v@university.edu', phone: '9812345678', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 5000, remainingBalance: 10000, status: 'Partial', dueDate: '2026-10-31' },
-            { id: 'STU-103', name: 'Aman Deep', email: 'aman.d@university.edu', phone: '9988776655', className: 'Information Tech - Sec B', totalFee: 15000, paidAmount: 0, remainingBalance: 15000, status: 'Pending', dueDate: '2026-10-31' },
-            { id: 'STU-104', name: 'Neha Gupta', email: 'neha.g@university.edu', phone: '9765432109', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 0, remainingBalance: 15000, status: 'Pending', dueDate: '2026-10-31' },
-            { id: 'STU-105', name: 'Vikram Mehta', email: 'vikram.m@university.edu', phone: '9123456789', className: 'Mechanical Engineering - Sec A', totalFee: 18000, paidAmount: 18000, remainingBalance: 0, status: 'Paid', dueDate: '2026-09-15' },
-            { id: 'STU-106', name: 'Ananya Roy', email: 'ananya.r@university.edu', phone: '9345678901', className: 'Electronics - Sec B', totalFee: 16500, paidAmount: 8500, remainingBalance: 8000, status: 'Partial', dueDate: '2026-11-01' }
-          ]);
-        }
-      } catch (err) {
-        setStudents([
-          { id: 'STU-101', name: 'Rahul Sharma', email: 'rahul.s@university.edu', phone: '9876543210', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 15000, remainingBalance: 0, status: 'Paid', dueDate: '2026-10-31' },
-          { id: 'STU-102', name: 'Priya Verma', email: 'priya.v@university.edu', phone: '9812345678', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 5000, remainingBalance: 10000, status: 'Partial', dueDate: '2026-10-31' },
-          { id: 'STU-103', name: 'Aman Deep', email: 'aman.d@university.edu', phone: '9988776655', className: 'Information Tech - Sec B', totalFee: 15000, paidAmount: 0, remainingBalance: 15000, status: 'Pending', dueDate: '2026-10-31' },
-          { id: 'STU-104', name: 'Neha Gupta', email: 'neha.g@university.edu', phone: '9765432109', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 0, remainingBalance: 15000, status: 'Pending', dueDate: '2026-10-31' }
-        ]);
-      }
-
-      // 2. Fetch Vendor Invoices Data
-      try {
-        const invRes = await axios.get(`${API}/accountant/vendor-invoices`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (invRes.data?.success && invRes.data?.data?.length > 0) {
-          setInvoices(invRes.data.data);
-        } else {
-          setInvoices([
-            { invoiceNo: 'INV-2026-001', vendorName: 'Apex Cloud Hosting', category: 'IT Infrastructure', amount: 45000, date: '2026-10-01', status: 'Paid' },
-            { invoiceNo: 'INV-2026-002', vendorName: 'Global Book Publishers', category: 'Library & Textbooks', amount: 32000, date: '2026-09-28', status: 'Paid' },
-            { invoiceNo: 'INV-2026-003', vendorName: 'Core Security Services', category: 'Campus Maintenance', amount: 18500, date: '2026-10-05', status: 'Pending' }
-          ]);
-        }
-      } catch (err) {
-        setInvoices([
-          { invoiceNo: 'INV-2026-001', vendorName: 'Apex Cloud Hosting', category: 'IT Infrastructure', amount: 45000, date: '2026-10-01', status: 'Paid' },
-          { invoiceNo: 'INV-2026-002', vendorName: 'Global Book Publishers', category: 'Library & Textbooks', amount: 32000, date: '2026-09-28', status: 'Paid' },
-          { invoiceNo: 'INV-2026-003', vendorName: 'Core Security Services', category: 'Campus Maintenance', amount: 18500, date: '2026-10-05', status: 'Pending' }
-        ]);
-      }
-
-      // 3. Funds & Grants Data
-      setFunds([
-        { fundId: 'FND-801', sourceName: 'Tuition Fee Collections', category: 'Student Revenue', amount: 465000, receivedDate: '2026-10-01', status: 'Settled' },
-        { fundId: 'FND-802', sourceName: 'Govt Higher Education Grant', category: 'Government Aid', amount: 250000, receivedDate: '2026-09-15', status: 'Approved' },
-        { fundId: 'FND-803', sourceName: 'Tech Research Sponsorship', category: 'Corporate Sponsorship', amount: 120000, receivedDate: '2026-08-20', status: 'Settled' },
-        { fundId: 'FND-804', sourceName: 'Alumni Development Fund', category: 'Donation', amount: 75000, receivedDate: '2026-09-30', status: 'Settled' }
-      ]);
-
-    } catch (err) {
-      console.error("Error fetching report data:", err);
+      const get = (url) => axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await loadReportData(get, API);
+      setStudents(data.students);
+      setInvoices(data.invoices);
+      setErrors(data.errors);
     } finally {
       setLoading(false);
     }
@@ -117,7 +75,7 @@ export default function AccountantDatabaseExport() {
     ].join('\n');
 
     // Add UTF-8 BOM so Excel opens Hindi/Special chars cleanly
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
@@ -128,19 +86,22 @@ export default function AccountantDatabaseExport() {
     toast.success(`📊 Excel report '${filename}' exported successfully!`);
   };
 
+  // An unknown amount is exported as text, never as 0
+  const feeCell = (s, value) => (isFeeConfigured(s) ? value : 'Fee not configured');
+
   // Export 1: Paid Students Only
   const exportPaidStudentsCSV = () => {
-    const paidList = students.filter(s => s.remainingBalance === 0 || s.status === 'Paid');
+    const paidList = students.filter(isPaidRecord);
     const headers = ['Student ID', 'Student Name', 'Email Address', 'Phone', 'Classroom / Course', 'Total Fee (INR)', 'Paid Amount (INR)', 'Remaining Dues (INR)', 'Status'];
     const rows = paidList.map(s => [
       s.id || 'N/A',
       s.name,
       s.email,
       s.phone || 'N/A',
-      s.className,
+      s.className || '',
       s.totalFee,
       s.paidAmount,
-      0,
+      s.remainingBalance,
       'PAID'
     ]);
     downloadCSV('Paid_Students_Fee_Report', headers, rows);
@@ -148,18 +109,18 @@ export default function AccountantDatabaseExport() {
 
   // Export 2: Unpaid / Dues Pending Students
   const exportUnpaidStudentsCSV = () => {
-    const unpaidList = students.filter(s => (s.remainingBalance || 0) > 0);
+    const unpaidList = students.filter(hasDues);
     const headers = ['Student ID', 'Student Name', 'Email Address', 'Phone', 'Classroom / Course', 'Total Fee (INR)', 'Paid to Date (INR)', 'Outstanding Dues (INR)', 'Due Date', 'Status'];
     const rows = unpaidList.map(s => [
       s.id || 'N/A',
       s.name,
       s.email,
       s.phone || 'N/A',
-      s.className,
+      s.className || '',
       s.totalFee,
       s.paidAmount,
       s.remainingBalance,
-      s.dueDate || '2026-10-31',
+      s.dueDate || '',
       s.status === 'Partial' ? 'PARTIAL DUES' : 'PENDING DUES'
     ]);
     downloadCSV('Unpaid_Pending_Dues_Report', headers, rows);
@@ -173,57 +134,46 @@ export default function AccountantDatabaseExport() {
       s.name,
       s.email,
       s.phone || 'N/A',
-      s.className,
-      s.totalFee,
-      s.paidAmount,
-      s.remainingBalance,
-      s.dueDate || '2026-10-31',
+      s.className || '',
+      feeCell(s, s.totalFee),
+      s.paidAmount ?? '',
+      feeCell(s, s.remainingBalance),
+      s.dueDate || '',
       s.status
     ]);
     downloadCSV('Master_Fee_Collection_Report', headers, rows);
   };
 
-  // Export 4: Funds & Grants Received
-  const exportFundsCSV = () => {
-    const headers = ['Fund ID', 'Source / Fund Name', 'Category', 'Amount Received (INR)', 'Date Received', 'Status'];
-    const rows = funds.map(f => [
-      f.fundId,
-      f.sourceName,
-      f.category,
-      f.amount,
-      f.receivedDate,
-      f.status
-    ]);
-    downloadCSV('Funds_Grants_Revenue_Report', headers, rows);
-  };
-
   // Export 5: Vendor Invoices & Expenses
   const exportExpensesCSV = () => {
     const headers = ['Invoice No', 'Vendor Name', 'Expense Category', 'Invoice Amount (INR)', 'Date', 'Payment Status'];
-    const rows = invoices.map(i => [
-      i.invoiceNo || 'N/A',
-      i.vendorName || i.vendor,
-      i.category || 'General Expense',
-      i.amount,
-      i.date || 'N/A',
-      i.status || 'Paid'
-    ]);
+    const rows = invoices.map(invoice => {
+      const i = invoiceFields(invoice);
+      return [i.number || '', i.vendor || '', i.category || '', i.amount ?? '', i.date || '', i.status || ''];
+    });
     downloadCSV('Vendor_Expenses_Report', headers, rows);
   };
 
-  // Calculations
-  const totalPaidAmount = students.reduce((acc, s) => acc + (Number(s.paidAmount) || 0), 0);
-  const totalPendingDues = students.reduce((acc, s) => acc + (Number(s.remainingBalance) || 0), 0);
-  const totalFundsReceived = funds.reduce((acc, f) => acc + (Number(f.amount) || 0), 0);
-  const totalExpenses = invoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+  // Calculations (real rows only; students without a fee structure are counted separately)
+  const feeTotals = summarizeFees(students);
+  const invoiceTotals = summarizeInvoices(invoices);
+  const loadErrors = [errors.fees, errors.invoices].filter(Boolean);
 
-  const paidCount = students.filter(s => s.remainingBalance === 0).length;
-  const pendingCount = students.filter(s => s.remainingBalance > 0).length;
+  const visibleStudents = students
+    .filter(s => s.name?.toLowerCase().includes(searchQuery.toLowerCase()) || s.email?.toLowerCase().includes(searchQuery.toLowerCase()));
+  const visibleInvoices = invoices
+    .filter(i => (invoiceFields(i).vendor || '').toLowerCase().includes(searchQuery.toLowerCase()));
+
+  const emptyRow = (message) => (
+    <tr>
+      <td colSpan={6} className="px-5 py-10 text-center text-slate-500">{message}</td>
+    </tr>
+  );
 
   return (
     <AccountantLayout>
       <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
-        
+
         {/* Header Block */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#ebdcaa]">
           <div>
@@ -234,7 +184,7 @@ export default function AccountantDatabaseExport() {
               </h1>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 mt-1">
-              Export comprehensive financial statements, paid vs unpaid student fee records, grant allocations, and expenses into Excel (.csv) format.
+              Export student fee records and vendor expenses into Excel (.csv) format. Figures come only from recorded data.
             </p>
           </div>
 
@@ -257,6 +207,24 @@ export default function AccountantDatabaseExport() {
           </div>
         </div>
 
+        {/* Load errors: shown instead of any substitute data */}
+        {!loading && loadErrors.length > 0 && (
+          <div role="alert" className="bg-red-50 border border-red-300 text-red-800 p-4 rounded-none text-xs flex gap-3">
+            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold uppercase tracking-wider mb-1">Some report data could not be loaded</p>
+              {loadErrors.map((message, idx) => <p key={idx}>{message}</p>)}
+              <p className="mt-1 text-red-700">Affected figures are shown as “—”. Use Refresh to try again.</p>
+            </div>
+          </div>
+        )}
+
+        {!loading && !errors.fees && feeTotals.notConfiguredCount > 0 && (
+          <div className="bg-slate-50 border border-slate-300 text-slate-700 p-3 rounded-none text-xs">
+            {feeTotals.notConfiguredCount} student{feeTotals.notConfiguredCount === 1 ? '' : 's'} have no fee structure configured for their university. Their dues are not included in the totals below.
+          </div>
+        )}
+
         {/* Quick Excel Export Modules Grid */}
         <div>
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-2">
@@ -264,13 +232,13 @@ export default function AccountantDatabaseExport() {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            
+
             {/* Card 1: Paid Students Excel */}
             <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-4 border-t-emerald-600 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200">
-                    Paid Accounts ({paidCount})
+                    Paid Accounts ({errors.fees ? '—' : feeTotals.paidCount})
                   </span>
                   <CheckCircle2 size={20} className="text-emerald-600" />
                 </div>
@@ -292,7 +260,7 @@ export default function AccountantDatabaseExport() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold uppercase tracking-wider text-[#8c6d31] bg-[#B99652]/10 px-2 py-0.5 border border-[#B99652]/30">
-                    Pending Dues ({pendingCount})
+                    Pending Dues ({errors.fees ? '—' : feeTotals.pendingCount})
                   </span>
                   <Clock size={20} className="text-[#B99652]" />
                 </div>
@@ -309,7 +277,7 @@ export default function AccountantDatabaseExport() {
               </button>
             </div>
 
-            {/* Card 3: Funds & Grants Received */}
+            {/* Card 3: Funds & Grants (no data source exists yet) */}
             <div className="bg-white p-5 rounded-none border border-[#ebdcaa] border-t-4 border-t-[#002366] shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -320,14 +288,15 @@ export default function AccountantDatabaseExport() {
                 </div>
                 <h3 className="text-base font-bold text-slate-900">Funds & Grants Excel</h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Breakdown of received funds, government aid, grants & donations.
+                  Not available: no funds or grants records are connected to the system yet.
                 </p>
               </div>
               <button
-                onClick={exportFundsCSV}
-                className="mt-4 w-full bg-[#002366] hover:bg-[#001744] text-white font-bold py-2 px-3 text-xs uppercase tracking-wider rounded-none flex items-center justify-center gap-2 transition-all cursor-pointer border border-[#002366]"
+                disabled
+                title="No funds & grants data source is connected"
+                className="mt-4 w-full bg-slate-200 text-slate-500 font-bold py-2 px-3 text-xs uppercase tracking-wider rounded-none flex items-center justify-center gap-2 border border-slate-300 cursor-not-allowed"
               >
-                <Download size={14} /> Download Excel
+                <Download size={14} /> Not Available
               </button>
             </div>
 
@@ -360,32 +329,36 @@ export default function AccountantDatabaseExport() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-none border border-[#ebdcaa] shadow-xs">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Fee Collections</span>
-            <h3 className="text-xl font-bold text-emerald-700 mt-1">₹{totalPaidAmount.toLocaleString('en-IN')}</h3>
-            <p className="text-[11px] text-slate-500">{paidCount} accounts fully cleared</p>
+            <h3 className="text-xl font-bold text-emerald-700 mt-1">{errors.fees ? '—' : formatInr(feeTotals.totalPaid)}</h3>
+            <p className="text-[11px] text-slate-500">{errors.fees ? 'Could not be loaded' : `${feeTotals.paidCount} accounts fully cleared`}</p>
           </div>
 
           <div className="bg-white p-4 rounded-none border border-[#ebdcaa] shadow-xs">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Uncollected Dues</span>
-            <h3 className="text-xl font-bold text-[#8c6d31] mt-1">₹{totalPendingDues.toLocaleString('en-IN')}</h3>
-            <p className="text-[11px] text-slate-500">{pendingCount} accounts pending</p>
+            <h3 className="text-xl font-bold text-[#8c6d31] mt-1">{errors.fees ? '—' : formatInr(feeTotals.totalPending)}</h3>
+            <p className="text-[11px] text-slate-500">
+              {errors.fees
+                ? 'Could not be loaded'
+                : `${feeTotals.pendingCount} accounts pending${feeTotals.notConfiguredCount ? ` · ${feeTotals.notConfiguredCount} without fee structure` : ''}`}
+            </p>
           </div>
 
           <div className="bg-white p-4 rounded-none border border-[#ebdcaa] shadow-xs">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Funds & Grants Allocated</span>
-            <h3 className="text-xl font-bold text-[#002366] mt-1">₹{totalFundsReceived.toLocaleString('en-IN')}</h3>
-            <p className="text-[11px] text-slate-500">{funds.length} fund sources active</p>
+            <h3 className="text-xl font-bold text-slate-400 mt-1">—</h3>
+            <p className="text-[11px] text-slate-500">No funds & grants data source connected</p>
           </div>
 
           <div className="bg-white p-4 rounded-none border border-[#ebdcaa] shadow-xs">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Vendor Expenses</span>
-            <h3 className="text-xl font-bold text-slate-800 mt-1">₹{totalExpenses.toLocaleString('en-IN')}</h3>
-            <p className="text-[11px] text-slate-500">{invoices.length} invoices recorded</p>
+            <h3 className="text-xl font-bold text-slate-800 mt-1">{errors.invoices ? '—' : formatInr(invoiceTotals.total)}</h3>
+            <p className="text-[11px] text-slate-500">{errors.invoices ? 'Could not be loaded' : `${invoiceTotals.count} invoices recorded`}</p>
           </div>
         </div>
 
         {/* Preview Data Tabs & Table */}
         <div className="bg-white rounded-none border border-[#ebdcaa] shadow-xs">
-          
+
           {/* Tab Selection */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#ebdcaa] bg-[#fbf6e6] p-3 gap-3">
             <div className="flex items-center gap-2">
@@ -407,7 +380,7 @@ export default function AccountantDatabaseExport() {
                     : 'bg-[#fffdf4] text-slate-700 border border-[#ebdcaa] hover:bg-[#f6ebd0]'
                 }`}
               >
-                Funds & Grants ({funds.length})
+                Funds & Grants
               </button>
               <button
                 onClick={() => setActiveTab('expenses')}
@@ -453,64 +426,44 @@ export default function AccountantDatabaseExport() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#ebdcaa]/60 text-xs">
-                  {students
-                    .filter(s => s.name?.toLowerCase().includes(searchQuery.toLowerCase()) || s.email?.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map((s, idx) => (
-                      <tr key={idx} className="hover:bg-[#fffdf4] transition-colors">
-                        <td className="px-5 py-3 font-semibold text-[#002366]">
-                          {s.name}
-                          <div className="text-[11px] text-slate-500 font-normal">{s.email}</div>
-                        </td>
-                        <td className="px-5 py-3 text-slate-700">{s.className}</td>
-                        <td className="px-5 py-3 text-slate-900 font-medium">₹{Number(s.totalFee).toLocaleString('en-IN')}</td>
-                        <td className="px-5 py-3 text-emerald-700 font-semibold">₹{Number(s.paidAmount).toLocaleString('en-IN')}</td>
-                        <td className="px-5 py-3 font-bold">
-                          {s.remainingBalance > 0 ? (
-                            <span className="text-[#8c6d31]">₹{Number(s.remainingBalance).toLocaleString('en-IN')}</span>
-                          ) : (
-                            <span className="text-slate-400">₹0</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3">
-                          {s.remainingBalance === 0 ? (
-                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold">PAID</span>
-                          ) : (
-                            <span className="px-2 py-0.5 bg-[#B99652]/15 text-[#8c6d31] border border-[#B99652]/40 font-bold">PENDING DUES</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                  {errors.fees
+                    ? emptyRow('Student fee records could not be loaded.')
+                    : visibleStudents.length === 0
+                      ? emptyRow('No student fee records found.')
+                      : visibleStudents.map((s) => {
+                          const badge = STATUS_BADGES[s.status] || { label: String(s.status || '—').toUpperCase(), className: 'bg-slate-100 text-slate-700 border border-slate-300' };
+                          const configured = isFeeConfigured(s);
+                          return (
+                            <tr key={s.id} className="hover:bg-[#fffdf4] transition-colors">
+                              <td className="px-5 py-3 font-semibold text-[#002366]">
+                                {s.name}
+                                <div className="text-[11px] text-slate-500 font-normal">{s.email}</div>
+                              </td>
+                              <td className="px-5 py-3 text-slate-700">{s.className || '—'}</td>
+                              <td className="px-5 py-3 text-slate-900 font-medium">{configured ? formatInr(s.totalFee) : <span className="text-slate-400">Not configured</span>}</td>
+                              <td className="px-5 py-3 text-emerald-700 font-semibold">{formatInr(s.paidAmount)}</td>
+                              <td className="px-5 py-3 font-bold">
+                                {!configured ? (
+                                  <span className="text-slate-400">—</span>
+                                ) : Number(s.remainingBalance) > 0 ? (
+                                  <span className="text-[#8c6d31]">{formatInr(s.remainingBalance)}</span>
+                                ) : (
+                                  <span className="text-slate-400">₹0</span>
+                                )}
+                              </td>
+                              <td className="px-5 py-3">
+                                <span className={`px-2 py-0.5 font-bold ${badge.className}`}>{badge.label}</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                 </tbody>
               </table>
             ) : activeTab === 'funds' ? (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#fffdf4] text-[#002366] text-xs uppercase tracking-wider font-bold border-b border-[#ebdcaa]">
-                    <th className="px-5 py-3">Fund ID</th>
-                    <th className="px-5 py-3">Fund Source / Name</th>
-                    <th className="px-5 py-3">Category</th>
-                    <th className="px-5 py-3">Amount Received</th>
-                    <th className="px-5 py-3">Received Date</th>
-                    <th className="px-5 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#ebdcaa]/60 text-xs">
-                  {funds
-                    .filter(f => f.sourceName?.toLowerCase().includes(searchQuery.toLowerCase()) || f.category?.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map((f, idx) => (
-                      <tr key={idx} className="hover:bg-[#fffdf4] transition-colors">
-                        <td className="px-5 py-3 font-bold text-slate-600">{f.fundId}</td>
-                        <td className="px-5 py-3 font-semibold text-[#002366]">{f.sourceName}</td>
-                        <td className="px-5 py-3 text-slate-700">{f.category}</td>
-                        <td className="px-5 py-3 font-bold text-emerald-700">₹{Number(f.amount).toLocaleString('en-IN')}</td>
-                        <td className="px-5 py-3 text-slate-600">{f.receivedDate}</td>
-                        <td className="px-5 py-3">
-                          <span className="px-2 py-0.5 bg-blue-50 text-blue-800 border border-blue-300 font-bold">{f.status}</span>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+              <div className="p-12 text-center text-slate-500 text-xs">
+                <TrendingUp size={28} className="mx-auto mb-3 text-slate-300" />
+                No funds or grants records are connected to the system yet, so nothing can be reported here.
+              </div>
             ) : (
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -524,20 +477,27 @@ export default function AccountantDatabaseExport() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#ebdcaa]/60 text-xs">
-                  {invoices
-                    .filter(i => (i.vendorName || i.vendor || '').toLowerCase().includes(searchQuery.toLowerCase()))
-                    .map((i, idx) => (
-                      <tr key={idx} className="hover:bg-[#fffdf4] transition-colors">
-                        <td className="px-5 py-3 font-bold text-slate-600">{i.invoiceNo || `INV-00${idx+1}`}</td>
-                        <td className="px-5 py-3 font-semibold text-[#002366]">{i.vendorName || i.vendor}</td>
-                        <td className="px-5 py-3 text-slate-700">{i.category || 'Expense'}</td>
-                        <td className="px-5 py-3 font-bold text-slate-900">₹{Number(i.amount).toLocaleString('en-IN')}</td>
-                        <td className="px-5 py-3 text-slate-600">{i.date || '2026-10-01'}</td>
-                        <td className="px-5 py-3">
-                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold">{i.status || 'Paid'}</span>
-                        </td>
-                      </tr>
-                    ))}
+                  {errors.invoices
+                    ? emptyRow('Vendor invoices could not be loaded.')
+                    : visibleInvoices.length === 0
+                      ? emptyRow('No vendor invoices recorded.')
+                      : visibleInvoices.map((invoice, idx) => {
+                          const i = invoiceFields(invoice);
+                          return (
+                            <tr key={invoice.id ?? idx} className="hover:bg-[#fffdf4] transition-colors">
+                              <td className="px-5 py-3 font-bold text-slate-600">{i.number || '—'}</td>
+                              <td className="px-5 py-3 font-semibold text-[#002366]">{i.vendor || '—'}</td>
+                              <td className="px-5 py-3 text-slate-700">{i.category || '—'}</td>
+                              <td className="px-5 py-3 font-bold text-slate-900">{formatInr(i.amount)}</td>
+                              <td className="px-5 py-3 text-slate-600">{i.date || '—'}</td>
+                              <td className="px-5 py-3">
+                                {i.status
+                                  ? <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold">{i.status}</span>
+                                  : <span className="text-slate-400">—</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
                 </tbody>
               </table>
             )}

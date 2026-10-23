@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useTranslation } from "../../context/TranslationContext";
 
 /*
  * AI Assessment Agent - Descriptive Assignments: small shared UI helpers (badges, dates, sizes,
@@ -23,9 +24,23 @@ export const STUDENT_STATUS = { ...SUBMISSION_STATUS, submitted: ["Submitted · 
 /** The teacher's assignment workflow, shown on the list and in the editor. */
 export const TEACHER_FLOW = ["Draft", "Publish", "Submissions", "AI evaluation", "Review", "Final marks"];
 
+/** Translation keys for the status labels above; unknown labels render as-is. */
+const BADGE_LABEL_KEYS = {
+  Draft: "dashboard:asg_status_draft",
+  Published: "dashboard:asg_status_published",
+  Closed: "dashboard:st_closed",
+  "Not submitted": "dashboard:asg_status_not_submitted",
+  "Submitted — awaiting evaluation": "dashboard:asg_status_awaiting_evaluation",
+  "Submitted · awaiting evaluation": "dashboard:asg_status_awaiting_evaluation_student",
+  Evaluated: "dashboard:asg_status_evaluated",
+  Missed: "dashboard:asg_status_missed",
+};
+
 export function Badge({ map, value, testId }) {
+  const { t } = useTranslation();
   const [label, cls] = map[value] || [value, "bg-[#fffdf4] text-[#665e4d] border border-[#ebdcaa]"];
-  return <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-0.5 rounded-none whitespace-nowrap ${cls}`} data-testid={testId} data-status={value}>{label}</span>;
+  const text = BADGE_LABEL_KEYS[label] ? t(BADGE_LABEL_KEYS[label]) : label;
+  return <span className={`inline-flex items-center text-[11px] font-bold px-2.5 py-0.5 rounded-none whitespace-nowrap ${cls}`} data-testid={testId} data-status={value}>{text}</span>;
 }
 
 /**
@@ -67,14 +82,17 @@ export const fmtDateTime =(iso) => (iso ? new Date(iso).toLocaleString(undefined
 export const fmtBytes = (n) => (n >= 1024 * 1024 ? `${(n / (1024 * 1024)).toFixed(1)} MB` : n >= 1024 ? `${Math.round(n / 1024)} KB` : `${n} B`);
 
 /** Due-date wording relative to now ("Due in 3 days", "Overdue"). Display only; the server decides. */
-export function dueText(iso) {
-  if (!iso) return "No due date";
+/** Pass the translator `t` to get localized text; without it the English text is returned. */
+export function dueText(iso, t) {
+  if (!iso) return t ? t("dashboard:asg_no_due_date") : "No due date";
   const ms = Date.parse(iso) - Date.now();
-  if (ms <= 0) return `Was due ${fmtDateTime(iso)}`;
+  const when = fmtDateTime(iso);
+  if (ms <= 0) return t ? t("dashboard:asg_was_due", { when }) : `Was due ${when}`;
   const days = Math.floor(ms / 86400000);
-  if (days >= 2) return `Due in ${days} days · ${fmtDateTime(iso)}`;
+  if (days >= 2) return t ? t("dashboard:asg_due_in_days", { n: days, when }) : `Due in ${days} days · ${when}`;
   const hours = Math.max(1, Math.floor(ms / 3600000));
-  return `Due in ${hours} hour${hours === 1 ? "" : "s"} · ${fmtDateTime(iso)}`;
+  if (t) return t(hours === 1 ? "dashboard:asg_due_in_hour" : "dashboard:asg_due_in_hours", { n: hours, when });
+  return `Due in ${hours} hour${hours === 1 ? "" : "s"} · ${when}`;
 }
 
 /* <input type="datetime-local"> works in local time; the server stores UTC ISO. */

@@ -25,6 +25,7 @@ import {
   BookMarked,
   Search,
 } from "lucide-react";
+import StudentAnalyticsDrawer from "../../components/mentor/StudentAnalyticsDrawer";
 
 const ClassroomDetail = () => {
   const { classroomId } = useParams();
@@ -39,6 +40,7 @@ const ClassroomDetail = () => {
   const [allStudents, setAllStudents] = useState([]); // All students for assignment dropdown
   const [studentSearch, setStudentSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedAnalyticsStudent, setSelectedAnalyticsStudent] = useState(null);
 
   // Modal states
   const [showCreateCourseModal, setShowCreateCourseModal] = useState(false);
@@ -564,11 +566,11 @@ const ClassroomDetail = () => {
                       <td className="px-5 py-3.5 text-center">
                         <div className="flex gap-2 justify-center">
                           <button
-                            onClick={() => navigate(`/student/portal/${student._id}`)}
+                            onClick={() => setSelectedAnalyticsStudent(student)}
                             className="px-3 py-1.5 bg-[#002366]/10 text-[#002366] hover:bg-[#002366] hover:text-white text-xs rounded-none transition font-semibold border border-[#002366]/30 flex items-center gap-1.5"
-                            title="View Student Portal"
+                            title="View Student Performance"
                           >
-                            <ExternalLink size={13} /> {t('portal')}
+                            <BarChart3 size={13} className="text-[#B99652]" /> Performance
                           </button>
                           <button
                             onClick={() => {
@@ -838,6 +840,15 @@ const ClassroomDetail = () => {
           </div>
         </div>
       )}
+
+      {/* Student 360 Academic Performance Analytics Drawer */}
+      <StudentAnalyticsDrawer
+        isOpen={!!selectedAnalyticsStudent}
+        onClose={() => setSelectedAnalyticsStudent(null)}
+        student={selectedAnalyticsStudent}
+        classroomId={classroomId}
+        courses={courses}
+      />
     </MentorLayout>
   );
 };

@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import StudentLayout from "../../components/StudentLayout";
 import AnnouncementBell from "../../components/AnnouncementBell";
+import GuideBotLauncher from "../../guidebot/runtime/GuideBotLauncher";
+import UniversalLanguageSelector from "../../components/UniversalLanguageSelector";
 import { useAuth } from "../../auth/auth";
 import ProgressBar from "../../components/ProgressBar";
 import { useTranslation } from "../../context/TranslationContext";
@@ -219,7 +221,7 @@ const StudentDashboard = () => {
           <div className="hidden md:flex items-center gap-2 flex-1 max-w-xl lg:max-w-2xl">
             <input
               type="search"
-              placeholder="Search my courses"
+              placeholder={t('dashboard:sd_search_courses')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1 h-10 px-4 bg-white border border-[#d0cbef] rounded-lg text-sm text-[#141a33] outline-none placeholder-[#7a809c] focus:border-[#5b3fd9] focus:ring-1 focus:ring-[#5b3fd9]/30 transition-all shadow-sm"
@@ -234,6 +236,9 @@ const StudentDashboard = () => {
 
           {/* Right Header Actions */}
           <div className="flex items-center gap-3">
+            <UniversalLanguageSelector variant="compact" />
+            <GuideBotLauncher tourId="student-overview-v1" />
+
             <div data-tour="announcement-bell" className="p-1">
               <AnnouncementBell />
             </div>
@@ -255,8 +260,8 @@ const StudentDashboard = () => {
                 </svg>
               </div>
               <div className="hidden sm:block text-left">
-                <div className="text-xs font-bold text-[#141a33] leading-tight">{user?.name || "Student User"}</div>
-                <div className="text-[11px] text-[#7a809c]">{user?.studentId ? `Roll: ${user.studentId}` : "Student"}</div>
+                <div className="text-xs font-bold text-[#141a33] leading-tight">{user?.name || t('dashboard:sd_student_user')}</div>
+                <div className="text-[11px] text-[#7a809c]">{user?.studentId ? t('dashboard:sd_roll', { id: user.studentId }) : t('common:student')}</div>
               </div>
             </div>
           </div>
@@ -271,26 +276,26 @@ const StudentDashboard = () => {
             {/* HERO BANNER */}
             <section className="relative overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[240px] rounded-none bg-gradient-to-r from-[#fbfaff] via-[#f5f1ff] to-[#efe9ff] border border-[#e6e8f1] shadow-sm">
               <div className="md:col-span-7 p-6 sm:p-8 flex flex-col justify-center z-10">
-                <span className="text-[11px] font-extrabold tracking-wider text-[#7a809c] uppercase mb-2">YOUR LEARNING JOURNEY</span>
+                <span className="text-[11px] font-extrabold tracking-wider text-[#7a809c] uppercase mb-2">{t('dashboard:sd_journey_eyebrow')}</span>
                 <h2 className="font-['DM_Serif_Display',serif] text-3xl sm:text-4xl text-[#141a33] leading-tight mb-3">
-                  Learn Today. <span className="text-[#5b3fd9] block">Build Tomorrow.</span>
+                  {t('dashboard:sd_hero_line1')} <span className="text-[#5b3fd9] block">{t('dashboard:sd_hero_line2')}</span>
                 </h2>
                 <p className="text-xs sm:text-sm text-[#3a4160] max-w-sm mb-6 leading-relaxed">
-                  Access your enrolled courses, track your progress, and achieve your goals — all in one place.
+                  {t('dashboard:sd_hero_body')}
                 </p>
                 <div>
                   <Link
                     to="/student/courses"
                     className="inline-flex items-center gap-2 h-11 px-6 rounded-none bg-[#0f1731] hover:bg-[#1c2850] text-white font-semibold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg transform active:translate-y-0.5"
                   >
-                    Explore My Courses <ArrowRight className="w-4 h-4" />
+                    {t('dashboard:sd_explore_my_courses')} <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
               </div>
               <div className="md:col-span-5 relative flex items-center justify-center p-2 sm:p-4">
                 <img
                   src="/student_result_illustration.png"
-                  alt="Student Result Illustration"
+                  alt={t('dashboard:sd_alt_result_illustration')}
                   className="w-full h-56 sm:h-64 md:h-72 object-contain drop-shadow-xl hover:scale-105 transition-transform duration-300"
                 />
               </div>
@@ -308,7 +313,7 @@ const StudentDashboard = () => {
                 </div>
                 <div className="text-2xl font-extrabold text-[#141a33] my-1">{stats.totalCourses}</div>
                 <Link to="/student/courses" className="text-xs font-semibold text-[#5b3fd9] hover:underline inline-flex items-center gap-1">
-                  View all <ArrowRight className="w-3 h-3" />
+                  {t('common:view_all')} <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
 
@@ -322,7 +327,7 @@ const StudentDashboard = () => {
                 </div>
                 <div className="text-2xl font-extrabold text-[#141a33] my-1">{stats.totalProgress}%</div>
                 <span className="text-xs font-semibold text-[#f07b1d] inline-flex items-center gap-1">
-                  Overall completion
+                  {t('dashboard:sd_overall_completion')}
                 </span>
               </div>
 
@@ -336,7 +341,7 @@ const StudentDashboard = () => {
                 </div>
                 <div className="text-2xl font-extrabold text-[#141a33] my-1">{stats.attendancePercentage.toFixed(1)}%</div>
                 <Link to="/student/attendance" className="text-xs font-semibold text-[#16a34a] hover:underline inline-flex items-center gap-1">
-                  View records <ArrowRight className="w-3 h-3" />
+                  {t('dashboard:sd_view_records')} <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
 
@@ -346,11 +351,11 @@ const StudentDashboard = () => {
                   <div className="w-9 h-9 rounded-none bg-[#e8efff] text-[#2563eb] flex items-center justify-center">
                     <Trophy className="w-4 h-4" />
                   </div>
-                  <span className="text-xs text-[#7a809c] font-medium">Completed</span>
+                  <span className="text-xs text-[#7a809c] font-medium">{t('common:completed')}</span>
                 </div>
                 <div className="text-2xl font-extrabold text-[#141a33] my-1">{stats.completedCourses}</div>
                 <Link to="/student/results" className="text-xs font-semibold text-[#2563eb] hover:underline inline-flex items-center gap-1">
-                  View results <ArrowRight className="w-3 h-3" />
+                  {t('dashboard:sd_view_results')} <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
             </section>
@@ -359,11 +364,11 @@ const StudentDashboard = () => {
             <section className="bg-white border border-[#e6e8f1] rounded-none p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-base font-bold text-[#141a33]">Continue Learning</h3>
-                  <p className="text-xs text-[#7a809c]">Pick up where you left off</p>
+                  <h3 className="text-base font-bold text-[#141a33]">{t('common:continue_learning')}</h3>
+                  <p className="text-xs text-[#7a809c]">{t('dashboard:sd_pick_up')}</p>
                 </div>
                 <Link to="/student/courses" className="text-xs font-semibold text-[#5b3fd9] hover:underline inline-flex items-center gap-1">
-                  View All <ArrowRight className="w-3 h-3" />
+                  {t('common:view_all')} <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
 
@@ -390,18 +395,18 @@ const StudentDashboard = () => {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"></div>
                         <div className="relative z-10 flex justify-between items-start">
                           <span className={`px-2.5 py-0.5 rounded-none text-[10px] font-bold backdrop-blur-md ${course.progress === 100 ? 'bg-emerald-500/80 text-white' : 'bg-[#5b3fd9]/80 text-white'}`}>
-                            {course.progress === 100 ? "Completed" : "In Progress"}
+                            {course.progress === 100 ? t('common:completed') : t('common:in_progress')}
                           </span>
                         </div>
                       </div>
                       <div className="p-3.5">
                         <h4 className="font-bold text-sm text-[#141a33] line-clamp-1 group-hover:text-[#5b3fd9] transition-colors">{course.title}</h4>
                         <p className="text-xs text-[#7a809c] mt-0.5 mb-3 line-clamp-1">
-                          {course.completedChapters}/{course.totalChapters || 0} chapters completed
+                          {course.completedChapters}/{course.totalChapters || 0} {t('common:chapters_completed')}
                         </p>
                         <div className="space-y-1">
                           <div className="flex justify-between text-[11px] font-semibold text-[#3a4160]">
-                            <span>Progress</span>
+                            <span>{t('common:progress')}</span>
                             <span>{course.progress}%</span>
                           </div>
                           <div className="h-1.5 w-full bg-[#eceef5] rounded-none overflow-hidden">
@@ -413,7 +418,7 @@ const StudentDashboard = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-[#7a809c] py-4">No enrolled courses available matching your search.</p>
+                <p className="text-xs text-[#7a809c] py-4">{t('dashboard:sd_no_courses_match')}</p>
               )}
             </section>
 
@@ -423,7 +428,7 @@ const StudentDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-bold text-[#141a33]">{t('my_classroom')}</h3>
-                    <p className="text-xs text-[#7a809c]">Classes and section details</p>
+                    <p className="text-xs text-[#7a809c]">{t('dashboard:sd_classes_section_details')}</p>
                   </div>
                 </div>
 
@@ -458,7 +463,7 @@ const StudentDashboard = () => {
                                 >
                                   <div>
                                     <div className="text-xs font-bold text-[#141a33] group-hover:text-[#5b3fd9] transition-colors">{c.title}</div>
-                                    <div className="text-[11px] text-[#7a809c] mt-0.5">{c.completedChapters}/{c.totalChapters || 0} chapters</div>
+                                    <div className="text-[11px] text-[#7a809c] mt-0.5">{c.completedChapters}/{c.totalChapters || 0} {t('common:chapters')}</div>
                                   </div>
                                   <ArrowRight className="w-4 h-4 text-[#7a809c] group-hover:text-[#5b3fd9] transition-colors" />
                                 </div>
@@ -480,25 +485,25 @@ const StudentDashboard = () => {
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-bold text-[#141a33] flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-[#16a34a]" /> Attendance Summary
+                      <CheckCircle className="w-4 h-4 text-[#16a34a]" /> {t('common:attendance_summary')}
                     </h3>
                     <Link to="/student/attendance" className="text-xs font-semibold text-[#5b3fd9] hover:underline">
-                      View All →
+                      {t('common:view_all')} →
                     </Link>
                   </div>
                   {attendance && Array.isArray(attendance) && attendance.length > 0 ? (
                     <div className="space-y-3">
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div className="bg-[#e8f7ee] p-2.5 rounded-none">
-                          <p className="text-[10px] text-[#16a34a] font-semibold uppercase">Present</p>
+                          <p className="text-[10px] text-[#16a34a] font-semibold uppercase">{t('common:present')}</p>
                           <p className="text-lg font-bold text-[#16a34a]">{attendance.filter(a => a.status === 'present').length}</p>
                         </div>
                         <div className="bg-[#fdecec] p-2.5 rounded-none">
-                          <p className="text-[10px] text-[#ef4444] font-semibold uppercase">Absent</p>
+                          <p className="text-[10px] text-[#ef4444] font-semibold uppercase">{t('common:absent')}</p>
                           <p className="text-lg font-bold text-[#ef4444]">{attendance.filter(a => a.status === 'absent').length}</p>
                         </div>
                         <div className="bg-[#e8efff] p-2.5 rounded-none">
-                          <p className="text-[10px] text-[#2563eb] font-semibold uppercase">Total</p>
+                          <p className="text-[10px] text-[#2563eb] font-semibold uppercase">{t('common:total')}</p>
                           <p className="text-lg font-bold text-[#2563eb]">{attendance.length}</p>
                         </div>
                       </div>
@@ -507,14 +512,14 @@ const StudentDashboard = () => {
                           <div key={idx} className="flex justify-between items-center p-2 bg-[#f8f9fc] rounded-none text-xs">
                             <span className="text-[#3a4160]">{new Date(record.date).toLocaleDateString()}</span>
                             <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold ${record.status === 'present' ? 'bg-[#e8f7ee] text-[#16a34a]' : 'bg-[#fdecec] text-[#ef4444]'}`}>
-                              {record.status === 'present' ? '✓ Present' : '✗ Absent'}
+                              {record.status === 'present' ? `✓ ${t('common:present')}` : `✗ ${t('common:absent')}`}
                             </span>
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-[#7a809c] py-4">No attendance records recorded yet.</p>
+                    <p className="text-xs text-[#7a809c] py-4">{t('dashboard:sd_no_attendance')}</p>
                   )}
                 </div>
               </div>
@@ -524,10 +529,10 @@ const StudentDashboard = () => {
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-bold text-[#141a33] flex items-center gap-2">
-                      <Trophy className="w-4 h-4 text-[#2563eb]" /> Academic Results
+                      <Trophy className="w-4 h-4 text-[#2563eb]" /> {t('navigation:nav_desc_academic_results')}
                     </h3>
                     <Link to="/student/results" className="text-xs font-semibold text-[#2563eb] hover:underline">
-                      View All →
+                      {t('common:view_all')} →
                     </Link>
                   </div>
                   {results && results.length > 0 ? (
@@ -535,7 +540,7 @@ const StudentDashboard = () => {
                       {results.slice(0, 2).map((res, idx) => (
                         <div key={idx} className="p-3 bg-[#f8f9fc] border border-[#e6e8f1] rounded-none space-y-1">
                           <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-[#141a33]">{res.term || "Term Exam"}</span>
+                            <span className="text-xs font-bold text-[#141a33]">{res.term || t('dashboard:sd_term_exam')}</span>
                             <span className="text-xs font-bold text-[#16a34a]">{res.overallPercentage || 0}%</span>
                           </div>
                           {res.subjects && Array.isArray(res.subjects) && (
@@ -551,7 +556,7 @@ const StudentDashboard = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-[#7a809c] py-4">Report cards will appear here as soon as teachers publish them.</p>
+                    <p className="text-xs text-[#7a809c] py-4">{t('dashboard:sd_no_results')}</p>
                   )}
                 </div>
               </div>
@@ -565,13 +570,13 @@ const StudentDashboard = () => {
             {/* DAILY MOTIVATION QUOTE CARD */}
             <section className="relative overflow-hidden p-6 min-h-[180px] rounded-[18px] border border-[#e3dcff] bg-gradient-to-br from-[#f3efff] to-[#e8e1ff]">
               <h3 className="text-lg font-bold text-[#141a33] max-w-[170px] leading-snug">
-                Small steps every day, lead to big results.
+                {t('dashboard:sd_quote')}
               </h3>
               <p className="text-xs text-[#3a4160] mt-2 max-w-[170px]">
-                You're doing great, keep going!
+                {t('dashboard:sd_quote_sub')}
               </p>
               {/* Decorative Plant SVG */}
-              <svg className="absolute right-[-6px] bottom-[-4px] w-32 h-40" viewBox="0 0 130 160" fill="none">
+              <svg className="absolute right-[-6px] rtl:right-auto rtl:left-[-6px] rtl:-scale-x-100 bottom-[-4px] w-32 h-40" viewBox="0 0 130 160" fill="none">
                 <path d="M40 150h50l-6-34H46z" fill="#fff" opacity="0.9"/>
                 <g fill="#7f6be0" opacity="0.85">
                   <path d="M65 118C62 90 50 70 30 58c14 20 22 38 30 60z"/>
@@ -588,7 +593,7 @@ const StudentDashboard = () => {
             {/* QUICK ACTIONS */}
             <section className="bg-white border border-[#e6e8f1] rounded-none p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-[#141a33]">Quick Actions</h3>
+                <h3 className="text-sm font-bold text-[#141a33]">{t('dashboard:quick_actions')}</h3>
               </div>
               <div className="grid grid-cols-2 gap-2.5">
                 <Link to="/student/courses" className="flex items-center gap-2.5 p-2.5 border border-[#e6e8f1] rounded-none hover:border-[#5b3fd9] hover:bg-[#efebff]/50 transition-all group">
@@ -596,8 +601,8 @@ const StudentDashboard = () => {
                     <BookOpen className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#5b3fd9] leading-tight">View Courses</span>
-                    <span className="block text-[10px] text-[#7a809c]">My Portal</span>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#5b3fd9] leading-tight">{t('common:view_courses')}</span>
+                    <span className="block text-[10px] text-[#7a809c]">{t('dashboard:sd_my_portal')}</span>
                   </div>
                 </Link>
 
@@ -606,8 +611,8 @@ const StudentDashboard = () => {
                     <Clock className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#16a34a] leading-tight">Attendance</span>
-                    <span className="block text-[10px] text-[#7a809c]">Records</span>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#16a34a] leading-tight">{t('common:attendance')}</span>
+                    <span className="block text-[10px] text-[#7a809c]">{t('dashboard:sd_records')}</span>
                   </div>
                 </Link>
 
@@ -616,8 +621,8 @@ const StudentDashboard = () => {
                     <Trophy className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#2563eb] leading-tight">Academic Results</span>
-                    <span className="block text-[10px] text-[#7a809c]">Grades</span>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#2563eb] leading-tight">{t('navigation:nav_desc_academic_results')}</span>
+                    <span className="block text-[10px] text-[#7a809c]">{t('common:grades')}</span>
                   </div>
                 </Link>
 
@@ -632,8 +637,8 @@ const StudentDashboard = () => {
                     <Megaphone className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#f07b1d] leading-tight">Announcements</span>
-                    <span className="block text-[10px] text-[#7a809c]">Notices</span>
+                    <span className="block text-xs font-bold text-[#141a33] group-hover:text-[#f07b1d] leading-tight">{t('navigation:nav_announcements')}</span>
+                    <span className="block text-[10px] text-[#7a809c]">{t('dashboard:sd_notices')}</span>
                   </div>
                 </div>
 
@@ -643,11 +648,11 @@ const StudentDashboard = () => {
                       <CreditCard className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="block text-xs font-bold text-[#1e1b4b] group-hover:text-[#B99652] leading-tight">Pay Institute Fees</span>
-                      <span className="block text-[10px] text-gray-500">View Dues & Receipts</span>
+                      <span className="block text-xs font-bold text-[#1e1b4b] group-hover:text-[#B99652] leading-tight">{t('dashboard:sd_pay_fees')}</span>
+                      <span className="block text-[10px] text-gray-500">{t('dashboard:sd_view_dues')}</span>
                     </div>
                   </div>
-                  <span className="text-[11px] font-bold text-[#B99652] px-2 py-0.5 border border-[#B99652]/40 bg-white">Pay Now &rarr;</span>
+                  <span className="text-[11px] font-bold text-[#B99652] px-2 py-0.5 border border-[#B99652]/40 bg-white">{t('dashboard:sd_pay_now')} &rarr;</span>
                 </Link>
               </div>
             </section>
@@ -659,20 +664,20 @@ const StudentDashboard = () => {
               {/* Background Image - Seamlessly integrated illustration flush to bottom */}
               <img
                 src="/student_journey_card_bg.png?v=2"
-                alt="Student Learning Journey"
+                alt={t('dashboard:sd_alt_learning_journey')}
                 className="absolute inset-0 w-full h-full object-cover object-bottom pointer-events-none select-none transition-transform duration-500 group-hover:scale-[1.02]"
               />
 
               {/* Floating Content merged over the illustration */}
               <div className="relative z-10 max-w-[280px]">
                 <span className="inline-block px-2.5 py-0.5 bg-white/90 backdrop-blur-xs border border-[#d6e3f5] text-[10px] font-bold tracking-wider text-[#2563eb] uppercase mb-2 shadow-xs">
-                  Learning Journey
+                  {t('dashboard:sd_learning_journey')}
                 </span>
                 <h3 className="text-base font-bold text-[#141a33] leading-snug">
-                  Explore Courses & Expand Skills
+                  {t('dashboard:sd_explore_expand')}
                 </h3>
                 <p className="text-xs text-[#4b5563] mt-1.5 leading-relaxed font-medium">
-                  Discover new subjects, master key topics, and advance your knowledge today.
+                  {t('dashboard:sd_discover')}
                 </p>
 
                 <div className="mt-4">
@@ -680,7 +685,7 @@ const StudentDashboard = () => {
                     to="/student/courses"
                     className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold rounded-none shadow-sm transition-all group-hover:gap-3"
                   >
-                    Explore Courses
+                    {t('dashboard:sd_explore_courses')}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>

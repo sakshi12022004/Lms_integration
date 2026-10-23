@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/auth";
 import StudentLayout from "../../components/StudentLayout";
-import { useTranslation } from "../../context/TranslationContext";
+import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import { Clock, CheckCircle, AlertCircle } from "lucide-react";
 
@@ -10,7 +10,7 @@ export default function AttemptAssessment() {
   const { assessmentId } = useParams();
   const { API, token } = useAuth();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t } = useTranslation(['common', 'forms']);
 
   const [assessment, setAssessment] = useState(null);
   const [questions, setQuestions] = useState([]);

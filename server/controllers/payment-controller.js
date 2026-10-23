@@ -4,143 +4,226 @@ const Razorpay = require('razorpay');
 // Returns null when the gateway is not configured.
 let razorpayClient = null;
 function getRazorpay() {
+  if (razorpayClient) return razorpayClient;
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) return null;
-  if (!razorpayClient) {
-    razorpayClient = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET
-    });
-  }
+  razorpayClient = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+  });
   return razorpayClient;
 }
+
+exports._setRazorpayClientForTesting = (client) => {
+  razorpayClient = client;
+};
 
 const gatewayNotConfigured = (res) => res.status(503).json({
   success: false,
   message: 'Online payment gateway is not configured'
 });
 
-// Create order
+const crypto = require('crypto');
+
+function safeTimingEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+const {
+  prepareOrderDetails,
+  recordCreatedPaymentOrder,
+  calculateStudentInstallmentSummary,
+  reconcileGatewayPayment,
+  PaymentError
+} = require('../services/installmentService');
+
+function getDatabaseFromRequest(req) {
+  return req.tenant?.database || require('../config/database-switch');
+}
+
+// Create secure server-side order
 exports.createOrder = async (req, res) => {
   try {
     const razorpay = getRazorpay();
     if (!razorpay) return gatewayNotConfigured(res);
 
-    const { amount, currency = 'INR', receipt, classroomId, classroomName, feeType } = req.body;
+    const db = getDatabaseFromRequest(req);
+    const authUserId = req.user?.userId;
+    const authRole = req.user?.role;
 
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid amount' 
+    if (!authUserId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    // 1. Verify student scope & ownership
+    const requestedStudentId = req.body.studentId ? Number(req.body.studentId) : authUserId;
+    if (authRole === 'student' && requestedStudentId !== authUserId) {
+      return res.status(403).json({ success: false, message: 'Access denied: You cannot create payment orders for another student.' });
+    }
+
+    const studentId = requestedStudentId;
+
+    // 2. Prepare order details via server-authoritative installment service
+    const orderPrep = await prepareOrderDetails(db, {
+      studentId,
+      feeStructureId: req.body.feeStructureId,
+      planId: req.body.planId,
+      installmentStage: req.body.installmentStage,
+      amount: req.body.amount
+    });
+
+    // 3. Handle duplicate active order within 15 mins
+    if (orderPrep.recentActiveOrder) {
+      return res.status(200).json({
+        success: true,
+        orderId: orderPrep.recentActiveOrder.orderId,
+        keyId: process.env.RAZORPAY_KEY_ID,
+        amount: orderPrep.recentActiveOrder.amount,
+        currency: orderPrep.recentActiveOrder.currency || 'INR',
+        scheduleId: orderPrep.scheduleId,
+        stageNumber: orderPrep.stageNumber,
+        planName: orderPrep.planName,
+        message: 'Active order reused for checkout'
       });
     }
 
+    // 4. Create Razorpay order with server-calculated amount in paise
+    const receiptId = `ORD_${studentId}_${orderPrep.stageNumber}_${Date.now().toString().slice(-6)}`;
     const options = {
-      amount: amount * 100, // Convert to paise
-      currency,
-      receipt: receipt || `receipt_${Date.now()}`,
+      amount: orderPrep.orderAmountPaise, // integer paise
+      currency: 'INR',
+      receipt: receiptId,
+      notes: {
+        studentId: String(studentId),
+        scheduleId: String(orderPrep.scheduleId),
+        installmentStage: String(orderPrep.stageNumber),
+        feeStructureId: String(orderPrep.feeStructureId)
+      },
       payment_capture: 1
     };
 
     const order = await razorpay.orders.create(options);
 
+    // 5. Persist order in payment_orders table
+    await recordCreatedPaymentOrder(db, {
+      orderId: order.id,
+      studentId: studentId,
+      scheduleId: orderPrep.scheduleId,
+      installmentStage: orderPrep.stageNumber,
+      feeStructureId: orderPrep.feeStructureId,
+      amount: orderPrep.orderAmountRupees,
+      currency: 'INR'
+    });
+
     res.status(200).json({
       success: true,
-      order,
-      classroomId,
-      classroomName,
-      feeType,
+      orderId: order.id,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      amount: orderPrep.orderAmountRupees,
+      currency: 'INR',
+      scheduleId: orderPrep.scheduleId,
+      stageNumber: orderPrep.stageNumber,
+      planName: orderPrep.planName,
       message: 'Order created successfully'
     });
   } catch (error) {
-    console.error('Error creating Razorpay order:', error);
-    res.status(500).json({
+    console.error('Error creating secure Razorpay order:', error);
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
       success: false,
-      message: 'Failed to create order',
-      error: error.message
+      code: error.code || 'ORDER_CREATION_FAILED',
+      message: error.message || 'Failed to create payment order'
     });
   }
 };
 
-// Verify payment
+// Verify payment and reconcile installment atomically
 exports.verifyPayment = async (req, res) => {
   try {
     const razorpay = getRazorpay();
     if (!razorpay) return gatewayNotConfigured(res);
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const db = getDatabaseFromRequest(req);
+    const authUser = req.user;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    if (!authUser || !authUser.userId) {
+      return res.status(401).json({ success: false, message: 'Authentication required' });
+    }
+
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+
+    if (
+      !razorpay_order_id || typeof razorpay_order_id !== 'string' ||
+      !razorpay_payment_id || typeof razorpay_payment_id !== 'string' ||
+      !razorpay_signature || typeof razorpay_signature !== 'string'
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Missing payment verification parameters'
+        code: 'MISSING_PARAMETERS',
+        message: 'Missing or invalid payment verification parameters (razorpay_order_id, razorpay_payment_id, razorpay_signature required).'
       });
     }
 
-    // Generate signature for verification
-    const crypto = require('crypto');
-    const body = razorpay_order_id + '|' + razorpay_payment_id;
+    const orderId = razorpay_order_id.trim();
+    const paymentId = razorpay_payment_id.trim();
+    const signature = razorpay_signature.trim();
+
+    // 1. Verify HMAC SHA-256 signature using timing-safe comparison
+    const body = `${orderId}|${paymentId}`;
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
+      .update(body)
       .digest('hex');
 
-    const isAuthentic = expectedSignature === razorpay_signature;
-
-    if (isAuthentic) {
-      // Payment is verified - Save to database
-      try {
-        // Get payment details from Razorpay
-        const payment = await razorpay.payments.fetch(razorpay_payment_id);
-        
-        // Save transaction to MongoDB
-        const Transaction = require('../models/Transaction');
-        const Student = require('../models/Student');
-        
-        const transaction = new Transaction({
-          studentId: null, // Skip studentId for demo
-          studentName: req.body.studentName || 'Student Name',
-          orderId: razorpay_order_id,
-          paymentId: razorpay_payment_id,
-          amount: payment.amount / 100, // convert from paise to rupees
-          status: 'success',
-          paymentMethod: payment.method,
-          paymentOption: req.body.paymentOption || 'installment',
-          classroomId: req.body.classroomId,
-          classroomName: req.body.classroomName,
-          feeType: req.body.feeType || 'class_fee',
-          createdAt: new Date()
-        });
-        
-        await transaction.save();
-        
-        // Skip student fees update for demo (no studentId)
-        
-        res.status(200).json({
-          success: true,
-          message: 'Payment verified successfully',
-          payment_id: razorpay_payment_id,
-          order_id: razorpay_order_id,
-          transactionId: transaction._id
-        });
-      } catch (dbError) {
-        console.error('Database error:', dbError);
-        res.status(500).json({
-          success: false,
-          message: 'Payment verified but failed to save to database'
-        });
-      }
-    } else {
-      res.status(400).json({
+    if (!safeTimingEqual(expectedSignature, signature)) {
+      return res.status(400).json({
         success: false,
-        message: 'Payment verification failed'
+        code: 'INVALID_SIGNATURE',
+        message: 'Payment verification failed: invalid signature.'
       });
     }
+
+    // 2. Authoritative gateway fetch via server SDK
+    let payment;
+    try {
+      payment = await razorpay.payments.fetch(paymentId);
+    } catch (fetchErr) {
+      console.error('Failed to fetch payment from Razorpay:', fetchErr.message);
+      return res.status(503).json({
+        success: false,
+        code: 'GATEWAY_UNAVAILABLE',
+        message: 'Could not connect to payment gateway to verify status. Please retry.'
+      });
+    }
+
+    if (!payment || payment.status !== 'captured') {
+      return res.status(400).json({
+        success: false,
+        code: 'PAYMENT_NOT_CAPTURED',
+        message: `Payment status is '${payment?.status || 'unknown'}'. Only captured payments can be credited.`
+      });
+    }
+
+    // 3. Atomic SQLite reconciliation inside installmentService
+    const result = await reconcileGatewayPayment(db, {
+      orderId,
+      paymentId,
+      signature,
+      gatewayPayment: payment,
+      authUser
+    });
+
+    return res.status(200).json(result);
   } catch (error) {
     console.error('Error verifying payment:', error);
-    res.status(500).json({
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({
       success: false,
-      message: 'Payment verification failed',
-      error: error.message
+      code: error.code || 'VERIFICATION_FAILED',
+      message: error.message || 'Payment verification failed'
     });
   }
 };

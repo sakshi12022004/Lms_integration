@@ -50,35 +50,35 @@ const CreateAssessment = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
 
-      toast.success("Assessment created");
+      toast.success(t('assessment_created'));
       navigate(`/mentor/assessment/${data.assessment._id}`);
     } catch (err) {
-      toast.error("Failed to create assessment");
+      toast.error(t('failed_to_create_assessment'));
     }
   };
 
   return (
     <MentorLayout>
       <div className="max-w-xl mx-auto p-6 bg-white rounded-xl shadow">
-        <h2 className="text-xl font-bold mb-4">Create Assessment</h2>
+        <h2 className="text-xl font-bold mb-4">{t('create_assessment_title')}</h2>
 
         <input
           type="text"
-          placeholder="Assessment Title"
+          placeholder={t('assessment_title')}
           className="w-full mb-3 p-2 border rounded"
           value={title}
           onChange={e => setTitle(e.target.value)}
         />
 
         <textarea
-          placeholder="Description"
+          placeholder={t('description')}
           className="w-full mb-3 p-2 border rounded"
           value={description}
           onChange={e => setDescription(e.target.value)}
         />
 
         <label className="block mb-2 text-sm font-medium">
-          Start Date & Time
+          {t('start_date_time')}
         </label>
         <input
           type="datetime-local"
@@ -88,7 +88,7 @@ const CreateAssessment = () => {
         />
 
         <label className="block mb-2 text-sm font-medium">
-          End Date & Time
+          {t('end_date_time')}
         </label>
         <input
           type="datetime-local"
@@ -101,7 +101,7 @@ const CreateAssessment = () => {
           onClick={handleCreate}
           className="w-full py-3 bg-primary text-white rounded-lg font-semibold"
         >
-          Create Assessment
+          {t('create_assessment_title')}
         </button>
       </div>
     </MentorLayout>

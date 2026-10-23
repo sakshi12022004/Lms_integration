@@ -192,11 +192,13 @@ function initializeTables() {
       priority TEXT DEFAULT 'normal',
       attachments TEXT,
       readBy TEXT DEFAULT '[]',
+      targetUserId INTEGER,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (university_id) REFERENCES universities(id),
       FOREIGN KEY (courseId) REFERENCES courses(id),
-      FOREIGN KEY (createdByUser) REFERENCES users(id)
+      FOREIGN KEY (createdByUser) REFERENCES users(id),
+      FOREIGN KEY (targetUserId) REFERENCES users(id)
     )
   `, (err) => {
     if (err) {
@@ -211,6 +213,15 @@ function initializeTables() {
         console.warn('Could not add university_id column to announcements:', altErr.message);
       } else {
         console.log('✅ Added university_id to announcements table');
+      }
+    });
+
+    // Add targetUserId column if it doesn't exist
+    db.run(`ALTER TABLE announcements ADD COLUMN targetUserId INTEGER`, (altErr) => {
+      if (altErr && !altErr.message.includes('duplicate column name')) {
+        console.warn('Could not add targetUserId column to announcements:', altErr.message);
+      } else {
+        console.log('✅ Added targetUserId to announcements table');
       }
     });
   });

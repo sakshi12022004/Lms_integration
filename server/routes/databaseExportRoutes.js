@@ -6,7 +6,63 @@ const translationService = require('../services/translationService');
 const authMiddleware = require('../middleware/authMiddleware');
 const { checkExportAccess } = require('../middleware/quotaMiddleware');
 const { rateLimiters } = require('../middleware/rateLimiter');
+const ExcelJS = require('exceljs');
 const db = require('../config/database-switch');
+
+// Database categories mapping for clean structured exports
+const DB_CATEGORIES = {
+  users: {
+    id: 'users',
+    name: 'Users & Accounts',
+    description: 'Students, Mentors, Admins, Roles, Subscriptions',
+    tables: [
+      'users', 'students', 'superadmins', 'universities', 'subscriptions',
+      'user_language_preferences', 'otp_reset', 'soa_student_setup_tokens',
+      'soa_custom_field_values', 'soa_custom_fields'
+    ]
+  },
+  academics: {
+    id: 'academics',
+    name: 'Academics & Classrooms',
+    description: 'Classrooms, Courses, Modules, Attendance, Timetable, Progress',
+    tables: [
+      'classrooms', 'classroomAssignments', 'student_classroom_assignment',
+      'courses', 'course_students', 'course_materials', 'weeks', 'chapters',
+      'attendance', 'certificates', 'progress', 'results'
+    ]
+  },
+  finance: {
+    id: 'finance',
+    name: 'Finance & Fees',
+    description: 'Fee structures, Invoices, Payment history, Installments, Expenses',
+    tables: [
+      'payments', 'payment_orders', 'invoices', 'feeStructures',
+      'student_fee_schedules', 'expenses', 'orders'
+    ]
+  },
+  assessments: {
+    id: 'assessments',
+    name: 'AI Assessments & LMS Exams',
+    description: 'AI assessment agent, Quizzes, Submissions, Question banks, Reports',
+    tables: [
+      'aia_assessments', 'aia_assignments', 'aia_assessment_recipients',
+      'aia_assignment_questions', 'aia_assignment_submissions', 'aia_attempts',
+      'aia_attempt_answers', 'aia_attempt_archive', 'aia_attempt_responses',
+      'aia_options', 'aia_performance_reports', 'aia_questions',
+      'assessments', 'assessment_questions', 'assessment_attempts'
+    ]
+  },
+  operations: {
+    id: 'operations',
+    name: 'Campus & Operations',
+    description: 'Announcements, Calendar, Live classes, Inventory, Vendors',
+    tables: [
+      'announcements', 'calendar_events', 'live_classes', 'live_class_attendees',
+      'inventory', 'vendors', 'vendor_stock', 'requirements', 'requirement_items',
+      'demo_requests', 'translations'
+    ]
+  }
+};
 
 // Hardcoded Arabic translations for common field names
 const arabicTranslations = {
@@ -144,286 +200,294 @@ router.get('/table/:tableName/data', rateLimiters.sensitive, authMiddleware, che
   }
 });
 
-// Export table as Excel (CSV format - Excel compatible)
+// Get all categorized tables definition
+router.get('/categories', rateLimiters.sensitive, authMiddleware, checkExportAccess, (req, res) => {
+  res.json({ categories: DB_CATEGORIES });
+});
+
+// Helper: Style an Excel Worksheet with Core5 Navy & Gold branding
+function styleTableWorksheet(ws, headers, rows, titleText) {
+  // Title / Banner if provided
+  if (titleText) {
+    ws.addRow([titleText]);
+    ws.mergeCells(1, 1, 1, Math.max(headers.length, 3));
+    const titleCell = ws.getCell('A1');
+    titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002366' } }; // Core5 Navy
+    titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
+    ws.getRow(1).height = 30;
+    ws.addRow([]); // empty spacer row
+  }
+
+  // Header row
+  const headerRow = ws.addRow(headers);
+  headerRow.height = 26;
+  headerRow.eachCell((cell) => {
+    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002366' } }; // Navy Blue
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF001740' } },
+      bottom: { style: 'medium', color: { argb: 'FFB99652' } }, // Core5 Gold border accent
+      left: { style: 'thin', color: { argb: 'FF002366' } },
+      right: { style: 'thin', color: { argb: 'FF002366' } }
+    };
+  });
+
+  // Data rows
+  rows.forEach((rowObj, rIdx) => {
+    const rowValues = headers.map(h => {
+      const val = rowObj[h];
+      if (val === null || val === undefined) return '';
+      if (typeof val === 'object') return JSON.stringify(val);
+      return val;
+    });
+    const dRow = ws.addRow(rowValues);
+    dRow.height = 20;
+
+    // Subtle alternating row striping
+    if (rIdx % 2 === 1) {
+      dRow.eachCell((c) => {
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFD' } };
+      });
+    }
+
+    dRow.eachCell((c) => {
+      c.border = {
+        bottom: { style: 'thin', color: { argb: 'FFE6E8F1' } }
+      };
+    });
+  });
+
+  // Auto-fit column widths
+  ws.columns.forEach((col, idx) => {
+    const headerName = headers[idx] || '';
+    let maxLen = headerName.length;
+    // Check first 40 sample rows
+    const sample = rows.slice(0, 40);
+    sample.forEach(r => {
+      const val = r[headerName];
+      const strLen = val ? String(val).length : 0;
+      if (strLen > maxLen) maxLen = strLen;
+    });
+    col.width = Math.min(46, Math.max(12, maxLen + 3));
+  });
+
+  // Freeze top pane and enable auto-filter
+  const headerRowNum = titleText ? 3 : 1;
+  ws.views = [{ state: 'frozen', ySplit: headerRowNum, showGridLines: true }];
+  if (headers.length > 0) {
+    ws.autoFilter = {
+      from: { row: headerRowNum, column: 1 },
+      to: { row: headerRowNum, column: headers.length }
+    };
+  }
+}
+
+// Export single table as real Excel (.xlsx) workbook
 router.get('/table/:tableName/excel', rateLimiters.sensitive, authMiddleware, checkExportAccess, async (req, res) => {
   try {
     const { tableName } = req.params;
-    const lang = (req.query.lang || 'en').toLowerCase();
-
-    // Validate table name to prevent SQL injection
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tableName)) {
       return res.status(400).json({ error: 'Invalid table name' });
     }
 
-    // Get table structure first
-    db.all(`PRAGMA table_info(${tableName})`, async (err, columns) => {
-      if (err) {
-        return res.status(500).json({ error: 'Error fetching table structure' });
-      }
-
-      // Build language-aware column map
-      const cols = (columns || []).map(col => col.name);
-      const columnMap = {};
-      cols.forEach(c => {
-        const m = c.match(/^(.*)_(en|ar)$/);
-        if (m) {
-          const base = m[1];
-          const l = m[2];
-          columnMap[base] = columnMap[base] || {};
-          columnMap[base][l] = c;
-        } else {
-          columnMap[c] = columnMap[c] || {};
-          columnMap[c].default = c;
-        }
-      });
-
-      // Build select to include both ar and en source columns where available
-      const selectParts = [];
-      const bases = Object.keys(columnMap);
-      bases.forEach(base => {
-        const arCol = columnMap[base].ar || null;
-        const enCol = columnMap[base].en || null;
-        const defCol = columnMap[base].default || null;
-
-        if (arCol) selectParts.push(`${arCol} as ${base}__ar_src`);
-        else selectParts.push(`NULL as ${base}__ar_src`);
-
-        if (enCol) selectParts.push(`${enCol} as ${base}__en_src`);
-        else if (defCol) selectParts.push(`${defCol} as ${base}__en_src`);
-        else selectParts.push(`NULL as ${base}__en_src`);
-      });
-
-      const selectQuery = `SELECT ${selectParts.join(', ')} FROM ${tableName}`;
-
-      db.all(selectQuery, async (err, rows) => {
-        if (err) {
-          return res.status(500).json({ error: 'Error fetching table data' });
-        }
-
-        // Convert to CSV (Excel compatible format)
-        let csv = '\uFEFF'; // UTF-8 BOM for Excel compatibility
-
-        // Headers are base names; translate if requested
-        let headers = bases.slice();
-        if (lang === 'ar') {
-          headers = headers.map(h => getArabicFieldName(h));
-        }
-
-        csv += headers.join(',') + '\n';
-
-        // Prepare batch translations for missing Arabic cells to reduce roundtrips
-        for (const row of rows || []) {
-          const toTranslate = [];
-          const translateKeys = [];
-
-          // collect missing ar values that need translation
-          bases.forEach(base => {
-            const arVal = row[`${base}__ar_src`];
-            const enVal = row[`${base}__en_src`];
-
-            if (lang === 'ar') {
-              if (arVal && String(arVal).trim() !== '') {
-                // nothing to do
-              } else if (enVal && String(enVal).trim() !== '') {
-                toTranslate.push(String(enVal));
-                translateKeys.push(base);
-              } else {
-                toTranslate.push('');
-                translateKeys.push(base);
-              }
-            }
-          });
-
-          let translated = [];
-          if (toTranslate.length > 0) {
-            try {
-              translated = await translationService.translateBatch(toTranslate, 'ar', 'en');
-            } catch (e) {
-              console.error('Value batch translation failed:', e.message);
-              translated = toTranslate.map(t => t);
-            }
-          }
-
-          const values = bases.map(base => {
-            const arVal = row[`${base}__ar_src`];
-            const enVal = row[`${base}__en_src`];
-
-            let finalVal = '';
-            if (lang === 'ar') {
-              if (arVal && String(arVal).trim() !== '') finalVal = String(arVal);
-              else {
-                const idx = translateKeys.indexOf(base);
-                finalVal = (idx !== -1) ? translated[idx] : '';
-              }
-            } else {
-              if (enVal && String(enVal).trim() !== '') finalVal = String(enVal);
-              else if (arVal && String(arVal).trim() !== '') finalVal = String(arVal);
-              else finalVal = '';
-            }
-
-            if (finalVal === null || finalVal === undefined) finalVal = '';
-            const stringValue = String(finalVal);
-            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
-              return `"${stringValue.replace(/"/g, '""')}"`;
-            }
-            return stringValue;
-          });
-
-          csv += values.join(',') + '\n';
-        }
-
-        // Set headers for Excel download
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${tableName}_export_${lang}_${new Date().toISOString().split('T')[0]}.csv"`);
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-        res.send(csv);
+    const rows = await new Promise((resolve, reject) => {
+      db.all(`SELECT * FROM ${tableName}`, (err, data) => {
+        if (err) return reject(err);
+        resolve(data || []);
       });
     });
+
+    let headers = [];
+    if (rows.length > 0) {
+      headers = Object.keys(rows[0]);
+    } else {
+      const cols = await new Promise((r) => {
+        db.all(`PRAGMA table_info(${tableName})`, (err, c) => r((c || []).map(x => x.name)));
+      });
+      headers = cols.length > 0 ? cols : ['id'];
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Core5 Academy LMS';
+    workbook.created = new Date();
+
+    const safeSheetName = tableName.replace(/[\\/*?:\[\]]/g, '_').substring(0, 31);
+    const ws = workbook.addWorksheet(safeSheetName);
+
+    styleTableWorksheet(ws, headers, rows);
+
+    const filename = `${tableName}_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Pragma', 'no-cache');
+
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Error exporting single table:', error);
+    res.status(500).json({ error: 'Server error exporting table' });
   }
 });
 
-// Export entire database as Excel (multiple sheets in separate files)
+// Export database as Multi-Sheet Excel (.xlsx) workbook with category filtering
 router.get('/database/excel', rateLimiters.sensitive, authMiddleware, checkExportAccess, async (req, res) => {
   try {
     const lang = (req.query.lang || 'en').toLowerCase();
-    // Get all tables
-    db.all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC", async (err, tables) => {
-      if (err) {
-        return res.status(500).json({ error: 'Error fetching tables' });
-      }
-      
-      const tableNames = (tables || []).map(table => table.name);
-      
-      let combinedCsv = '\uFEFF'; // UTF-8 BOM for Excel compatibility
+    const categoriesParam = req.query.categories;
+    const requestedCategories = categoriesParam ? categoriesParam.split(',').map(c => c.trim()) : null;
 
-      let line1 = 'DATABASE EXPORT - LMS System';
-      let line2 = 'Export Date:';
-      let line3 = 'Total Tables:';
-      let line4 = 'Language:';
-      
-      if (lang === 'ar') {
-        line1 = 'تصدير قاعدة البيانات - نظام LMS';
-        line2 = 'تاريخ التصدير:';
-        line3 = 'إجمالي الجداول:';
-        line4 = 'اللغة:';
-      }
-
-      combinedCsv += `${line1}\n`;
-      combinedCsv += `${line2} ${new Date().toLocaleString()}\n`;
-      combinedCsv += `${line3} ${tableNames.length}\n`;
-      combinedCsv += `${line4} ${lang.toUpperCase()}\n\n`;
-
-      if (tableNames.length === 0) {
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="lms_database_export_${new Date().toISOString().split('T')[0]}.csv"`);
-        return res.send(combinedCsv);
-      }
-
-      let completedTables = 0;
-      
-      tableNames.forEach(tableName => {
-        db.all(`PRAGMA table_info(${tableName})`, async (err, columns) => {
-          if (err) {
-            completedTables++;
-            if (completedTables === tableNames.length) {
-              res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-              res.setHeader('Content-Disposition', `attachment; filename="lms_database_export_${new Date().toISOString().split('T')[0]}.csv"`);
-              res.send(combinedCsv);
-            }
-            return;
-          }
-
-          const cols = (columns || []).map(col => col.name);
-          const columnMap = {};
-          cols.forEach(c => {
-            const m = c.match(/^(.*)_(en|ar)$/);
-            if (m) {
-              const base = m[1];
-              const l = m[2];
-              columnMap[base] = columnMap[base] || {};
-              columnMap[base][l] = c;
-            } else {
-              columnMap[c] = columnMap[c] || {};
-              columnMap[c].default = c;
-            }
-          });
-
-          const selectParts = [];
-          const bases = Object.keys(columnMap);
-          bases.forEach(base => {
-            const arCol = columnMap[base].ar || null;
-            const enCol = columnMap[base].en || null;
-            const defCol = columnMap[base].default || null;
-
-            if (arCol) selectParts.push(`${arCol} as ${base}__ar_src`);
-            else selectParts.push(`NULL as ${base}__ar_src`);
-
-            if (enCol) selectParts.push(`${enCol} as ${base}__en_src`);
-            else if (defCol) selectParts.push(`${defCol} as ${base}__en_src`);
-            else selectParts.push(`NULL as ${base}__en_src`);
-          });
-
-          const selectQuery = `SELECT ${selectParts.join(', ')} FROM ${tableName}`;
-
-          db.all(selectQuery, async (err, rows) => {
-            if (!err && rows && rows.length > 0) {
-              let tableLabel = lang === 'ar' ? 'جدول' : 'TABLE';
-              let recordsLabel = lang === 'ar' ? 'السجلات' : 'records';
-              let displayTableName = tableName;
-
-              combinedCsv += `${tableLabel}: ${String(displayTableName).toUpperCase()} (${rows.length} ${recordsLabel})\n`;
-
-              let headers = bases.slice();
-              if (lang === 'ar') {
-                headers = headers.map(h => getArabicFieldName(h));
-              }
-
-              combinedCsv += headers.join(',') + '\n';
-
-              for (const row of rows) {
-                const values = bases.map(base => {
-                  const arVal = row[`${base}__ar_src`];
-                  const enVal = row[`${base}__en_src`];
-                  let finalVal = '';
-                  if (lang === 'ar') {
-                    finalVal = (arVal && String(arVal).trim() !== '') ? String(arVal) : (enVal || '');
-                  } else {
-                    finalVal = (enVal && String(enVal).trim() !== '') ? String(enVal) : (arVal || '');
-                  }
-
-                  if (finalVal === null || finalVal === undefined) finalVal = '';
-                  const stringValue = String(finalVal);
-                  if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
-                    return `"${stringValue.replace(/"/g, '""')}"`;
-                  }
-                  return stringValue;
-                });
-
-                combinedCsv += values.join(',') + '\n';
-              }
-
-              combinedCsv += '\n';
-            }
-            
-            completedTables++;
-            if (completedTables === tableNames.length) {
-              res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-              res.setHeader('Content-Disposition', `attachment; filename="lms_database_export_${new Date().toISOString().split('T')[0]}.csv"`);
-              res.setHeader('Cache-Control', 'no-cache');
-              res.setHeader('Pragma', 'no-cache');
-              res.setHeader('Expires', '0');
-              res.send(combinedCsv);
-            }
-          });
-        });
+    // Fetch all table names from database
+    const allDbTables = await new Promise((resolve, reject) => {
+      db.all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC", (err, tables) => {
+        if (err) return reject(err);
+        resolve((tables || []).map(t => t.name));
       });
     });
+
+    // Filter tables based on requested categories
+    let targetTables = allDbTables;
+    let scopeLabel = 'Full_Database';
+
+    if (requestedCategories && requestedCategories.length > 0 && !requestedCategories.includes('all')) {
+      const allowedTables = new Set();
+      requestedCategories.forEach(catId => {
+        if (DB_CATEGORIES[catId]) {
+          DB_CATEGORIES[catId].tables.forEach(t => allowedTables.add(t));
+        }
+      });
+      targetTables = allDbTables.filter(t => allowedTables.has(t));
+      scopeLabel = requestedCategories.join('_');
+    }
+
+    if (targetTables.length === 0) {
+      targetTables = allDbTables;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Core5 Academy LMS';
+    workbook.created = new Date();
+
+    // 1. Overview / Table of Contents Worksheet
+    const summarySheet = workbook.addWorksheet('Overview & Summary', {
+      views: [{ showGridLines: true }]
+    });
+
+    // Title banner
+    summarySheet.mergeCells('A1:E1');
+    const titleCell = summarySheet.getCell('A1');
+    titleCell.value = 'Core5 Academy - LMS Database Export';
+    titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002366' } };
+    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    summarySheet.getRow(1).height = 36;
+
+    // Metadata details
+    summarySheet.addRow([]);
+    summarySheet.addRow(['Export Date:', new Date().toLocaleString(), '', 'Language:', lang.toUpperCase()]);
+    summarySheet.addRow(['Scope:', requestedCategories && !requestedCategories.includes('all') ? requestedCategories.join(', ') : 'All Categories (Full)', '', 'Tables Exported:', targetTables.length]);
+    summarySheet.addRow([]);
+
+    summarySheet.getRow(3).font = { bold: true };
+    summarySheet.getRow(4).font = { bold: true };
+
+    // Table of contents header
+    const tocHeader = summarySheet.addRow(['#', 'Table / Sheet Name', 'Category', 'Records Count', 'Status']);
+    tocHeader.height = 24;
+    tocHeader.eachCell((cell) => {
+      cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002366' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    summarySheet.columns = [
+      { width: 8 },
+      { width: 34 },
+      { width: 28 },
+      { width: 16 },
+      { width: 16 }
+    ];
+
+    let totalRecordsCount = 0;
+    const tableCache = [];
+
+    // Pre-fetch all tables data
+    for (let i = 0; i < targetTables.length; i++) {
+      const tableName = targetTables[i];
+      const rows = await new Promise((resolve) => {
+        db.all(`SELECT * FROM ${tableName}`, (err, data) => {
+          if (err) return resolve([]);
+          resolve(data || []);
+        });
+      });
+
+      const catEntry = Object.values(DB_CATEGORIES).find(c => c.tables.includes(tableName));
+      const categoryName = catEntry ? catEntry.name : 'System';
+
+      tableCache.push({ tableName, rows, categoryName });
+      totalRecordsCount += rows.length;
+
+      const sRow = summarySheet.addRow([
+        i + 1,
+        tableName,
+        categoryName,
+        rows.length,
+        rows.length > 0 ? 'Active' : 'Empty'
+      ]);
+      sRow.height = 20;
+      sRow.getCell(1).alignment = { horizontal: 'center' };
+      sRow.getCell(4).alignment = { horizontal: 'right' };
+      sRow.getCell(5).alignment = { horizontal: 'center' };
+
+      if (i % 2 === 1) {
+        sRow.eachCell((c) => {
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFC' } };
+        });
+      }
+    }
+
+    // Summary Total Row
+    const sumRow = summarySheet.addRow(['', 'Total Across All Tables', '', totalRecordsCount, '']);
+    sumRow.height = 24;
+    sumRow.font = { bold: true };
+    sumRow.getCell(4).alignment = { horizontal: 'right' };
+    sumRow.eachCell((c) => {
+      c.border = { top: { style: 'thin' }, bottom: { style: 'double' } };
+    });
+
+    // 2. Add individual tab for each table
+    for (const item of tableCache) {
+      const { tableName, rows } = item;
+      const safeSheetName = tableName.replace(/[\\/*?:\[\]]/g, '_').substring(0, 31);
+      const ws = workbook.addWorksheet(safeSheetName);
+
+      let headers = [];
+      if (rows.length > 0) {
+        headers = Object.keys(rows[0]);
+      } else {
+        const cols = await new Promise((r) => {
+          db.all(`PRAGMA table_info(${tableName})`, (err, c) => r((c || []).map(x => x.name)));
+        });
+        headers = cols.length > 0 ? cols : ['id'];
+      }
+
+      styleTableWorksheet(ws, headers, rows);
+    }
+
+    const filename = `core5_${scopeLabel}_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Pragma', 'no-cache');
+
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Error generating Multi-Sheet Excel workbook:', error);
+    res.status(500).json({ error: 'Server error generating Excel workbook' });
   }
 });
 

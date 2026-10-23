@@ -1,6 +1,9 @@
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 const BilingualDataService = require("../services/BilingualDataService");
-const db = require("../config/database-switch");
+
+function getDb(req) {
+  return req?.tenant?.database || require("../config/database-switch");
+}
 
 
 
@@ -74,11 +77,17 @@ const createAnnouncement = async (req, res) => {
       values.push(announcementData.courseId);
     }
 
+    // Add targetUserId for direct personal user announcements
+    if (announcementData.targetUserId) {
+      columns.push('targetUserId');
+      values.push(announcementData.targetUserId);
+    }
+
     // Build the INSERT query
     const placeholders = columns.map(() => '?').join(', ');
     const insertQuery = `INSERT INTO announcements (${columns.join(', ')}) VALUES (${placeholders})`;
 
-    db.run(insertQuery, values, function(err) {
+    getDb(req).run(insertQuery, values, function(err) {
       if (err) {
         console.error("Error creating announcement:", err);
         return res.status(500).json({ message: "Error creating announcement" });
@@ -119,10 +128,16 @@ const getAllAnnouncements = async (req, res) => {
     // Filter based on role
     if (role === "student") {
       // Students see:
-      // 1. Announcements published for 'students' or 'both'
-      // 2. Announcements created by mentors for courses the student is enrolled in
+      // 1. Personalized targeted announcements matching current student's userId
+      // 2. General announcements for students (where targetUserId IS NULL and not a fee reminder)
+      // 3. Legacy reminders matching student's name
+      // 4. Announcements created by mentors for courses the student is enrolled in
       query += ` AND (
-        a.publishFor IN ('students', 'both')
+        (a.publishFor IN ('students', 'both') AND (
+          (a.targetUserId IS NOT NULL AND a.targetUserId = ?)
+          OR (a.targetUserId IS NULL AND a.title NOT LIKE '%Fee Payment Reminder%')
+          OR (a.targetUserId IS NULL AND a.title LIKE '%Fee Payment Reminder%' AND a.content LIKE ('Dear ' || (SELECT name FROM users WHERE id = ?) || ',%'))
+        ))
         OR (a.createdByRole = 'mentor' AND a.courseId IN (SELECT courseId FROM course_students WHERE studentId = ?))
       )`;
     } else if (role === "mentor" || role === "teacher" || role === "faculty") {
@@ -136,6 +151,16 @@ const getAllAnnouncements = async (req, res) => {
     } else if (role === "admin") {
       // Admin can see all announcements from their university
       // query already filtered by university_id
+    } else {
+      // Any other role (accountant, storekeeper, superadmin, ...) only sees
+      // broadcasts to everyone, never announcements targeted at a specific
+      // user or student fee reminders. Unknown roles must not fall through to
+      // the unfiltered admin view.
+      query += ` AND (
+        a.publishFor = 'both'
+        AND a.targetUserId IS NULL
+        AND a.title NOT LIKE '%Fee Payment Reminder%'
+      )`;
     }
 
     query += ` ORDER BY a.createdAt DESC`;
@@ -145,10 +170,10 @@ const getAllAnnouncements = async (req, res) => {
 
     // Prepare query params: universityId is always first, then userId for subqueries
     let params = [universityId];
-    if (role === 'student') params.push(userId);
+    if (role === 'student') params.push(userId, userId, userId);
     else if (role === "mentor" || role === "teacher" || role === "faculty") params.push(userId);
     
-    db.all(query, params, (err, announcements) => {
+    getDb(req).all(query, params, (err, announcements) => {
       if (err) {
         console.error("Error fetching announcements:", err);
         return res.status(500).json({ message: "Database error" });
@@ -184,7 +209,7 @@ const deleteAnnouncement = async (req, res) => {
     const universityId = req.user?.universityId || 1;
 
     // Check if announcement exists and user has permission
-    db.get("SELECT * FROM announcements WHERE id = ? AND university_id = ?", [id, universityId], (err, announcement) => {
+    getDb(req).get("SELECT * FROM announcements WHERE id = ? AND university_id = ?", [id, universityId], (err, announcement) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({ message: "Database error" });
@@ -200,7 +225,7 @@ const deleteAnnouncement = async (req, res) => {
       }
 
       // Delete announcement
-      db.run("DELETE FROM announcements WHERE id = ? AND university_id = ?", [id, universityId], function(err) {
+      getDb(req).run("DELETE FROM announcements WHERE id = ? AND university_id = ?", [id, universityId], function(err) {
         if (err) {
           console.error("Error deleting announcement:", err);
           return res.status(500).json({ message: "Error deleting announcement" });
@@ -233,7 +258,7 @@ const markAsRead = async (req, res) => {
     }
 
     // Get current announcement
-    db.get("SELECT * FROM announcements WHERE id = ?", [id], (err, announcement) => {
+    getDb(req).get("SELECT * FROM announcements WHERE id = ?", [id], (err, announcement) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({ message: "Database error" });
@@ -265,7 +290,7 @@ const markAsRead = async (req, res) => {
       }
 
       // Update announcement
-      db.run(
+      getDb(req).run(
         "UPDATE announcements SET readBy = ? WHERE id = ?",
         [JSON.stringify(readBy), id],
         function(err) {

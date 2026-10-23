@@ -156,7 +156,7 @@ const AddStudent = () => {
                 <Input data-tour="input-student-name" label={t('full_name')} name="fullName" value={form.fullName} onChange={handleChange} />
                 <Input label={t('parent_name')} name="parentName" value={form.parentName} onChange={handleChange} />
                 <Input label={t('email_address')} name="email" value={form.email} onChange={handleChange} />
-                <Input label={t('phone')} name="phone" type="tel" maxLength={10} placeholder="10-digit mobile number" value={form.phone} onChange={handleChange} error={phoneError ? "Please enter a 10-digit number" : null} />
+                <Input label={t('phone')} name="phone" type="tel" maxLength={10} placeholder={t('phone_placeholder')} value={form.phone} onChange={handleChange} error={phoneError ? t('phone_error_10_digits') : null} />
                 <Input label={t('blood_group')} name="bloodGroup" value={form.bloodGroup} onChange={handleChange} />
                 <Input label={t('date_of_birth')} type="date" name="dob" value={form.dob} onChange={handleChange} />
               </div>

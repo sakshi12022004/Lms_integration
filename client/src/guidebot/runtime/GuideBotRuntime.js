@@ -19,6 +19,7 @@ import { getTour } from '../tours/registry';
 // before start() can ever be called, wherever this runtime module ends up
 // being imported from. No registration logic lives here — see tours/index.js.
 import '../tours';
+import i18n from '../../i18n';
 
 const DEFAULT_TARGET_TIMEOUT_MS = 4000;
 // How long to wait, after a navigation click, for the page being left to be
@@ -76,6 +77,15 @@ class GuideBotRuntime {
     this._actionSuccessAdvance = false;
     // Re-entrancy guard for _handleStepDestroyed — see its own comment.
     this._isHandlingDestroy = false;
+
+    // Listen for language changes to update active tour popover in real time
+    if (typeof i18n?.on === 'function') {
+      i18n.on('languageChanged', () => {
+        if (this._runtimeState === RUNTIME_STATES.PRESENTING && this._activeSteps?.[this._stepIndex]) {
+          this._showStep(this._activeSteps[this._stepIndex]);
+        }
+      });
+    }
   }
 
   getRuntimeState() {
@@ -458,17 +468,41 @@ class GuideBotRuntime {
     // on the rest. Tours that declare neither are unaffected.
     const tourConfig = this._tour.driverConfig || {};
     const isLastPresented = this._stepIndex >= this._activeSteps.length - 1;
-    const forwardLabel = isLastPresented ? tourConfig.doneBtnText : tourConfig.nextBtnText;
+    const forwardLabel = isLastPresented
+      ? i18n.t('tours:done_btn', { defaultValue: tourConfig.doneBtnText || 'Done' })
+      : i18n.t('tours:next_btn', { defaultValue: tourConfig.nextBtnText || 'Next' });
+    const prevLabel = i18n.t('tours:prev_btn', { defaultValue: tourConfig.prevBtnText || 'Previous' });
+    const closeLabel = i18n.t('tours:skip_btn', { defaultValue: tourConfig.closeBtnText || 'Skip Tour' });
+    const stepId = step.data?.guidebotStepId || step.id;
+    const localizedTitle = i18n.t(`tours:${stepId}_title`, {
+      defaultValue: step.popover?.title || step.title || '',
+    });
+    const localizedDesc = i18n.t(`tours:${stepId}_desc`, {
+      defaultValue: i18n.t(`tours:${stepId}_description`, {
+        defaultValue: step.popover?.description || step.description || '',
+      }),
+    });
+    const progressText = i18n.t('tours:step_progress', {
+      current: this._stepIndex + 1,
+      total: this._activeSteps.length,
+      defaultValue: `Step ${this._stepIndex + 1} of ${this._activeSteps.length}`,
+    });
+
     const presentedStep = {
       ...step,
       popover: {
-        ...(typeof forwardLabel === 'string' ? { nextBtnText: forwardLabel } : {}),
         ...(step.popover?.disableButtons === undefined
           ? { disableButtons: this._canGoBack() ? [] : ['previous'] }
           : {}),
         ...step.popover,
+        title: localizedTitle,
+        description: localizedDesc,
         showProgress: true,
-        progressText: `Step ${this._stepIndex + 1} of ${this._activeSteps.length}`,
+        progressText,
+        nextBtnText: forwardLabel,
+        prevBtnText: prevLabel,
+        doneBtnText: forwardLabel,
+        closeBtnText: closeLabel,
       },
     };
 
@@ -487,6 +521,10 @@ class GuideBotRuntime {
         animate: true,
         duration: 260,
         ...this._tour.driverConfig,
+        nextBtnText: forwardLabel,
+        prevBtnText: prevLabel,
+        doneBtnText: forwardLabel,
+        closeBtnText: closeLabel,
         // Driver.js only auto-advances/closes when it owns the button's
         // click handler. The moment a config supplies onNextClick /
         // onDoneClick / onCloseClick, Driver.js calls *only* that handler
@@ -648,8 +686,8 @@ class GuideBotRuntime {
     const skipButton = document.createElement('button');
     skipButton.type = 'button';
     skipButton.className = 'guidebot-popover-skip-btn';
-    skipButton.textContent = 'Skip';
-    skipButton.setAttribute('aria-label', 'Skip GuideBot walkthrough');
+    skipButton.textContent = i18n.t('tours:skip_btn', { defaultValue: 'Skip' });
+    skipButton.setAttribute('aria-label', i18n.t('tours:skip_btn', { defaultValue: 'Skip GuideBot walkthrough' }));
     skipButton.addEventListener('click', () => {
       this._advanceRequested = false;
       this._engine.stop();
@@ -665,7 +703,8 @@ class GuideBotRuntime {
       const skipStepButton = document.createElement('button');
       skipStepButton.type = 'button';
       skipStepButton.className = 'driver-popover-footer-btn guidebot-popover-skipstep-btn';
-      skipStepButton.textContent = stepForRender.skipStepLabel;
+      const stepId = stepForRender.data?.guidebotStepId || stepForRender.id;
+      skipStepButton.textContent = i18n.t(`tours:${stepId}_skip`, { defaultValue: stepForRender.skipStepLabel });
       skipStepButton.addEventListener('click', () => {
         if (this._activeSteps?.[this._stepIndex] !== stepForRender) return;
         if (this._runtimeState !== RUNTIME_STATES.PRESENTING) return;

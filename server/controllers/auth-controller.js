@@ -5,10 +5,18 @@ const tenantConnectionManager = require('../config/tenant-connection-manager');
 /* ================= REGISTER ================= */
 exports.register = async (req, res) => {
   try {
-    let { name, email, password, role } = req.body;
+    let { name, email, password } = req.body;
+    // Public registration only ever creates students; a submitted role is ignored.
+    // Staff and privileged accounts are created by an authenticated admin/superadmin.
+    const role = "student";
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Reject non-text values here: hashing a non-string password throws inside the DB callback below
+    if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string" || !name.trim() || !email.trim()) {
+      return res.status(400).json({ message: "Name, email and password must be text" });
     }
 
     email = email.trim().toLowerCase();
@@ -27,12 +35,19 @@ exports.register = async (req, res) => {
         return res.status(400).json({ message: "User already exists" });
       }
 
-      const hashedPassword = await bcrypt.hash(password, 10);
+      // This callback runs outside the try/catch above, so a hashing failure must be answered here
+      let hashedPassword;
+      try {
+        hashedPassword = await bcrypt.hash(password, 10);
+      } catch (hashError) {
+        console.error("REGISTER HASH ERROR:", hashError.message);
+        return res.status(500).json({ message: "Server error" });
+      }
 
       // Insert new user
       db.run(
         "INSERT INTO users (name, email, password, role, isApproved, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-        [name, email, hashedPassword, role || "student", 1],
+        [name, email, hashedPassword, role, 1],
         function(err) {
           if (err) {
             console.error("INSERT ERROR:", err);
@@ -45,7 +60,7 @@ exports.register = async (req, res) => {
               id: this.lastID,
               name,
               email,
-              role: role || "student",
+              role,
               isApproved: true,
             },
           });
@@ -63,11 +78,16 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    console.log(`🔍 Login attempt received: email=${email}, password=${password}`);
-
-    if (!email) {
+    // Never log the submitted password (or any token) here
+    if (typeof email !== "string" || !email.trim()) {
       console.log('❌ Email is required');
       return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Every login needs a password; without this check a missing one makes bcrypt throw inside the DB callback
+    if (typeof password !== "string" || password === "") {
+      console.log('❌ Password is required');
+      return res.status(400).json({ message: "Password is required" });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -85,61 +105,7 @@ exports.login = async (req, res) => {
 
       console.log(`🔍 User found:`, user ? `YES (id: ${user.id}, role: ${user.role})` : 'NO');
 
-      /* ================= 🔥 AUTO-CREATE DEMO USERS IF MISSING ================= */
-      const demoUsers = {
-        "student@gmail.com": "student",
-        "mentor@gmail.com": "mentor", 
-        "admin@gmail.com": "admin",
-        "accountant@demo.com": "accountant",
-        "accountant@test.com": "accountant",
-        "storekeeper@demo.com": "storekeeper",
-        "superadmin@core5.com": "superadmin",
-        "portal@core5.co.in": "superadmin"
-      };
-
-      if (!user && demoUsers[normalizedEmail]) {
-        console.log(`🔥 Creating demo user: ${normalizedEmail} with role: ${demoUsers[normalizedEmail]}`);
-        const hashedPassword = await bcrypt.hash("12345678", 10);
-        
-        const userName = demoUsers[normalizedEmail].charAt(0).toUpperCase() + demoUsers[normalizedEmail].slice(1);
-        console.log(`📝 User name will be: ${userName}, role: ${demoUsers[normalizedEmail]}`);
-        
-        masterDb.run(
-          "INSERT INTO users (name, email, password, role, isApproved, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-          [userName, normalizedEmail, hashedPassword, demoUsers[normalizedEmail], 1],
-          function(err) {
-            if (err) {
-              console.error("❌ Demo user creation error:", err);
-              return res.status(500).json({ message: "Server error" });
-            }
-
-            console.log(`✅ Demo user created with ID: ${this.lastID}`);
-
-            const token = jwt.sign(
-              { userId: this.lastID, role: demoUsers[normalizedEmail], name: userName, email: normalizedEmail, universityId: 1 },
-              process.env.JWT_SECRET || "default_jwt_secret_key",
-              { expiresIn: "7d" }
-            );
-
-            console.log(`✅ Token created for new demo user`);
-
-            return res.json({
-              message: "Login successful (demo user created)",
-              token,
-              user: {
-                id: this.lastID,
-                name: userName,
-                email: normalizedEmail,
-                role: demoUsers[normalizedEmail],
-                isApproved: true,
-              },
-            });
-          }
-        );
-        return;
-      }
-      /* ======================================================================== */
-
+      // Login never creates accounts: an unknown email is only checked against vendors, then refused
       if (!user) {
         console.log(`❌ User not found in users table: ${normalizedEmail}, checking vendors table...`);
         
@@ -222,43 +188,18 @@ exports.login = async (req, res) => {
         return;
       }
 
-      /* ================= 🔥 DEMO LOGIN - ALLOW WITHOUT PASSWORD ================= */
-      const demoEmails = [
-        "student@gmail.com",
-        "mentor@gmail.com", 
-        "admin@gmail.com",
-        "accountant@demo.com",
-        "storekeeper@demo.com",
-        "superadmin@core5.com"
-      ];
-
-      // Demo users can login without password or with any password
-      if (demoEmails.includes(normalizedEmail)) {
-        console.log(`🔥 Demo login for: ${normalizedEmail}, user role from DB: ${user.role}`);
-        const token = jwt.sign(
-          { userId: user.id, role: user.role, name: user.name, email: user.email, universityId: user.university_id || 1, subscriptionPlan: user.subscriptionPlan || 'free' },
-          process.env.JWT_SECRET || "default_jwt_secret_key",
-          { expiresIn: "7d" }
-        );
-
-        console.log(`✅ Token created for existing demo user, role: ${user.role}`);
-
-        return res.json({
-          message: "Login successful",
-          token,
-          user: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            isApproved: true,
-            subscriptionPlan: user.subscriptionPlan || 'free',
-          },
-        });
-      }
-
       /* ================= NORMAL LOGIN ================= */
-      const isMatch = await bcrypt.compare(password, user.password);
+      // Every account, without exception, must present its own password
+      let isMatch = false;
+      if (typeof user.password === "string" && user.password !== "") {
+        try {
+          isMatch = await bcrypt.compare(password, user.password);
+        } catch (bcryptError) {
+          // Same handling as the vendor path: a comparison failure is a refused login, never an unhandled error
+          console.error('Bcrypt comparison error:', bcryptError.message);
+          isMatch = false;
+        }
+      }
       if (!isMatch) {
         console.log(`❌ Password mismatch for: ${normalizedEmail}`);
         return res.status(401).json({ message: "Invalid credentials" });

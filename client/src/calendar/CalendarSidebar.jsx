@@ -1,10 +1,12 @@
 import { useState } from "react";
 import CreateEventModal from "./CreateEventModal";
 import { Plus, Clock } from "lucide-react";
+import { useTranslation } from "../context/TranslationContext";
 
 const CalendarSidebar = ({ role, onEventCreated }) => {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const { t } = useTranslation();
 
   return (
     <div className="w-64 border-r border-[#ebdcaa]/50 p-5 bg-[#fffdf4]/80 flex flex-col justify-between shrink-0">
@@ -20,7 +22,7 @@ const CalendarSidebar = ({ role, onEventCreated }) => {
               className="w-full mb-4 bg-[#B99652] hover:bg-[#a38241] text-white py-2.5 px-4 rounded-none font-semibold text-sm shadow-sm hover:shadow transition flex items-center justify-center gap-2"
             >
               <Plus size={16} />
-              <span>Create Event</span>
+              <span>{t('dashboard:cal_create_event')}</span>
             </button>
 
             {message && (
@@ -35,7 +37,7 @@ const CalendarSidebar = ({ role, onEventCreated }) => {
                 onClose={() => setOpen(false)}
                 onSuccess={() => {
                   setOpen(false);
-                  setMessage("Event created successfully!");
+                  setMessage(t('dashboard:cal_event_created'));
                   onEventCreated();
                   setTimeout(() => setMessage(""), 3000);
                 }}
@@ -48,24 +50,24 @@ const CalendarSidebar = ({ role, onEventCreated }) => {
           <div className="p-3.5 bg-white rounded-none border border-[#ebdcaa]/60 shadow-sm text-xs space-y-2">
             <div className="font-bold text-[#1e1b4b] flex items-center gap-1.5">
               <Clock size={14} className="text-[#B99652]" />
-              <span>Event Categories</span>
+              <span>{t('dashboard:cal_event_categories')}</span>
             </div>
             <div className="space-y-1.5 text-gray-600">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 bg-[#2563eb]"></span>
-                <span>Live Class</span>
+                <span>{t('dashboard:cal_live_class')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 bg-[#10b981]"></span>
-                <span>Assignment</span>
+                <span>{t('common:assignment')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 bg-[#ef4444]"></span>
-                <span>Examination</span>
+                <span>{t('common:examination')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 bg-[#8b5cf6]"></span>
-                <span>Holiday / General</span>
+                <span>{t('dashboard:cal_holiday_general')}</span>
               </div>
             </div>
           </div>
@@ -74,10 +76,10 @@ const CalendarSidebar = ({ role, onEventCreated }) => {
 
       <div className="p-3 bg-amber-500/10 border border-amber-300/30 rounded-none text-[11px] text-amber-900 font-medium mt-4">
         {role === "student"
-          ? "View scheduled classes, assignment deadlines, and exam dates."
+          ? t('dashboard:cal_hint_student')
           : role === "admin"
-          ? "Schedule and manage events across all departments."
-          : "Create classroom schedules and assessment deadlines."}
+          ? t('dashboard:cal_hint_admin')
+          : t('dashboard:cal_hint_mentor')}
       </div>
     </div>
   );

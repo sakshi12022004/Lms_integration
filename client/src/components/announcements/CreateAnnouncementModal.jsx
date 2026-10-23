@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../auth/auth";
+import { useTranslation } from "react-i18next";
 
 const CreateAnnouncementModal = ({
   open,
@@ -11,6 +12,7 @@ const CreateAnnouncementModal = ({
   onQuotaExceeded,
 }) => {
   const { user, token, API } = useAuth();
+  const { t } = useTranslation(['forms', 'common']);
 
   const [form, setForm] = useState({
     title: "",
@@ -34,11 +36,11 @@ const CreateAnnouncementModal = ({
   /* ================= SUBMIT ================= */
   const handleSubmit = async () => {
     if (!form.title.trim() || !form.message.trim()) {
-      return toast.error("Title and message are required");
+      return toast.error(t('title_and_message_required', 'Title and message are required.'));
     }
 
     if (user.role === "mentor" && !form.courseId) {
-      return toast.error("Please select a course");
+      return toast.error(t('select_course_required', 'Please select a course for this announcement.'));
     }
 
     try {
@@ -115,10 +117,10 @@ const CreateAnnouncementModal = ({
       });
 
       if (!res.ok) {
-        throw new Error("Publish failed");
+        throw new Error(t('publish_failed', 'Publish failed'));
       }
 
-      toast.success("Announcement published");
+      toast.success(t('announcement_posted_successfully', 'Announcement published'));
 
       // RESET FORM
       setForm({
@@ -131,7 +133,7 @@ const CreateAnnouncementModal = ({
       onSuccess?.(); // 🔔 refresh bell instantly
       onClose();
     } catch (err) {
-      toast.error("Failed to publish announcement");
+      toast.error(t('failed_to_publish_announcement', 'Failed to publish announcement'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -144,7 +146,7 @@ const CreateAnnouncementModal = ({
 
         {/* HEADER */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">New Announcement</h2>
+          <h2 className="text-lg font-semibold">{t('create_announcement_title', 'New Announcement')}</h2>
           <button onClick={onClose}>
             <X size={18} />
           </button>
@@ -154,7 +156,7 @@ const CreateAnnouncementModal = ({
         <input
           type="text"
           name="title"
-          placeholder="Announcement title"
+          placeholder={t('announcement_title_placeholder', 'Announcement title')}
           className="w-full border rounded px-3 py-2 mb-3"
           value={form.title}
           onChange={handleChange}
@@ -163,7 +165,7 @@ const CreateAnnouncementModal = ({
         {/* MESSAGE */}
         <textarea
           name="message"
-          placeholder="Write announcement..."
+          placeholder={t('announcement_message_placeholder', 'Write announcement...')}
           rows={4}
           className="w-full border rounded px-3 py-2 mb-3"
           value={form.message}
@@ -178,9 +180,9 @@ const CreateAnnouncementModal = ({
               onChange={handleChange}
               className="w-full border rounded px-3 py-2 mb-3"
             >
-              <option value="students">Students</option>
-              <option value="mentors">Faculty</option>
-              <option value="both">Both</option>
+              <option value="students">{t('publish_for_students', 'Students')}</option>
+              <option value="mentors">{t('publish_for_mentors', 'Faculty')}</option>
+              <option value="both">{t('publish_for_all', 'Both')}</option>
             </select>
         )}
 
@@ -192,7 +194,7 @@ const CreateAnnouncementModal = ({
             onChange={handleChange}
             className="w-full border rounded px-3 py-2 mb-3"
           >
-            <option value="">Select Course</option>
+            <option value="">{t('select_course_for_announcement', 'Select Course')}</option>
             {courses.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.title}
@@ -207,7 +209,7 @@ const CreateAnnouncementModal = ({
             onClick={onClose}
             className="px-4 py-2 text-sm border rounded"
           >
-            Cancel
+            {t('cancel', 'Cancel')}
           </button>
 
           <button
@@ -215,7 +217,7 @@ const CreateAnnouncementModal = ({
             disabled={loading}
             className="px-4 py-2 text-sm bg-primary text-white rounded"
           >
-            {loading ? "Publishing..." : "Publish"}
+            {loading ? t('posting_announcement', 'Publishing...') : t('post_announcement_btn', 'Publish')}
           </button>
         </div>
       </div>

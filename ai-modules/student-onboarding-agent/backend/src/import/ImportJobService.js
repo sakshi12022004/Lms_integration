@@ -225,7 +225,8 @@ class ImportJobService {
     const { expectedVersion } = readOptions(options);
     let job = await this.load(jobId, { expectedVersion });
     this.assertEditable(job);
-    const idea = findIdea(job, sourceColumn);
+    const idea = typeof sourceColumn === 'string' ? (job.mapping.newFields || []).find((f) => f.sourceColumn === sourceColumn) : null;
+    if (idea && idea.status === 'approved') throw new ValidationError('This new field has already been approved.', [], { code: 'NEW_FIELD_ALREADY_APPROVED', statusCode: 409 });
     if (!field || !Number.isInteger(field.id) || typeof field.key !== 'string') throw new TypeError('approveNewField needs the created field.');
     const target = customTarget(field.key);
     const customFields = [...(job.mapping.customFields || []).filter((f) => f.key !== field.key),
@@ -242,7 +243,12 @@ class ImportJobService {
     const columns = job.mapping.columns.map((c) => (c.sourceColumn !== sourceColumn ? c : {
       sourceColumn, status: 'mapped', targetField: target, candidateFields: null, confidence: null, reason: null, decidedBy: 'human', errors: [],
     }));
-    const newFields = job.mapping.newFields.map((f) => (f !== idea ? f : { ...f, status: 'approved', key: field.key, label: field.label, dataType: field.dataType, fieldId: field.id }));
+    let newFields = job.mapping.newFields || [];
+    if (idea) {
+      newFields = newFields.map((f) => (f !== idea ? f : { ...f, status: 'approved', key: field.key, label: field.label, dataType: field.dataType, fieldId: field.id }));
+    } else {
+      newFields = [...newFields, { sourceColumn, key: field.key, label: field.label, dataType: field.dataType, fieldId: field.id, status: 'approved' }];
+    }
     const decisions = [...job.mapping.decisions, { sequence: job.mapping.decisions.length + 1, sourceColumn, action: 'approve_new_field', targetField: target }];
     job = await this.save({ ...job, state: 'mapped', mapping: { ...job.mapping, columns, newFields, customFields, warnings: guard.warnings, decisions } });
     return buildReview(await this.save(this.evaluate(job)));
@@ -253,11 +259,16 @@ class ImportJobService {
     const { expectedVersion } = readOptions(options);
     let job = await this.load(jobId, { expectedVersion });
     this.assertEditable(job);
-    const idea = findIdea(job, sourceColumn);
+    const idea = typeof sourceColumn === 'string' ? (job.mapping.newFields || []).find((f) => f.sourceColumn === sourceColumn) : null;
     const columns = job.mapping.columns.map((c) => (c.sourceColumn !== sourceColumn ? c : {
       sourceColumn, status: 'unmapped', targetField: null, candidateFields: null, confidence: null, reason: null, decidedBy: 'human', errors: [],
     }));
-    const newFields = job.mapping.newFields.map((f) => (f !== idea ? f : { ...f, status: 'rejected' }));
+    let newFields = job.mapping.newFields || [];
+    if (idea) {
+      newFields = newFields.map((f) => (f !== idea ? f : { ...f, status: 'rejected' }));
+    } else {
+      newFields = [...newFields, { sourceColumn, status: 'rejected' }];
+    }
     const decisions = [...job.mapping.decisions, { sequence: job.mapping.decisions.length + 1, sourceColumn, action: 'reject_new_field', targetField: null }];
     job = await this.save({ ...job, state: 'mapped', mapping: { ...job.mapping, columns, newFields, decisions } });
     return buildReview(await this.save(this.evaluate(job)));

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { CreditCard, History, Package, LayoutDashboard, Database, LogOut, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { CreditCard, History, Package, LayoutDashboard, Database, LogOut, ChevronLeft, ChevronRight, FileText, ShieldAlert } from 'lucide-react';
 import { useAuth } from "../auth/auth";
 import { useTranslation } from "../context/TranslationContext";
 import whiteLogo from '../../../core5 logo new new-modified (1).png';
@@ -8,6 +8,7 @@ import whiteLogo from '../../../core5 logo new new-modified (1).png';
 const items = [
   { name: "Fees Collection", icon: CreditCard },
   { name: "Payment History", icon: History },
+  { name: "Legacy Reconciliation", icon: ShieldAlert },
   { name: "Vendor Invoices", icon: FileText },
   { name: "Inventory", icon: Package },
   { name: "Database Export", icon: Database },

@@ -15,6 +15,7 @@ import {
   Building,
   Bell,
   FileSpreadsheet,
+  ShieldAlert,
 } from 'lucide-react';
 import { useAuth } from '../auth/auth';
 import { useTranslation } from '../context/TranslationContext';
@@ -22,6 +23,7 @@ import AnnouncementBell from './AnnouncementBell';
 import QuotaLimitModal from './QuotaLimitModal';
 import LoginFooter from './LoginFooter';
 import whiteLogo from '../assets/core5-final-rbg.png';
+import UniversalLanguageSelector from './UniversalLanguageSelector';
 
 const AccountantLayout = ({ children }) => {
   const location = useLocation();
@@ -39,98 +41,60 @@ const AccountantLayout = ({ children }) => {
     navigate('/login');
   };
 
-  const handleNavClick = async (e, item) => {
-    // Check if this is a restricted feature
-    const restrictedFeatures = {
-      '/accountant/payment-history': 'payment history',
-      '/accountant/expenses': 'expenses',
-      '/accountant/database-export': 'database export',
-    };
-
-    const featureName = restrictedFeatures[item.path];
-
-    if (featureName) {
-      e.preventDefault();
-      try {
-        if (!token) {
-          setQuotaDetails({
-            type: 'feature',
-            resourceType: featureName,
-            message: 'Please login to access this feature.',
-          });
-          setShowQuotaModal(true);
-          return;
-        }
-
-        const res = await fetch(`${API}/subscriptions/check-feature-access`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!res.ok) throw new Error('feature check failed');
-        const data = await res.json();
-
-        // Check if current plan is 'free'
-        if (data.currentPlan === 'free') {
-          setQuotaDetails({
-            type: 'feature',
-            resourceType: featureName,
-            message: 'Your account is on the Free plan — upgrade to access this feature.',
-          });
-          setShowQuotaModal(true);
-          return;
-        }
-
-        // If not free plan, allow navigation
-        navigate(item.path);
-      } catch (err) {
-        console.error('Feature check error', err);
-        setQuotaDetails({
-          type: 'feature',
-          resourceType: featureName,
-          message: 'Your account is on the Free plan — upgrade to access this feature.',
-        });
-        setShowQuotaModal(true);
-      }
-    }
+  const handleNavClick = (e, item) => {
+    // Allow direct navigation for all accountant features without restrictions
   };
 
   const navItems = [
     {
       path: '/accountant/dashboard',
       nameKey: 'nav_dashboard',
+      label: 'Dashboard',
       icon: <LayoutDashboard size={20} />,
     },
     {
       path: '/accountant/fee-monitoring',
       nameKey: 'nav_fee_status',
+      label: 'Fee Status',
       icon: <Bell size={20} />,
-    },
-    {
-      path: '/accountant/vendor-invoices',
-      nameKey: 'vendor_invoices',
-      icon: <FileText size={20} />,
     },
     {
       path: '/accountant/fees',
       nameKey: 'fee_collection',
+      label: 'Fees Collection',
       icon: <BarChart3 size={20} />,
+    },
+    {
+      path: '/accountant/legacy-reconciliation',
+      nameKey: 'legacy_reconciliation',
+      label: 'Legacy Reconciliation',
+      icon: <ShieldAlert size={20} />,
+    },
+    {
+      path: '/accountant/vendor-invoices',
+      nameKey: 'vendor_invoices',
+      label: 'Vendor Invoices',
+      icon: <FileText size={20} />,
     },
     {
       path: '/accountant/expenses',
       nameKey: 'expenses',
+      label: 'Expenses',
       icon: <DollarSign size={20} />,
     },
     {
       path: '/accountant/database-export',
       nameKey: 'reports_and_analysis',
+      label: 'Reports & Export',
       icon: <FileSpreadsheet size={20} />,
     },
   ];
 
+  const matchedItem = navItems.find((item) => item.path === location.pathname);
   const currentPage =
-    navItems.find((item) => item.path === location.pathname)?.nameKey
-      ? t(navItems.find((item) => item.path === location.pathname)?.nameKey)
-      : t('nav_dashboard');
+    matchedItem?.nameKey && t(matchedItem.nameKey)
+      ? t(matchedItem.nameKey)
+      : (matchedItem?.label || t('nav_dashboard'));
 
   return (
     <div className="h-screen bg-background overflow-hidden">
@@ -339,6 +303,7 @@ const AccountantLayout = ({ children }) => {
             </div>
 
             <div className="flex items-center gap-4">
+              <UniversalLanguageSelector variant="compact" />
             </div>
           </div>
         </header>
@@ -353,7 +318,8 @@ const AccountantLayout = ({ children }) => {
       {/* ================= QUOTA LIMIT MODAL ================= */}
       {showQuotaModal && (
         <QuotaLimitModal
-          details={quotaDetails}
+          isOpen={showQuotaModal}
+          quotaDetails={quotaDetails}
           onClose={() => setShowQuotaModal(false)}
         />
       )}

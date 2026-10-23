@@ -67,6 +67,32 @@ const Expenses = () => {
     }
   };
 
+  const getInvoiceDateInfo = (invoice) => {
+    if (invoice.status !== 'paid') {
+      return { formattedDate: null, sourceLabel: null };
+    }
+
+    const candidates = [
+      { raw: invoice.paidDate, label: null },
+      { raw: invoice.updatedAt, label: 'Updated' },
+      { raw: invoice.issueDate, label: 'Issued' }
+    ];
+
+    for (const candidate of candidates) {
+      if (candidate.raw) {
+        const date = new Date(candidate.raw);
+        if (!isNaN(date.getTime())) {
+          return {
+            formattedDate: date.toLocaleDateString(),
+            sourceLabel: candidate.label
+          };
+        }
+      }
+    }
+
+    return { formattedDate: null, sourceLabel: null };
+  };
+
   const totalExpenses = invoices.reduce((sum, invoice) => {
     return invoice.status === 'paid' ? sum + (invoice.amount || 0) : sum;
   }, 0);
@@ -193,7 +219,7 @@ const Expenses = () => {
                     <th className="px-6 py-4">Amount</th>
                     <th className="px-6 py-4">Due Date</th>
                     <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Paid Date</th>
+                    <th className="px-6 py-4">Available Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#ebdcaa]/60 text-sm">
@@ -227,14 +253,25 @@ const Expenses = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-xs font-medium">
-                        {invoice.paidDate ? (
-                          <div className="flex items-center gap-1.5 text-emerald-700">
-                            <CheckCircle size={14} />
-                            <span>{new Date(invoice.paidDate).toLocaleDateString()}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
+                        {(() => {
+                          const { formattedDate, sourceLabel } = getInvoiceDateInfo(invoice);
+                          if (!formattedDate) {
+                            return <span className="text-slate-400">—</span>;
+                          }
+                          return (
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1.5 text-emerald-700">
+                                <CheckCircle size={14} />
+                                <span>{formattedDate}</span>
+                              </div>
+                              {sourceLabel && (
+                                <span className="text-[10px] text-slate-400 font-normal">
+                                  ({sourceLabel})
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}

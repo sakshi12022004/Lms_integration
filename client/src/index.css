@@ -69,7 +69,90 @@
 
 /* Global Heading Typography */
 h1, h2, h3, h4, h5, h6, .section-title, .metric-value {
-  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  /* Latin face first; browsers fall back per glyph, so each Indic/Arabic/Ol Chiki
+     script picks its Noto face instead of an OS font. */
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', 'Noto Sans Bengali', 'Noto Sans Telugu', 'Noto Sans Tamil', 'Noto Sans Gujarati', 'Noto Sans Kannada', 'Noto Sans Malayalam', 'Noto Sans Gurmukhi', 'Noto Sans Oriya', 'Noto Sans Ol Chiki', 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* Indic Typography Protection (prevents broken matras, halants, and conjuncts across all Indian scripts) */
+html[lang="hi"] *, :lang(hi) *,
+html[lang="mr"] *, :lang(mr) *,
+html[lang="sa"] *, :lang(sa) *,
+html[lang="ne"] *, :lang(ne) *,
+html[lang="kok"] *, :lang(kok) *,
+html[lang="brx"] *, :lang(brx) *,
+html[lang="bn"] *, :lang(bn) *,
+html[lang="as"] *, :lang(as) *,
+html[lang="mni"] *, :lang(mni) *,
+html[lang="te"] *, :lang(te) *,
+html[lang="ta"] *, :lang(ta) *,
+html[lang="gu"] *, :lang(gu) *,
+html[lang="kn"] *, :lang(kn) *,
+html[lang="ml"] *, :lang(ml) *,
+html[lang="pa"] *, :lang(pa) *,
+html[lang="or"] *, :lang(or) *,
+html[lang="ur"] *, :lang(ur) *,
+html[lang="ks"] *, :lang(ks) *,
+html[lang="sat"] *, :lang(sat) * {
+  letter-spacing: normal !important;
+}
+
+/* Script-Specific Font Declarations */
+:lang(bn), :lang(as), :lang(mni) {
+  font-family: 'Noto Sans Bengali', 'Plus Jakarta Sans', sans-serif;
+}
+:lang(te) {
+  font-family: 'Noto Sans Telugu', 'Plus Jakarta Sans', sans-serif;
+}
+:lang(ta) {
+  font-family: 'Noto Sans Tamil', 'Plus Jakarta Sans', sans-serif;
+}
+:lang(gu) {
+  font-family: 'Noto Sans Gujarati', 'Plus Jakarta Sans', sans-serif;
+}
+:lang(kn) {
+  font-family: 'Noto Sans Kannada', 'Plus Jakarta Sans', sans-serif;
+}
+:lang(ml) {
+  font-family: 'Noto Sans Malayalam', 'Plus Jakarta Sans', sans-serif;
+}
+:lang(pa) {
+  font-family: 'Noto Sans Gurmukhi', 'Plus Jakarta Sans', sans-serif;
+}
+:lang(or) {
+  font-family: 'Noto Sans Oriya', 'Plus Jakarta Sans', sans-serif;
+}
+:lang(ur), :lang(ks) {
+  font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+}
+:lang(sat) {
+  font-family: 'Noto Sans Ol Chiki', 'Plus Jakarta Sans', sans-serif;
+}
+:lang(hi), :lang(mr), :lang(sa), :lang(ne), :lang(kok), :lang(brx) {
+  font-family: 'Noto Sans Devanagari', 'Plus Jakarta Sans', sans-serif;
+}
+
+/* RTL Layout Direction Handling (Urdu & Kashmiri) */
+html[dir="rtl"] {
+  direction: rtl;
+}
+
+html[dir="rtl"] body {
+  text-align: right;
+}
+
+/* Tailwind space-x-* puts the gap on each later sibling's left side, which in
+   RTL leaves the first pair touching (merged nav items, checkbox glued to its
+   label). Flip it the same way the space-x-reverse utility does. */
+[dir="rtl"] [class*="space-x-"] > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+/* Nastaliq has tall ascenders/descenders; the tight line-heights used for
+   Latin headings make Urdu/Kashmiri lines collide. */
+:lang(ur) :is(h1, h2, h3, h4, h5, h6, .leading-none, .leading-tight, .leading-snug),
+:lang(ks) :is(h1, h2, h3, h4, h5, h6, .leading-none, .leading-tight, .leading-snug) {
+  line-height: 1.8;
 }
 
 .font-serif-heading {

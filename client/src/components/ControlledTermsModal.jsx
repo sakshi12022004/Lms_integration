@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { ShieldCheck, CheckCircle, FileText, Lock } from 'lucide-react';
+import { useTranslation } from '../context/TranslationContext';
 
 const ControlledTermsModal = ({ isOpen, onAccept }) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   const ModalContent = () => {
@@ -30,15 +32,15 @@ const ControlledTermsModal = ({ isOpen, onAccept }) => {
               </div>
               <div className="min-w-0">
                 <h2 className="text-xl sm:text-2xl font-bold tracking-wide text-white">
-                  Core5 LMS — Terms & Conditions
+                  {t('terms_and_conditions_title') !== 'terms_and_conditions_title' ? t('terms_and_conditions_title') : 'Core5 LMS — Terms & Conditions'}
                 </h2>
                 <p className="text-[11px] sm:text-xs text-[#d9bf85] font-medium mt-0.5 uppercase tracking-[0.14em]">
-                  Institutional Master Service & Usage Agreement
+                  {t('terms_agreement_subtitle') !== 'terms_agreement_subtitle' ? t('terms_agreement_subtitle') : 'Institutional Master Service & Usage Agreement'}
                 </p>
               </div>
             </div>
             <div className="hidden sm:block px-3 py-1.5 border border-[#B99652] bg-[#B99652]/15 text-[#e6cf9c] text-[11px] font-semibold tracking-[0.14em] uppercase whitespace-nowrap rounded-none">
-              Mandatory Review
+              {t('mandatory_review') !== 'mandatory_review' ? t('mandatory_review') : 'Mandatory Review'}
             </div>
           </div>
           <div className="h-[2px] flex-shrink-0 bg-gradient-to-r from-[#B99652]/20 via-[#B99652] to-[#B99652]/20" />
@@ -139,7 +141,7 @@ const ControlledTermsModal = ({ isOpen, onAccept }) => {
                 }`}
               >
                 <CheckCircle size={18} />
-                Accept & Continue to Dashboard
+                {t('accept_and_continue') !== 'accept_and_continue' ? t('accept_and_continue') : 'Accept & Continue to Dashboard'}
               </button>
             </div>
           </div>
