@@ -37,18 +37,25 @@ const CreateCourseAdmin = () => {
   const fetchData = async () => {
     try {
       setFetching(true);
-      // Fetch Mentors
+      // Fetch Mentors with Auth Header
       const mentorsRes = await fetch(`${API}/users/mentors-simple`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const mentorsData = await mentorsRes.json();
+      const mentorsData = mentorsRes.ok ? await mentorsRes.json() : [];
       
-      // Fetch All Users (to filter students)
+      // Fetch All Users (to filter students and fallback mentors)
       const usersRes = await fetch(`${API}/users/all`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const usersData = await usersRes.json();
-      const studentsData = usersData.filter(u => u.role === 'student');
+      const usersData = usersRes.ok ? await usersRes.json() : [];
+      const studentsData = Array.isArray(usersData) ? usersData.filter(u => u.role === 'student') : [];
+      const mentorsFromAll = Array.isArray(usersData) ? usersData.filter(u => u.role === 'mentor') : [];
+
+      if (Array.isArray(mentorsData) && mentorsData.length > 0) {
+        setMentors(mentorsData);
+      } else if (mentorsFromAll.length > 0) {
+        setMentors(mentorsFromAll);
+      }
 
       // Classes the course can be taught to (whole classes are enrolled after it is created)
       const classesRes = await fetch(`${API}/classrooms`, { headers: { Authorization: `Bearer ${token}` } });
@@ -82,11 +89,13 @@ const CreateCourseAdmin = () => {
   };
 
   const toggleStudent = (studentId) => {
+    if (!studentId) return;
+    const sIdStr = String(studentId);
     const newSelected = new Set(selectedStudents);
-    if (newSelected.has(studentId)) {
-      newSelected.delete(studentId);
+    if (newSelected.has(sIdStr)) {
+      newSelected.delete(sIdStr);
     } else {
-      newSelected.add(studentId);
+      newSelected.add(sIdStr);
     }
     setSelectedStudents(newSelected);
   };
@@ -250,9 +259,14 @@ const CreateCourseAdmin = () => {
                 required
               >
                 <option value="">{t('select_a_mentor')}</option>
-                {mentors.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}{m.email ? ` (${m.email})` : ''}</option>
-                ))}
+                {mentors.map(m => {
+                  const mId = m.id || m._id;
+                  return (
+                    <option key={mId} value={mId}>
+                      {m.name}{m.email ? ` (${m.email})` : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

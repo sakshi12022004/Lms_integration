@@ -256,6 +256,15 @@ const milestones = [
       'Legacy Backend Decoupled: Removed old rule-based database services (chatbotService, mentorChatbotService, adminChatbotService).',
       'AI Hook Prepared: Structured clean async response pipeline with explicit fetch() plug-in comment ready for friend\'s AI backend.'
     ]
+  },
+  {
+    title: 'Milestone 24: Home Landing Page Polish & Pricing Carousel Dynamic Consistency',
+    date: '23 Oct 2026',
+    items: [
+      'Dividing Line Removal: Eliminated border-y border-amber-900/10 dividing line on capabilities marquee and adjacent border on why-us section for seamless vertical flow.',
+      'Core UI Component Localization Immunity: Preserved 4 key feature showcase items in fixed English branding text to prevent translation degradation.',
+      'Dynamic Pricing CTA Consistency: Linked solid golden button (bg-[#B99652] text-white shadow-md) dynamically to active center card (isCenter) with arrow (→); inactive cards cleanly adopt gold outline.'
+    ]
   }
 ];
 

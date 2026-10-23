@@ -607,7 +607,7 @@ const ClassResults = () => {
         ) : (
           <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
             <p className="text-gray-500">
-              {!selectedClassroom ? "Please select a classroom" : "No students in this classroom"}
+              {!selectedClassroom ? t('please_select_classroom') : t('no_students_in_classroom')}
             </p>
           </div>
         )}
@@ -619,7 +619,7 @@ const ClassResults = () => {
           <div data-tour="results-edit-form" className="bg-white rounded-lg max-w-md w-full">
             <div className="p-6 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-bold">
-                {resultForm.editing ? "Edit Result" : "Add Result"}
+                {editingResult ? t('edit_result') : t('add_result')}
               </h3>
               <button onClick={() => setResultForm(null)}>
                 <X className="w-6 h-6" />
@@ -629,7 +629,7 @@ const ClassResults = () => {
             <form onSubmit={handleSaveResult} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Student *
+                  {t('student')} *
                 </label>
                 <select
                   value={resultForm.studentId}
@@ -638,10 +638,10 @@ const ClassResults = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                   required
                 >
-                  <option value="">Select Student</option>
-                  {rows.map(row => (
-                    <option key={row.student.id} value={String(row.student.id)}>
-                      {row.student.name} ({row.student.email})
+                  <option value="">{t('student')}</option>
+                  {students.map(student => (
+                    <option key={student._id || student.id} value={String(student._id || student.id)}>
+                      {student.name} ({student.email})
                     </option>
                   ))}
                 </select>
@@ -649,7 +649,7 @@ const ClassResults = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Term
+                  {t('term') || "Term"}
                 </label>
                 <input
                   type="text"
@@ -663,15 +663,18 @@ const ClassResults = () => {
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center mb-3">
                     <label className="block text-sm font-medium text-gray-700">
-                      Subjects *
+                      {t('subjects') || "Subjects"} *
                     </label>
                     {resultForm.hasConfig ? (
                       <button
                         type="button"
-                        onClick={() => formRow && setSubjectsStudent(formRow.student)}
+                        onClick={() => {
+                          const formRow = rows.find((r) => String(r.student.id) === String(resultForm.studentId));
+                          if (formRow) setSubjectsStudent(formRow.student);
+                        }}
                         className="text-sm text-[#B99652] hover:text-[#a38241] font-medium"
                       >
-                        Edit Subjects
+                        {t('edit_subjects') || "Edit Subjects"}
                       </button>
                     ) : (
                       <button
@@ -679,7 +682,7 @@ const ClassResults = () => {
                         onClick={() => setResultForm((prev) => ({ ...prev, rows: [...prev.rows, blankSubjectRow()] }))}
                         className="text-sm text-[#B99652] hover:text-[#a38241] font-medium"
                       >
-                        + Add Subject
+                        + {t('add_subject')}
                       </button>
                     )}
                   </div>
@@ -713,7 +716,7 @@ const ClassResults = () => {
                               type="text"
                               value={subject.name}
                               onChange={(e) => updateFormRow(index, 'name', e.target.value)}
-                              placeholder="Subject name"
+                              placeholder={t('subject_name')}
                               className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
                               required
                             />
@@ -723,7 +726,7 @@ const ClassResults = () => {
                                 onClick={() => setResultForm((prev) => ({ ...prev, rows: prev.rows.filter((_, i) => i !== index) }))}
                                 className="text-red-600 hover:text-red-700 text-sm font-medium px-2"
                               >
-                                Remove
+                                {t('remove')}
                               </button>
                             )}
                           </div>
@@ -734,7 +737,7 @@ const ClassResults = () => {
                             type="number"
                             value={subject.marks}
                             onChange={(e) => updateFormRow(index, 'marks', e.target.value)}
-                            placeholder="Marks"
+                            placeholder={t('marks')}
                             min="0"
                             max={subject.total}
                             className="px-2 py-1 text-sm border border-gray-300 rounded"
@@ -747,7 +750,7 @@ const ClassResults = () => {
                               type="number"
                               value={subject.total}
                               onChange={(e) => updateFormRow(index, 'total', e.target.value)}
-                              placeholder="Total"
+                              placeholder={t('total_marks')}
                               min="0"
                               className="px-2 py-1 text-sm border border-gray-300 rounded"
                             />
@@ -757,8 +760,8 @@ const ClassResults = () => {
                             onChange={(e) => updateFormRow(index, 'status', e.target.value)}
                             className="px-2 py-1 text-sm border border-gray-300 rounded"
                           >
-                            <option value="PASS">Pass</option>
-                            <option value="FAIL">Fail</option>
+                            <option value="PASS">{t('pass')}</option>
+                            <option value="FAIL">{t('fail')}</option>
                           </select>
                         </div>
 
@@ -779,12 +782,12 @@ const ClassResults = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Comments
+                  {t('comments')}
                 </label>
                 <textarea
                   value={resultForm.comments}
                   onChange={(e) => setResultForm({ ...resultForm, comments: e.target.value })}
-                  placeholder="Optional comments"
+                  placeholder={t('optional_comments')}
                   rows="2"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#B99652] text-sm"
                 />
@@ -796,7 +799,7 @@ const ClassResults = () => {
                   onClick={() => setResultForm(null)}
                   className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-none hover:bg-gray-50 transition-colors font-medium"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
@@ -804,7 +807,7 @@ const ClassResults = () => {
                   className="flex-1 px-4 py-2 bg-[#B99652] text-white rounded-none hover:bg-[#a38241] transition-colors disabled:bg-gray-400 flex items-center justify-center gap-2 font-medium"
                 >
                   <Save className="w-4 h-4" />
-                  {saving ? "Saving..." : "Save Result"}
+                  {saving ? t('saving') : t('save_result')}
                 </button>
               </div>
             </form>

@@ -39,7 +39,8 @@ import {
   Instagram,
   Share2,
   Building2,
-  Bot
+  Bot,
+  Video
 } from 'lucide-react';
 import LanguageSelector from '../components/LanguageSelector';
 import { useTranslation } from '../context/TranslationContext';
@@ -59,16 +60,16 @@ import iconMobile from '../assets/icon_mobile.png';
 import iconEcosystem from '../assets/icon_ecosystem.png';
 import { API_BASE } from '../config/api';
 
-// Partner University Logos / Names
-const partnerUniversities = [
-  { name: 'Harvard University', code: 'HARVARD' },
-  { name: 'MIT Tech', code: 'MIT' },
-  { name: 'Stanford Learning', code: 'STANFORD' },
-  { name: 'Oxford Academy', code: 'OXFORD' },
-  { name: 'Cambridge Edu', code: 'CAMBRIDGE' },
-  { name: 'Imperial College', code: 'IMPERIAL' },
-  { name: 'ETH Zurich', code: 'ETH ZURICH' },
-  { name: 'Caltech Institute', code: 'CALTECH' }
+// Core5 Platform Capabilities & Metrics
+const corePlatformPillars = [
+  { name: 'AI-Powered Assessments & Assignments', icon: Sparkles },
+  { name: 'Direct Video Call & Live Lectures', icon: Video },
+  { name: '22+ Indian Languages (Bhashini AI)', icon: Globe },
+  { name: '6 Dedicated Role Portals', icon: Users },
+  { name: 'Multi-Campus Group Governance', icon: Building2 },
+  { name: 'Instant Results & Marksheet Engine', icon: FileCheck },
+  { name: '99.9% Enterprise Cloud SLA', icon: Zap },
+  { name: '256-Bit Encrypted Data Isolation', icon: ShieldCheck }
 ];
 
 // Interactive Role Showcase Data
@@ -245,6 +246,26 @@ function Home() {
     setIsLoginModalOpen(true);
     if (location.pathname !== '/login') {
       navigate('/login');
+    }
+  };
+
+  const handlePersonaExplore = (personaIndex) => {
+    switch (personaIndex) {
+      case 0: // Students
+        handleOpenLogin('student');
+        break;
+      case 1: // Faculty
+        handleOpenLogin('mentor');
+        break;
+      case 2: // University
+        handleOpenDemo();
+        break;
+      case 3: // Admins
+        handleOpenLogin('admin');
+        break;
+      default:
+        handleOpenDemo();
+        break;
     }
   };
 
@@ -624,28 +645,38 @@ function Home() {
         </div>
       </section>
 
-      {/* ================= INFINITE UNIVERSITY PARTNER MARQUEE ================= */}
-      <section id="partners" className="py-10 bg-transparent overflow-hidden">
+      {/* ================= INFINITE CORE5 CAPABILITIES MARQUEE ================= */}
+      <section
+        id="platform-highlights"
+        className="py-10 relative overflow-hidden"
+        style={{
+          backgroundColor: '#f6f1e5',
+          backgroundImage: 'linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(241, 234, 221, 0.6) 100%)'
+        }}
+      >
         <div className="container mx-auto px-4 mb-4 text-center">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-            {t('trusted_by_universities', 'TRUSTED BY LEADING GLOBAL UNIVERSITIES & INSTITUTIONS')}
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+            {t('platform_capabilities_metrics', 'CORE5 ENTERPRISE PLATFORM CAPABILITIES & METRICS')}
           </p>
         </div>
 
         {/* Infinite Scroll Track */}
         <div className="relative flex overflow-x-hidden">
-          <div className="py-2 animate-marquee flex whitespace-nowrap gap-12 items-center">
-            {partnerUniversities.concat(partnerUniversities).map((partner, idx) => (
-              <div
-                key={idx}
-                className="flex items-center space-x-2 px-5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200/60 shadow-xs hover:border-[#F05A36]/40 transition-colors"
-              >
-                <Award className="w-4 h-4 text-[#F05A36]" />
-                <span className="font-serif-heading font-bold text-slate-800 text-sm">
-                  {partner.name}
-                </span>
-              </div>
-            ))}
+          <div className="py-3 animate-marquee flex whitespace-nowrap gap-10 items-center">
+            {corePlatformPillars.concat(corePlatformPillars).map((pillar, idx) => {
+              const IconComp = pillar.icon || Award;
+              return (
+                <div
+                  key={idx}
+                  className="flex items-center space-x-3 px-6 py-3 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-[#F05A36]/50 transition-all hover:shadow-sm"
+                >
+                  <IconComp className="w-5 h-5 text-[#F05A36] shrink-0" />
+                  <span className="font-sans font-semibold text-slate-800 text-sm tracking-normal">
+                    {pillar.name}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -653,7 +684,7 @@ function Home() {
       {/* ================= WHY US SECTION (REFERENCE LAYOUT: HEX PHOTO + CONNECTED ROLE BADGES) ================= */}
       <section
         id="why-us"
-        className="py-20 md:py-24 relative overflow-hidden border-t border-b border-amber-900/5"
+        className="py-20 md:py-24 relative overflow-hidden border-b border-amber-900/5"
         style={{
           backgroundColor: '#fffdf4',
           backgroundImage: `
@@ -734,10 +765,10 @@ function Home() {
               {/* 4 Feature Items (plain, no cards) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 pt-2">
                 {[
-                  { icon: Layers, title: t('feat_unified_portal', 'Unified Portal'), desc: t('feat_unified_portal_desc', 'Single secure login for Students, Mentors, Admins, and Faculty.') },
-                  { icon: Bot, title: t('feat_ai_learning', 'AI Guided Learning'), desc: t('feat_ai_learning_desc', 'Personalized support, smarter recommendations, better outcomes.') },
-                  { icon: Package, title: t('feat_campus_logistics', 'Campus Logistics'), desc: t('feat_campus_logistics_desc', 'Manage housing, transport, IT and campus resources seamlessly.') },
-                  { icon: ShieldCheck, title: t('feat_digital_credentials', 'Digital Credentials'), desc: t('feat_digital_credentials_desc', 'Verified certificates, transcripts and academic records — all in one place.') },
+                  { icon: Layers, title: 'Unified Portal', desc: 'Single secure login for Students, Mentors, Admins, and Faculty.' },
+                  { icon: Bot, title: 'AI Guided Learning', desc: 'Personalized support, smarter recommendations, better outcomes.' },
+                  { icon: Package, title: 'Campus Logistics', desc: 'Manage housing, transport, IT and campus resources seamlessly.' },
+                  { icon: ShieldCheck, title: 'Digital Credentials', desc: 'Verified certificates, transcripts and academic records — all in one place.' },
                 ].map(({ icon: Icon, title, desc }) => (
                   <div key={title} className="flex items-start space-x-3.5 group">
                     <div className="w-11 h-11 shrink-0 rounded-full bg-[#1d528f]/5 border border-[#1d528f]/10 flex items-center justify-center transition-colors group-hover:bg-[#B99652]/10 group-hover:border-[#B99652]/30">
@@ -771,7 +802,7 @@ function Home() {
               transition={{ duration: 0.7 }}
               className="lg:col-span-6 flex items-center justify-center w-full"
             >
-              <PersonaOrbit onChange={setActivePersona} />
+              <PersonaOrbit onChange={setActivePersona} onExplore={handlePersonaExplore} />
             </motion.div>
 
           </div>
@@ -899,7 +930,7 @@ function Home() {
                       }`}
                     >
                       {/* Badge */}
-                      {plan.badge && (
+                      {plan.badge && isCenter && (
                         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#B99652] text-white px-4 py-1 text-[11px] font-['Poppins'] font-semibold uppercase tracking-wider shadow-sm rounded-none">
                           {plan.badge}
                         </div>
@@ -939,9 +970,13 @@ function Home() {
                           e.stopPropagation();
                           handleOpenDemo();
                         }}
-                        className={`w-full py-3.5 font-['Poppins'] font-semibold text-[12px] uppercase tracking-[0.5px] transition-all duration-300 ${plan.buttonClass}`}
+                        className={`w-full py-3.5 font-['Poppins'] font-semibold text-[12px] uppercase tracking-[0.5px] transition-all duration-300 ${
+                          isCenter
+                            ? 'header-button bg-[#B99652] hover:bg-[#a68443] text-white border-none shadow-md'
+                            : 'btn-gold-outline rounded-none border-2 border-[#B99652] bg-white hover:bg-[#B99652] text-[#B99652] hover:text-white'
+                        }`}
                       >
-                        {plan.buttonText}
+                        {isCenter && !plan.buttonText.includes('→') ? `${plan.buttonText} →` : (isCenter ? plan.buttonText : plan.buttonText.replace(' →', ''))}
                       </button>
                     </motion.div>
                   );

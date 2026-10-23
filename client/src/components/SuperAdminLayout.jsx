@@ -196,7 +196,6 @@ const SuperAdminLayout = ({ children }) => {
   const navItems = [
     { path: "/superadmin/dashboard", nameKey: 'nav_overview', name: 'Overview', icon: <LayoutDashboard size={20} />, tourId: 'nav-overview' },
     { path: "/superadmin/dashboard?tab=universities", nameKey: 'institutes', name: 'Institutes', icon: <Building2 size={20} />, tourId: 'nav-institutes' },
-    { path: "/superadmin/dashboard?tab=demoLeads", nameKey: 'demo_leads', name: 'Demo Leads', icon: <Calendar size={20} />, tourId: 'nav-demo-leads' },
     { path: "/superadmin/dashboard?tab=createUniversity", nameKey: 'add_institute', name: 'Add Institute', icon: <Plus size={20} />, tourId: 'nav-add-institute' },
     { path: "/superadmin/dashboard?tab=createUser", nameKey: 'add_staff', name: 'Add Staff', icon: <UserPlus size={20} />, tourId: 'nav-add-staff' },
     { path: "/superadmin/dashboard?tab=users", nameKey: 'all_staff', name: 'All Staff', icon: <Users size={20} />, tourId: 'nav-all-staff' },

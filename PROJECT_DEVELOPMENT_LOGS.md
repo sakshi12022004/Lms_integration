@@ -383,6 +383,18 @@ This document provides an exhaustive, chronological, and categorized record of a
   * Prepared a clean, simulated async response pipeline with an explicit `fetch()` plug-in comment block in `sendMessage()`, ready for 1-step connection when the dedicated external AI LLM backend is provided.
   * Added multilingual translation keys `ai_assistant_title` and `ai_connecting_notice` across all 20 language catalogs.
 
+### Milestone P: SuperAdmin Architecture Realignment & Explore Action Hook (Oct 23, 2026)
+* **SuperAdmin Domain Model Alignment (Demo Leads Removal):**
+  * Realigned portal purpose: SuperAdmin serves as the University Group Chancellor / Institutional Head (governing multiple member campuses, colleges, staff, and overall institutional administration) rather than an internal software sales lead tracker.
+  * Cleanly removed redundant **"Demo Leads"** navigation item from [SuperAdminLayout.jsx](file:///c:/Users/lenovo/new_lms/LMS-guide-bot/LMS-PROTOTYPE-2/LMS-main/client/src/components/SuperAdminLayout.jsx).
+  * Removed `demoLeads` tab, search filters, state metrics, and polling calls from [SuperAdminDashboard.jsx](file:///c:/Users/lenovo/new_lms/LMS-guide-bot/LMS-PROTOTYPE-2/LMS-main/client/src/pages/superadmin/SuperAdminDashboard.jsx).
+  * Preserved backend `/api/demo-requests` ingestion and automated dual-email dispatch (`emailService.js`) so that prospective institutional walkthrough requests continue to be captured securely in the database.
+* **Persona Orbit Interactive Explore Activation:**
+  * Upgraded the static `EXPLORE` badge in [PersonaOrbit.jsx](file:///c:/Users/lenovo/new_lms/LMS-guide-bot/LMS-PROTOTYPE-2/LMS-main/client/src/components/home/PersonaOrbit.jsx) to an interactive, accessible button with gold hover states and click animations.
+  * Connected role-specific exploration in [Home.jsx](file:///c:/Users/lenovo/new_lms/LMS-guide-bot/LMS-PROTOTYPE-2/LMS-main/client/src/pages/Home.jsx):
+    * **University:** Triggers the Live Walkthrough / Enterprise Demo modal.
+    * **Students / Faculty / Admins:** Triggers the Quick Login modal with role pre-selection.
+
 ---
 
 ## 📊 Feature & Architecture Status Matrix
@@ -391,7 +403,7 @@ This document provides an exhaustive, chronological, and categorized record of a
 | :--- | :--- | :---: | :--- |
 | **Book a Demo Modal** | Frontend | ✅ Active | Real API connected, loading & error states |
 | **Demo Requests API** | Backend | ✅ Active | Route `/api/demo-requests` fully operational |
-| **Demo Leads Management** | SuperAdmin | ✅ Active | Full CRUD & filter panel in SuperAdmin Dashboard |
+| **Demo Requests Pipeline** | Backend Service | ✅ Active | Automated email dispatch & DB storage (cleanly decoupled from Chancellor console) |
 | **10-Digit Phone Validation** | Frontend + API | ✅ Active | Clean inline validation below inputs (no red toasts) |
 | **Student Fee Portal Access** | Frontend | ✅ Active | Direct sidebar navigation & Dashboard Quick Action |
 | **Student Dynamic Fee Schedule** | Student Portal | ✅ Active | Admin active installment plans dynamically loaded with stage amounts & due dates |
