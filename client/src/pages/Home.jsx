@@ -247,6 +247,26 @@ function Home() {
     }
   };
 
+  const handlePersonaExplore = (personaIndex) => {
+    switch (personaIndex) {
+      case 0: // Students
+        handleOpenLogin('student');
+        break;
+      case 1: // Faculty
+        handleOpenLogin('mentor');
+        break;
+      case 2: // University
+        handleOpenDemo();
+        break;
+      case 3: // Admins
+        handleOpenLogin('admin');
+        break;
+      default:
+        handleOpenDemo();
+        break;
+    }
+  };
+
   const roleOptions = [
     { id: 'student', label: 'Student Portal', icon: GraduationCap, desc: 'Access assigned courses & track grades' },
     { id: 'mentor', label: 'Mentor / Faculty', icon: BookOpen, desc: 'Manage classes, assignments & students' },
@@ -770,7 +790,7 @@ function Home() {
               transition={{ duration: 0.7 }}
               className="lg:col-span-6 flex items-center justify-center w-full"
             >
-              <PersonaOrbit onChange={setActivePersona} />
+              <PersonaOrbit onChange={setActivePersona} onExplore={handlePersonaExplore} />
             </motion.div>
 
           </div>

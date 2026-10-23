@@ -57,7 +57,7 @@ const SINE = [0.37, 0, 0.63, 1];
 const wrap = (a) => ((a % 360) + 540) % 360 - 180;
 const dist = (i, R) => Math.abs(wrap(BASE + i * STEP + R - 180));
 
-function OrbitNode({ i, R, W, active, onSelect, persona, hasMovedRef }) {
+function OrbitNode({ i, R, W, active, onSelect, persona, hasMovedRef, onExplore }) {
   const Icon = persona.Icon;
   const H = (W * 300) / 360;
   const cx = 0.59 * W;
@@ -86,14 +86,27 @@ function OrbitNode({ i, R, W, active, onSelect, persona, hasMovedRef }) {
       e.preventDefault();
       return;
     }
-    onSelect();
+    if (isActive) {
+      onExplore?.(i, persona);
+    } else {
+      onSelect();
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick(e);
+    }
   };
 
   return (
-    <motion.button
-      type="button"
+    <motion.div
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
-      aria-label={persona.t}
+      onKeyDown={handleKeyDown}
+      aria-label={isActive ? `${persona.t} - Click to explore` : persona.t}
       aria-current={isActive}
       animate={{
         width: targetW,
@@ -143,23 +156,23 @@ function OrbitNode({ i, R, W, active, onSelect, persona, hasMovedRef }) {
         />
 
         {/* Content (always strictly upright) */}
-        <div className="relative flex flex-col items-center justify-center w-full pointer-events-none">
+        <div className="relative flex flex-col items-center justify-center w-full">
           <Icon
-            className={`transition-colors duration-200 stroke-[1.8] ${
+            className={`transition-colors duration-200 stroke-[1.8] pointer-events-none ${
               isActive
                 ? 'w-6 h-6 text-[#D4B577] mb-1'
                 : 'w-4 h-4 text-[#1D528F] mb-0.5'
             }`}
           />
           <b
-            className={`font-bold leading-tight transition-colors duration-200 ${
+            className={`font-bold leading-tight transition-colors duration-200 pointer-events-none ${
               isActive ? 'text-white text-sm sm:text-base' : 'text-[#0F172A] text-xs sm:text-sm'
             }`}
           >
             {persona.t}
           </b>
           {!isActive && (
-            <small className="text-[10px] text-[#475569] leading-tight mt-0.5">
+            <small className="text-[10px] text-[#475569] leading-tight mt-0.5 pointer-events-none">
               {persona.s}
             </small>
           )}
@@ -173,22 +186,29 @@ function OrbitNode({ i, R, W, active, onSelect, persona, hasMovedRef }) {
             }`}
           >
             <span
-              className="text-[#E2E8F0] leading-snug my-1 text-center"
+              className="text-[#E2E8F0] leading-snug my-1 text-center pointer-events-none"
               style={{ fontSize: 'clamp(10px, 1.05vw, 12px)' }}
             >
               {persona.d}
             </span>
-            <span className="inline-block border border-[#B99652] text-[#D4B577] font-semibold text-[10px] tracking-[0.5px] px-3 py-1 uppercase font-['Poppins'] shadow-xs mt-0.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onExplore?.(i, persona);
+              }}
+              className="inline-flex items-center justify-center border border-[#B99652] hover:border-[#D4B577] bg-transparent hover:bg-[#B99652] text-[#D4B577] hover:text-white font-semibold text-[10px] tracking-[0.5px] px-3.5 py-1 uppercase font-['Poppins'] shadow-xs mt-0.5 cursor-pointer transition-all duration-200 active:scale-95"
+            >
               Explore
-            </span>
+            </button>
           </div>
         </div>
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
 
-export default function PersonaOrbit({ onChange }) {
+export default function PersonaOrbit({ onChange, onExplore }) {
   const R = useMotionValue(0);
   const [active, setActive] = useState(0);
   const [W, setW] = useState(600);
@@ -476,8 +496,14 @@ export default function PersonaOrbit({ onChange }) {
                 <button
                   key={persona.t}
                   type="button"
-                  onClick={() => activate(i)}
-                  aria-label={persona.t}
+                  onClick={() => {
+                    if (isActive) {
+                      onExplore?.(i, persona);
+                    } else {
+                      activate(i);
+                    }
+                  }}
+                  aria-label={isActive ? `${persona.t} - Explore` : persona.t}
                   aria-current={isActive}
                   className="relative w-full aspect-[70/78] border-0 bg-transparent p-0 cursor-pointer focus:outline-none"
                   style={{ filter: 'drop-shadow(0 6px 12px rgba(15, 23, 42, 0.10))' }}
@@ -499,10 +525,10 @@ export default function PersonaOrbit({ onChange }) {
                     </b>
                     <small
                       className={`text-[9px] leading-tight ${
-                        isActive ? 'text-slate-200' : 'text-slate-500'
+                        isActive ? 'text-amber-300 font-semibold underline' : 'text-slate-500'
                       }`}
                     >
-                      {persona.s}
+                      {isActive ? 'Explore →' : persona.s}
                     </small>
                   </div>
                 </button>
@@ -584,6 +610,7 @@ export default function PersonaOrbit({ onChange }) {
               onSelect={() => activate(i)}
               persona={persona}
               hasMovedRef={hasMovedRef}
+              onExplore={onExplore}
             />
           ))}
 
