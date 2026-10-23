@@ -137,7 +137,7 @@ function extractTenantContext(req) {
     try {
       const token = authHeader.substring(7);
       const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+      const decoded = require("../config/jwt").verifyToken(token);
       
       // Direct superadmin access
       if (decoded.role === 'superadmin') {

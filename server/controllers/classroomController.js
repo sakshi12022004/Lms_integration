@@ -2,6 +2,7 @@ const tenantConnectionManager = require('../config/tenant-connection-manager');
 const db = require('../config/database-switch');
 const { get } = require('../helpers/dbAsync');
 const { HttpError, CLASSROOM_ACCESS_SQL, getTeachingScope } = require('../helpers/teachingScope');
+const { teacherRunsClassroom } = require('../helpers/schoolScope');
 
 
 
@@ -10,7 +11,7 @@ const createTestAssignment = async (req, res) => {
   try {
     console.log("DEBUG: Creating test classroom assignment");
     
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
     // Create a test classroom first
     db.run(`
       INSERT INTO classrooms (university_id, name, grade, section, classTeacher, studentCount)
@@ -59,13 +60,12 @@ const getAssignedClassrooms = async (req, res) => {
     // Admin: every classroom of the school (list below). Teacher: only assigned classrooms.
     let teacherId = role === "admin" ? null : req.user.userId;
     
-    console.log("GET ASSIGNED CLASSROOMS - User:", req.user, "TeacherId:", teacherId);
     
     // If no user or invalid ID, fallback to fetching all classrooms
     if (!teacherId || teacherId === "default_user") {
       console.log("GET ASSIGNED CLASSROOMS - No valid teacherId, returning all classrooms");
       
-      const universityId = req.user?.universityId || 1;
+      const universityId = req.user?.universityId;
       db.all(`
         SELECT 
           c.id,
@@ -111,7 +111,9 @@ const getAssignedClassrooms = async (req, res) => {
       db.all(`
         SELECT
           c.id as classroomId,
-          'class_teacher' as role,
+          CASE WHEN CAST(c.classTeacher AS INTEGER) = ? OR c.classTeacherId = ?
+                 OR EXISTS (SELECT 1 FROM classroomAssignments ca WHERE ca.classroomId = c.id AND ca.teacherId = ? AND ca.role = 'class_teacher')
+               THEN 'class_teacher' ELSE 'course_teacher' END as role,
           c.id,
           c.name,
           c.grade,
@@ -124,7 +126,7 @@ const getAssignedClassrooms = async (req, res) => {
         LEFT JOIN users u ON c.classTeacher = u.id
         WHERE c.university_id = ? AND ${CLASSROOM_ACCESS_SQL}
         ORDER BY c.createdAt DESC
-      `, [req.user.universityId || 1, teacherId, teacherId, teacherId, teacherId], (err, assignments) => {
+      `, [teacherId, teacherId, teacherId, req.user.universityId, teacherId, teacherId, teacherId, teacherId], (err, assignments) => {
         if (err) {
           console.error("❌ Database error in getAssignedClassrooms (teacher):", err);
           console.error("❌ Error message:", err.message);
@@ -160,7 +162,7 @@ const getAssignedClassrooms = async (req, res) => {
 const getSingleClassroom = async (req, res) => {
   try {
     const { id } = req.params;
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
     
     console.log("GET SINGLE CLASSROOM - ID:", id, "University:", universityId);
     
@@ -211,7 +213,7 @@ const getAllClassrooms = async (req, res) => {
   try {
     console.log("GET ALL CLASSROOMS - Request received");
     
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
     console.log(`🏫 GET ALL CLASSROOMS - University ID: ${universityId}`);
     
     db.all(`
@@ -269,8 +271,6 @@ const getAllClassrooms = async (req, res) => {
 /* ================= CREATE CLASSROOM ================= */
 const createClassroom = async (req, res) => {
   try {
-    console.log("CREATE CLASSROOM - Request body:", req.body);
-    console.log("CREATE CLASSROOM - User:", req.user);
     
     const { grade, section, classTeacherId, studentIds } = req.body;
 
@@ -292,10 +292,22 @@ const createClassroom = async (req, res) => {
       return res.status(400).json({ message: 'Class and section must be between 1 and 50 characters' });
     }
 
+    // Every class has a class teacher: an approved teacher of this school
+    if (!classTeacherId) {
+      return res.status(400).json({ message: 'Class teacher is required' });
+    }
+    const classTeacherOk = await get(
+      `SELECT id FROM users WHERE id = ? AND university_id = ? AND role IN ('mentor', 'teacher') AND isApproved = 1`,
+      [Number(classTeacherId), req.user?.universityId]
+    );
+    if (!classTeacherOk) {
+      return res.status(400).json({ message: 'Choose a teacher of this school as class teacher' });
+    }
+
     const duplicate = await get(
       `SELECT id, name, grade, section FROM classrooms
        WHERE university_id = ? AND LOWER(TRIM(grade)) = LOWER(?) AND LOWER(TRIM(COALESCE(section, ''))) = LOWER(?)`,
-      [req.user?.universityId || 1, className, sectionName]
+      [req.user?.universityId, className, sectionName]
     );
     if (duplicate) {
       return res.status(409).json({
@@ -311,7 +323,7 @@ const createClassroom = async (req, res) => {
     console.log("CREATE CLASSROOM - Grade:", grade, "Fee Category:", feeCategory);
 
     // Get fee structure for the category (don't fail hard if table/migration missing)
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
     db.get(
       `SELECT * FROM feeStructures WHERE category = ? AND university_id = ?`,
       [feeCategory, universityId],
@@ -446,22 +458,53 @@ const createClassroom = async (req, res) => {
   }
 };
 
+/* ================= FEE AMOUNTS ================= */
+const FEE_FIELDS = ['tuitionFee', 'transportFee', 'computerLabFee', 'libraryFee', 'sportsFee', 'examinationFee', 'miscellaneousFee'];
+const MAX_FEE = 100000000;
+
+// Reads the fee parts from a request. Each part must be a number from 0 upwards; the
+// total is always their sum, whatever total the browser sent.
+const readFeeAmounts = (body) => {
+  const amounts = {};
+  for (const field of FEE_FIELDS) {
+    const raw = body[field];
+    const value = raw === undefined || raw === null || raw === '' ? 0 : Number(raw);
+    if (!Number.isFinite(value) || value < 0 || value > MAX_FEE) {
+      return { error: `${field} must be a number from 0 upwards` };
+    }
+    amounts[field] = value;
+  }
+  amounts.totalFee = FEE_FIELDS.reduce((sum, field) => sum + amounts[field], 0);
+  if (amounts.totalFee <= 0) return { error: 'At least one fee amount is required' };
+  return { amounts };
+};
+
 /* ================= SAVE FEE STRUCTURE ================= */
 const saveFeeStructure = async (req, res) => {
   try {
-    console.log('SAVE FEE STRUCTURE - Request body:', req.body);
-    console.log('SAVE FEE STRUCTURE - User:', req.user);
-    const { category, grade, tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee, dueDate, totalFee, installmentOptions } = req.body;
+    const { category, grade, dueDate, installmentOptions } = req.body;
 
     if (!category) {
       console.log('SAVE FEE STRUCTURE - Category missing');
       return res.status(400).json({ message: 'Category is required' });
     }
+    if (!['Primary', 'Secondary'].includes(category)) {
+      return res.status(400).json({ message: 'Category must be Primary or Secondary' });
+    }
+    const { amounts, error: amountError } = readFeeAmounts(req.body);
+    if (amountError) return res.status(400).json({ message: amountError });
+    const { tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee, totalFee } = amounts;
+    // Class first: fees are charged to students of classes, so the school needs a class
+    const anyClass = await new Promise((resolve) =>
+      db.get('SELECT 1 AS ok FROM classrooms WHERE university_id = ? LIMIT 1', [req.user?.universityId], (err, row) => resolve(!err && !!row)));
+    if (!anyClass) {
+      return res.status(400).json({ message: 'Create a class first (Classrooms), then its fee structure.' });
+    }
 
     const installmentJson = typeof installmentOptions === 'object' ? JSON.stringify(installmentOptions) : (installmentOptions || null);
 
     // Check if fee structure already exists for this category
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
     db.get(`
       SELECT * FROM feeStructures WHERE category = ? AND university_id = ?
     `, [category, universityId], (err, existing) => {
@@ -513,7 +556,7 @@ const saveFeeStructure = async (req, res) => {
           examinationFee: examinationFee || 0,
           miscellaneousFee: miscellaneousFee || 0,
           totalFee: totalFee || 0
-        });
+        }, universityId);
 
         res.status(201).json({
           message: 'Fee structure saved successfully',
@@ -541,7 +584,7 @@ const saveFeeStructure = async (req, res) => {
 };
 
 /* ================= APPLY FEE STRUCTURE TO STUDENTS ================= */
-const applyFeeStructureToStudents = (category, feeData) => {
+const applyFeeStructureToStudents = (category, feeData, universityId) => {
   try {
     const gradeRange = category === 'Primary' ? ['1', '2', '3', '4'] : ['5', '6', '7', '8', '9', '10', '11', '12'];
 
@@ -555,11 +598,12 @@ const applyFeeStructureToStudents = (category, feeData) => {
         WHERE userId IN (
           SELECT sca.studentId FROM student_classroom_assignment sca
           INNER JOIN classrooms c ON sca.classroomId = c.id
-          WHERE c.grade = ?
+          WHERE c.grade = ? AND c.university_id = ?
         )
       `;
 
-      db.run(sql, [feeData.totalFee, feeData.totalFee, grade], (err) => {
+      // Only this school's classes: another school's students keep their own fees
+      db.run(sql, [feeData.totalFee, feeData.totalFee, grade, universityId], (err) => {
         if (err) {
           console.error(`Error updating fees for grade ${grade}:`, err);
         } else {
@@ -576,24 +620,15 @@ const applyFeeStructureToStudents = (category, feeData) => {
 const updateFeeStructure = async (req, res) => {
   try {
     const { id } = req.params;
-    const { tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee, dueDate, totalFee, installmentOptions } = req.body;
+    const { dueDate, installmentOptions } = req.body;
 
-    if (!tuitionFee && !transportFee && !computerLabFee && !libraryFee && !sportsFee && !examinationFee && !miscellaneousFee) {
-      return res.status(400).json({ message: 'At least one fee field is required' });
-    }
-
-    const calculatedTotalFee = totalFee || (
-      (tuitionFee || 0) + 
-      (transportFee || 0) + 
-      (computerLabFee || 0) + 
-      (libraryFee || 0) + 
-      (sportsFee || 0) + 
-      (examinationFee || 0) + 
-      (miscellaneousFee || 0)
-    );
+    const { amounts, error: amountError } = readFeeAmounts(req.body);
+    if (amountError) return res.status(400).json({ message: amountError });
+    const { tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee } = amounts;
+    const calculatedTotalFee = amounts.totalFee;
 
     const installmentJson = typeof installmentOptions === 'object' ? JSON.stringify(installmentOptions) : (installmentOptions || null);
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
     db.run(`
       UPDATE feeStructures 
       SET tuitionFee = ?, transportFee = ?, computerLabFee = ?, libraryFee = ?, sportsFee = ?, examinationFee = ?, miscellaneousFee = ?, totalFee = ?, dueDate = ?, installmentOptions = ?
@@ -638,7 +673,7 @@ const updateFeeStructure = async (req, res) => {
             examinationFee: structure.examinationFee,
             miscellaneousFee: structure.miscellaneousFee,
             totalFee: structure.totalFee
-          });
+          }, universityId);
         }
       });
 
@@ -667,7 +702,7 @@ const updateFeeStructure = async (req, res) => {
 /* ================= GET ALL FEE STRUCTURES ================= */
 const getAllFeeStructures = async (req, res) => {
   try {
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
     db.all(`
       SELECT * FROM feeStructures WHERE university_id = ? ORDER BY category
     `, [universityId], (err, structures) => {
@@ -689,7 +724,7 @@ const getFeeStructureByGrade = async (req, res) => {
   try {
     const { grade } = req.params;
 
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
     db.get(`
       SELECT * FROM feeStructures WHERE grade = ? AND university_id = ?
     `, [parseInt(grade), universityId], (err, feeStructure) => {
@@ -748,7 +783,7 @@ const deleteClassroom = async (req, res) => {
 /* ================= GET CLASSROOM ANALYTICS ================= */
 const getClassroomAnalytics = async (req, res) => {
   try {
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
     // Get analytics data
     db.all(`
       SELECT 
@@ -779,13 +814,18 @@ const getClassroomAnalytics = async (req, res) => {
 const assignStudentToClassroom = async (req, res) => {
   try {
     const { classroomId, studentId } = req.body;
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
 
     console.log('assignStudentToClassroom called with:', { classroomId, studentId, universityId });
 
     if (!classroomId || !studentId) {
       console.error('Missing required fields:', { classroomId, studentId });
       return res.status(400).json({ message: 'Classroom ID and Student ID are required' });
+    }
+
+    // Who is in a class is decided by the admin or its class teacher, not by a course teacher
+    if (req.user?.role !== 'admin' && !(await teacherRunsClassroom(req.user.userId, classroomId))) {
+      return res.status(403).json({ message: 'Only the class teacher or an admin adds students to this class' });
     }
 
     // First verify classroom belongs to this university
@@ -849,14 +889,8 @@ const assignStudentToClassroom = async (req, res) => {
                         }
 
                         // Auto-assign student to all courses belonging to this classroom
-                        db.run(
-                          `INSERT OR IGNORE INTO course_students (courseId, studentId)
-                           SELECT id, ? FROM courses WHERE classroomId = ?`,
-                          [studentId, classroomId],
-                          (cErr) => {
-                            if (cErr) console.warn('Could not auto-assign course_students:', cErr.message);
-                          }
-                        );
+                        require('../helpers/courseClasses').enrollStudentInClassCourses(studentId, classroomId)
+                          .catch((cErr) => console.warn('Could not auto-assign course_students:', cErr.message));
 
                         console.log(`Successfully assigned student ${studentId} to classroom ${classroomId}. New studentCount=${newCount}`);
                         res.json({
@@ -885,7 +919,7 @@ const assignStudentToClassroom = async (req, res) => {
 const getClassroomFeeStructure = async (req, res) => {
   try {
     const { id: classroomId } = req.params;
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
 
     if (!classroomId) {
       return res.status(400).json({ message: 'Classroom ID is required' });
@@ -965,7 +999,6 @@ const getStudentClassrooms = async (req, res) => {
   try {
     const studentId = req.user.id;
     console.log("getStudentClassrooms - Student ID:", studentId);
-    console.log("getStudentClassrooms - Full user object:", req.user);
 
     db.all(
       `SELECT 
@@ -1076,14 +1109,20 @@ const testStudentAssignment = async (req, res) => {
 const getClassroomStudents = async (req, res) => {
   try {
     const { classroomId } = req.params;
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
 
     if (!classroomId) {
       return res.status(400).json({ message: 'Classroom ID is required' });
     }
 
+    // The class teacher sees the whole class. A teacher who only teaches a course to the class
+    // sees just the students of the class enrolled in their courses.
+    const role = req.user?.role;
+    const onlyMyCourses = (role === 'mentor' || role === 'teacher')
+      && !(await teacherRunsClassroom(req.user.userId, classroomId));
+
     db.all(`
-      SELECT 
+      SELECT
         u.id,
         u.name,
         u.email,
@@ -1093,13 +1132,19 @@ const getClassroomStudents = async (req, res) => {
       INNER JOIN student_classroom_assignment sca ON u.id = sca.studentId
       LEFT JOIN students s ON u.id = s.userId
       WHERE sca.classroomId = ? AND u.role = 'student' AND u.university_id = ?
+        AND (? = 0 OR EXISTS (SELECT 1 FROM course_students cs JOIN courses co ON co.id = cs.courseId
+                              WHERE cs.studentId = u.id AND co.mentorId = ?))
       ORDER BY u.name
-    `, [classroomId, universityId], (err, students) => {
+    `, [classroomId, universityId, onlyMyCourses ? 1 : 0, req.user?.userId || 0], (err, students) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({ message: 'Database error' });
       }
 
+      // A student may see who is in the class, not how to contact each classmate
+      if (req.user?.role === 'student') {
+        return res.json((students || []).map(({ email, ...classmate }) => classmate));
+      }
       res.json(students || []);
     });
   } catch (error) {

@@ -1,3 +1,4 @@
+import { API_ORIGIN } from '../config/api';
 // Direct Translation API - No Watermarks, Real-time Translation
 class DirectTranslator {
   constructor() {
@@ -158,7 +159,7 @@ class DirectTranslator {
     try {
       console.log(`🔄 Backend translating: "${trimmed.substring(0, 30)}..." from ${from} to ${to}`);
       
-const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://core5.io'}/api/translation`, {
+const response = await fetch(`${API_ORIGIN}/api/translation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

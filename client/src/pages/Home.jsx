@@ -56,6 +56,7 @@ import iconCourse from '../assets/icon_course.png';
 import iconAnalytics from '../assets/icon_analytics.png';
 import iconMobile from '../assets/icon_mobile.png';
 import iconEcosystem from '../assets/icon_ecosystem.png';
+import { API_BASE } from '../config/api';
 
 // Partner University Logos / Names
 const partnerUniversities = [
@@ -143,7 +144,7 @@ function Home() {
     setHeroLoading(true);
     setHeroError('');
     try {
-      const backendUrl = API || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5002/api';
+      const backendUrl = API || API_BASE;
       const response = await axios.post(`${backendUrl}/auth/login`, {
         email: heroLogin.email,
         password: heroLogin.password

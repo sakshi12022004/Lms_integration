@@ -16,11 +16,14 @@ const { recipientsReportsMethods } = require('./sqliteRecipientsReportsStore'); 
  * It only READS those tables. It writes only the module's aia_* tables.
  */
 const TEACHER_ROLES = Object.freeze(['mentor', 'teacher']);
-// The teacher runs the classroom or teaches a course in it. Binds the teacher id four times.
-const TEACHES_CLASSROOM = `(
+// The LMS rule for which classes a teacher may use: class teacher of it, or mentor of a course
+// taught to it (its home class, or a class it is assigned to in the LMS table course_classrooms,
+// when that table exists). Binds the teacher id four times.
+const teachesClassroom = (withCourseClasses) => `(
   CAST(c.classTeacher AS INTEGER) = ? OR c.classTeacherId = ?
-  OR EXISTS (SELECT 1 FROM classroomAssignments ca WHERE ca.classroomId = c.id AND ca.teacherId = ?)
-  OR EXISTS (SELECT 1 FROM courses co WHERE co.classroomId = c.id AND co.mentorId = ?)
+  OR EXISTS (SELECT 1 FROM classroomAssignments ca WHERE ca.classroomId = c.id AND ca.teacherId = ? AND ca.role = 'class_teacher')
+  OR EXISTS (SELECT 1 FROM courses co WHERE co.mentorId = ? AND (co.classroomId = c.id${withCourseClasses
+    ? ' OR EXISTS (SELECT 1 FROM course_classrooms cc WHERE cc.courseId = co.id AND cc.classroomId = c.id)' : ''}))
 )`;
 const STUDENT_ROLES = Object.freeze(['student']);
 // 001 + 003 (attempts). The module is "ready" only when every migration is applied.
@@ -49,6 +52,7 @@ const EDITABLE = Object.freeze({
   description: 'description',
   subject: 'subject',
   classroomId: 'classroom_id',
+  courseId: 'course_id', // migration 010; only sent when supportsCourseLink()
   durationMinutes: 'duration_minutes',
   opensAt: 'opens_at',
   closesAt: 'closes_at',
@@ -65,6 +69,8 @@ function createSqliteAssessmentLmsAdapter(db) {
   let typesSupported; // cached per connection
 
   let imagesSupported;
+  let courseLinkSupported; // migration 010, cached per connection
+  const lmsTables = new Map(); // LMS tables that exist, cached per connection
   /** Stores (or clears) the question's picture key when migration 009 is applied. */
   const setQuestionImage = (questionId, question) => {
     if (!adapter.supportsQuestionImages()) return;
@@ -102,7 +108,7 @@ function createSqliteAssessmentLmsAdapter(db) {
      */
     listTeacherClassrooms(universityId, teacherId) {
       return db.prepare(`SELECT c.id, c.name, c.grade, c.section FROM classrooms c
-                         WHERE c.university_id = ? AND ${TEACHES_CLASSROOM}
+                         WHERE c.university_id = ? AND ${teachesClassroom(adapter.hasLmsTable('course_classrooms'))}
                          ORDER BY c.grade, c.section, c.name, c.id`)
         .all(universityId, teacherId, teacherId, teacherId, teacherId).map(plain);
     },
@@ -110,7 +116,7 @@ function createSqliteAssessmentLmsAdapter(db) {
     /** One classroom, only if this teacher may use it (same rule as listTeacherClassrooms); else null. */
     getTeacherClassroom(universityId, teacherId, classroomId) {
       return plain(db.prepare(`SELECT c.id, c.name, c.grade, c.section FROM classrooms c
-                               WHERE c.id = ? AND c.university_id = ? AND ${TEACHES_CLASSROOM}`)
+                               WHERE c.id = ? AND c.university_id = ? AND ${teachesClassroom(adapter.hasLmsTable('course_classrooms'))}`)
         .get(classroomId, universityId, teacherId, teacherId, teacherId, teacherId)) || null;
     },
 
@@ -173,6 +179,58 @@ function createSqliteAssessmentLmsAdapter(db) {
       return STEP2_QUESTION_COLUMNS.every((c) => columns.includes(c)) && STEP5_ASSESSMENT_COLUMNS.every((c) => assessmentColumns.includes(c));
     },
 
+    /** A table of the LMS itself (read-only use). Cached per table. */
+    hasLmsTable(name) {
+      if (!lmsTables.has(name)) lmsTables.set(name, !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name));
+      return lmsTables.get(name);
+    },
+
+    /** Migration 010 applied: a test belongs to a course of its class. */
+    supportsCourseLink() {
+      if (courseLinkSupported === undefined) {
+        courseLinkSupported = db.prepare('PRAGMA table_info(aia_assessments)').all().some((c) => c.name === 'course_id')
+          && adapter.hasLmsTable('course_students');
+      }
+      return courseLinkSupported;
+    },
+
+    /** id + title of a course of the school, or null. */
+    getCourse(universityId, courseId) {
+      return plain(db.prepare('SELECT id, title FROM courses WHERE id = ? AND university_id = ?').get(courseId, universityId)) || null;
+    },
+
+    /**
+     * A course this teacher mentors that is taught to this class (its home class, or a class it
+     * is assigned to); null otherwise.
+     */
+    getTeacherCourseForClassroom(universityId, teacherId, courseId, classroomId) {
+      const linked = adapter.hasLmsTable('course_classrooms')
+        ? 'OR EXISTS (SELECT 1 FROM course_classrooms cc WHERE cc.courseId = co.id AND cc.classroomId = ?)'
+        : 'OR 0 = ?';
+      return plain(db.prepare(`SELECT co.id, co.title FROM courses co
+                               WHERE co.id = ? AND co.university_id = ? AND co.mentorId = ? AND (co.classroomId = ? ${linked})`)
+        .get(courseId, universityId, teacherId, classroomId, classroomId)) || null;
+    },
+
+    /** Students of the class who are enrolled in the course (id + name). */
+    listCourseStudentsInClassroom(universityId, courseId, classroomId) {
+      return db
+        .prepare(`SELECT DISTINCT u.id, u.name FROM student_classroom_assignment sca
+                  JOIN classrooms c ON c.id = sca.classroomId
+                  JOIN users u ON u.id = sca.studentId
+                  JOIN course_students cs ON cs.studentId = u.id AND cs.courseId = ?
+                  WHERE sca.classroomId = ? AND c.university_id = ? AND u.university_id = ? AND u.role = 'student'
+                  ORDER BY u.name COLLATE NOCASE, u.id`)
+        .all(courseId, classroomId, universityId, universityId)
+        .map(plain);
+    },
+
+    /** The student is enrolled in the course (LMS table course_students). */
+    isStudentInCourse(universityId, studentId, courseId) {
+      return !!db.prepare(`SELECT 1 FROM course_students cs JOIN courses co ON co.id = cs.courseId
+                           WHERE cs.studentId = ? AND cs.courseId = ? AND co.university_id = ?`).get(studentId, courseId, universityId);
+    },
+
     /** Migration 009 applied: optional picture per question. Without it questions simply have no picture. */
     supportsQuestionImages() {
       if (imagesSupported === undefined) {
@@ -203,6 +261,13 @@ function createSqliteAssessmentLmsAdapter(db) {
     },
 
     insertAssessment(row) {
+      if (adapter.supportsCourseLink()) {
+        return Number(db
+          .prepare(`INSERT INTO aia_assessments (university_id, teacher_id, title, description, subject, classroom_id, course_id, duration_minutes, opens_at, closes_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+          .run(row.universityId, row.teacherId, row.title, row.description, row.subject, row.classroomId, row.courseId ?? null, row.durationMinutes, row.opensAt ?? null, row.closesAt ?? null)
+          .lastInsertRowid);
+      }
       return Number(db
         .prepare(`INSERT INTO aia_assessments (university_id, teacher_id, title, description, subject, classroom_id, duration_minutes, opens_at, closes_at)
                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
@@ -233,12 +298,12 @@ function createSqliteAssessmentLmsAdapter(db) {
     },
 
     findAssessment(universityId, id) {
-      return plain(db.prepare(`SELECT ${ASSESSMENT_COLUMNS} FROM aia_assessments a WHERE a.id = ? AND a.university_id = ?`).get(id, universityId)) || null;
+      return plain(db.prepare(`SELECT ${ASSESSMENT_COLUMNS}${adapter.supportsCourseLink() ? ', a.course_id AS courseId' : ''} FROM aia_assessments a WHERE a.id = ? AND a.university_id = ?`).get(id, universityId)) || null;
     },
 
     listAssessmentsByTeacher(universityId, teacherId) {
       return db
-        .prepare(`SELECT ${ASSESSMENT_COLUMNS} FROM aia_assessments a WHERE a.university_id = ? AND a.teacher_id = ? ORDER BY a.updated_at DESC, a.id DESC`)
+        .prepare(`SELECT ${ASSESSMENT_COLUMNS}${adapter.supportsCourseLink() ? ', a.course_id AS courseId' : ''} FROM aia_assessments a WHERE a.university_id = ? AND a.teacher_id = ? ORDER BY a.updated_at DESC, a.id DESC`)
         .all(universityId, teacherId)
         .map(plain);
     },
@@ -246,7 +311,7 @@ function createSqliteAssessmentLmsAdapter(db) {
     listPublishedForClassrooms(universityId, classroomIds) {
       if (classroomIds.length === 0) return [];
       return db
-        .prepare(`SELECT ${ASSESSMENT_COLUMNS} FROM aia_assessments a
+        .prepare(`SELECT ${ASSESSMENT_COLUMNS}${adapter.supportsCourseLink() ? ', a.course_id AS courseId' : ''} FROM aia_assessments a
                   WHERE a.university_id = ? AND a.status = 'published' AND a.classroom_id IN (${classroomIds.map(() => '?').join(', ')})
                   ORDER BY a.published_at DESC, a.id DESC`)
         .all(universityId, ...classroomIds)

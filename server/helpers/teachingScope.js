@@ -4,9 +4,11 @@ const { get, all } = require('./dbAsync');
  * Teaching scope: which classrooms and courses a signed-in admin or teacher may act on.
  *
  *   Admin   -> every classroom of their school, and the courses in those classrooms.
- *   Teacher -> classrooms where they are the class teacher, are listed in classroomAssignments,
- *              or teach a course; and in those classrooms the courses they teach (a class
- *              teacher / assigned teacher may act on every course of that classroom).
+ *   Teacher -> classrooms where they are the class teacher (classTeacher, classTeacherId or a
+ *              class_teacher row in classroomAssignments) or mentor a course taught to the class
+ *              (its home class or a class in course_classrooms); and only the courses they mentor.
+ *   (Before 15 Oct 2026 any classroomAssignments row also counted, and a class teacher could
+ *   act on every course of their class.)
  *
  * Every classroom or course id that arrives from the browser must go through
  * authorizeClassroom / authorizeCourse. The dropdowns in the UI are a convenience only.
@@ -25,12 +27,12 @@ const TEACHER_ROLES = ['mentor', 'teacher'];
 // The teacher runs this classroom (class teacher or assigned to it). Takes the user id 3 times.
 const CLASSROOM_STAFF_SQL = `(
   CAST(c.classTeacher AS INTEGER) = ? OR c.classTeacherId = ?
-  OR EXISTS (SELECT 1 FROM classroomAssignments ca WHERE ca.classroomId = c.id AND ca.teacherId = ?)
+  OR EXISTS (SELECT 1 FROM classroomAssignments ca WHERE ca.classroomId = c.id AND ca.teacherId = ? AND ca.role = 'class_teacher')
 )`;
 // The teacher runs this classroom or teaches a course in it. Takes the user id 4 times.
 const CLASSROOM_ACCESS_SQL = `(
   ${CLASSROOM_STAFF_SQL}
-  OR EXISTS (SELECT 1 FROM courses co2 WHERE co2.classroomId = c.id AND co2.mentorId = ?)
+  OR EXISTS (SELECT 1 FROM courses co2 WHERE co2.mentorId = ? AND (co2.classroomId = c.id OR EXISTS (SELECT 1 FROM course_classrooms co2cc WHERE co2cc.courseId = co2.id AND co2cc.classroomId = c.id)))
 )`;
 
 const times = (value, count) => Array(count).fill(value);
@@ -42,7 +44,7 @@ const currentUser = (req) => {
   if (!userId || (!isAdmin && !TEACHER_ROLES.includes(role))) {
     throw new HttpError(403, 'Access denied');
   }
-  return { userId, isAdmin, universityId: req.user.universityId || 1 };
+  return { userId, isAdmin, universityId: req.user.universityId };
 };
 
 /* ================= CLASSROOMS ================= */
@@ -96,7 +98,9 @@ const authorizeCourse = async (req, courseId, classroomId = null) => {
   if (!course) throw new HttpError(404, 'Course not found');
 
   if (classroomId !== null && classroomId !== undefined && classroomId !== '') {
-    if (Number(course.classroomId) !== Number(classroomId)) {
+    const linked = Number(course.classroomId) === Number(classroomId)
+      || !!(await get('SELECT 1 AS ok FROM course_classrooms WHERE courseId = ? AND classroomId = ?', [course.id, Number(classroomId)]));
+    if (!linked) {
       throw new HttpError(400, 'This course does not belong to the selected class and section');
     }
   }
@@ -113,13 +117,8 @@ const authorizeCourse = async (req, courseId, classroomId = null) => {
   const classroom = await get('SELECT id, university_id FROM classrooms WHERE id = ?', [course.classroomId]);
   if (!classroom || Number(classroom.university_id) !== Number(user.universityId)) throw denied;
   if (user.isAdmin || teachesIt) return course;
-
-  const staff = await get(`SELECT c.id FROM classrooms c WHERE c.id = ? AND ${CLASSROOM_STAFF_SQL}`, [
-    classroom.id,
-    ...times(user.userId, 3),
-  ]);
-  if (!staff) throw denied;
-  return course;
+  // A class teacher does not act on another teacher's course of their class
+  throw denied;
 };
 
 /* ================= CLASS -> SECTION -> COURSE TREE ================= */
@@ -129,20 +128,13 @@ const getTeachingScope = async (req) => {
   const classrooms = await listClassrooms(req);
   if (classrooms.length === 0) return [];
 
+  const COURSE_CLASSES = `SELECT co.id, co.title, links.classroomId FROM courses co
+         JOIN (SELECT courseId, classroomId FROM course_classrooms
+               UNION SELECT id, classroomId FROM courses WHERE classroomId IS NOT NULL) links ON links.courseId = co.id
+         JOIN classrooms c ON c.id = links.classroomId`;
   const courses = user.isAdmin
-    ? await all(
-        `SELECT co.id, co.title, co.classroomId FROM courses co
-         JOIN classrooms c ON c.id = co.classroomId
-         WHERE c.university_id = ? ORDER BY co.title`,
-        [user.universityId]
-      )
-    : await all(
-        `SELECT co.id, co.title, co.classroomId FROM courses co
-         JOIN classrooms c ON c.id = co.classroomId
-         WHERE c.university_id = ? AND (co.mentorId = ? OR ${CLASSROOM_STAFF_SQL})
-         ORDER BY co.title`,
-        [user.universityId, user.userId, ...times(user.userId, 3)]
-      );
+    ? await all(`${COURSE_CLASSES} WHERE c.university_id = ? ORDER BY co.title`, [user.universityId])
+    : await all(`${COURSE_CLASSES} WHERE c.university_id = ? AND co.mentorId = ? ORDER BY co.title`, [user.universityId, user.userId]);
 
   const byClassroom = new Map();
   courses.forEach((course) => {

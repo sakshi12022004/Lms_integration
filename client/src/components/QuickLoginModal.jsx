@@ -20,6 +20,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import studentReadingImg from '../assets/student_reading.jpg';
 import core5Logo from '../assets/core5-final-rbg.png';
+import { API_BASE } from '../config/api';
 
 const roles = [
   { id: 'student', name: 'Student', icon: UserCheck },
@@ -63,7 +64,7 @@ const QuickLoginModal = ({ isOpen, onClose, initialRole = 'student' }) => {
     setError('');
 
     try {
-      const backendUrl = API || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5002/api';
+      const backendUrl = API || API_BASE;
       const endpoint = `${backendUrl}/auth/login`;
 
       const response = await axios.post(endpoint, {

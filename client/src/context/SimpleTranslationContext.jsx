@@ -1,3 +1,4 @@
+import { API_BASE } from '../config/api';
 import React, { createContext, useContext, useState } from 'react';
 
 const SimpleTranslationContext = createContext();
@@ -135,7 +136,7 @@ export const SimpleTranslationProvider = ({ children }) => {
   // Load language preference from database for logged-in user
   const loadUserLanguagePreference = async (email) => {
     try {
-      const response = await fetch(`/api/language/user/preference/${email}`);
+      const response = await fetch(`${API_BASE}/language/user/preference/${email}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -164,7 +165,7 @@ export const SimpleTranslationProvider = ({ children }) => {
         const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
         if (userInfo.email) {
           // Save to user profile in database
-          const response = await fetch('/api/language/user/preference', {
+          const response = await fetch(`${API_BASE}/language/user/preference`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

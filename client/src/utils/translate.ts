@@ -1,3 +1,4 @@
+import { API_BASE } from '../config/api';
 type TranslationResult = {
 
   en?: string;
@@ -12,7 +13,7 @@ async function translateTo(target: string, text: string, src?: string): Promise<
 
   try {
 
-    const res = await fetch('/api/translate', {
+    const res = await fetch(`${API_BASE}/translate`, {
 
       method: 'POST',
 

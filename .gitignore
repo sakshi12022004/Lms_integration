@@ -280,3 +280,10 @@ start-*.js
 *.pdf
 *.docx
 *.doc
+
+# The web client's static assets (fonts, banners) must be tracked; the 'public' rule above is for build output
+!client/public/
+!client/public/**
+
+# Office lock files (open Excel/Word documents)
+~$*

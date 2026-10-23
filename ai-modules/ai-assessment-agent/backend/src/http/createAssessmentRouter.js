@@ -125,7 +125,7 @@ function createAssessmentRouter({ express, openAdapter, generator = null, thrott
 
   // Teacher
   router.get('/teacher/classrooms', handle((s, a) => ({ classrooms: s.listClassrooms(a) })));
-  router.get('/teacher/classrooms/:id/students', handle((s, a, req) => ({ students: s.listClassroomStudents(a, req.params.id) })));
+  router.get('/teacher/classrooms/:id/students', handle((s, a, req) => ({ students: s.listClassroomStudents(a, req.params.id, req.query.courseId) })));
   router.get('/teacher/assessments', handle((s, a) => ({ assessments: s.listOwnAssessments(a) })));
   router.post('/teacher/assessments', handle((s, a, req) => ({ assessment: s.createAssessment(a, jsonBody(req)) }), 201));
 

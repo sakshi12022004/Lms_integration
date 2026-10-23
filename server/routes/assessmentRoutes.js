@@ -1,8 +1,14 @@
 const express = require("express");
 const router = express.Router();
 
+// Ids in the URL must name a record the caller may work with: same school, and for
+// students and teachers their own classes, courses and records (helpers/schoolScope.js).
+const { guardParams } = require("../helpers/schoolScope");
+guardParams(router, { assessmentId: "assessment", questionId: "assessmentQuestion", courseId: "course" });
+
 const controller = require("../controllers/assessmentController");
 const authMiddleware = require("../middleware/authMiddleware");
+const roleMiddleware = require("../middleware/roleMiddleware");
 const { checkAssessmentsQuota } = require("../middleware/quotaMiddleware");
 
 /**
@@ -68,6 +74,7 @@ router.put(
 router.get(
   "/course/:courseId/all",
   authMiddleware,
+  roleMiddleware(["mentor"]),
   controller.getAllCourseAssessments
 );
 
@@ -75,6 +82,7 @@ router.get(
 router.get(
   "/:assessmentId/attempts",
   authMiddleware,
+  roleMiddleware(["mentor"]),
   controller.getAssessmentAttempts
 );
 
@@ -82,6 +90,7 @@ router.get(
 router.get(
   "/course/:courseId/attempts",
   authMiddleware,
+  roleMiddleware(["mentor"]),
   controller.getCourseAssessmentAttempts
 );
 

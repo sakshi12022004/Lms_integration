@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/auth';
 import { useTranslation } from '../context/TranslationContext';
 import { Download, Database, FileSpreadsheet, RefreshCw, AlertCircle, CheckCircle, DollarSign, Receipt, Package, TrendingUp } from 'lucide-react';
+import { downloadWithSession } from '../config/download';
 
 const AccountantExport = () => {
   const { token, API } = useAuth();
@@ -33,7 +34,7 @@ const AccountantExport = () => {
 
   const downloadFullDatabase = () => {
     setExportStatus({ type: 'info', message: 'Downloading finance database...' });
-    window.open(`${API}/accountant-export/database/excel?token=${token}`, '_blank');
+    downloadWithSession(`${API}/accountant-export/database/excel`).catch((err) => alert(err.message));
     setTimeout(() => {
       setExportStatus({ type: 'success', message: 'Finance database export completed!' });
     }, 3000);
@@ -41,7 +42,7 @@ const AccountantExport = () => {
 
   const downloadTable = (tableName) => {
     setExportStatus({ type: 'info', message: `Downloading ${tableName} data...` });
-    window.open(`${API}/accountant-export/table/${tableName}/excel?token=${token}`, '_blank');
+    downloadWithSession(`${API}/accountant-export/table/${tableName}/excel`).catch((err) => alert(err.message));
     setTimeout(() => {
       setExportStatus({ type: 'success', message: `${tableName} export completed!` });
     }, 2000);

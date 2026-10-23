@@ -69,7 +69,7 @@ const createCalendarEvent = async (req, res) => {
 
     const userId = req.user.userId;
     const role = req.user.role;
-    const universityId = req.user.universityId || 1;
+    const universityId = req.user.universityId;
     const isTeacher = role === "mentor" || role === "teacher";
 
     const { title, description, startDate, endDate, publishFor, courseId, classroomId, allClasses, notify, notifyMessage } =
@@ -166,7 +166,7 @@ const getCalendarEvents = async (req, res) => {
 
     const userId = req.user.userId;
     const role = req.user.role;
-    const universityId = req.user.universityId || 1;
+    const universityId = req.user.universityId;
 
     // ========= ADMIN: every event of the school =========
     if (role === "admin") {

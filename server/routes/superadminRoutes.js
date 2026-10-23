@@ -18,72 +18,23 @@ function getDatabaseFromRequest(req) {
 }
 const authMiddleware = require("../middleware/authMiddleware");
 
-// Custom auth middleware for internal portal
-const portalAuthMiddleware = (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      req.user = {
-        userId: null,
-        role: 'guest',
-        name: 'Guest'
-      };
-      return res.status(401).json({ success: false, message: "Authentication required" });
-    }
-    
-    const token = authHeader.substring(7);
-    const jwtSecret = process.env.JWT_SECRET || 'default_jwt_secret_key';
-    console.log('Portal Auth - JWT_SECRET:', process.env.JWT_SECRET ? 'set' : 'undefined');
-    console.log('Portal Auth - Using secret:', jwtSecret === 'default_jwt_secret_key' ? 'fallback' : 'env');
-    
-    try {
-      const decoded = require('jsonwebtoken').verify(token, jwtSecret);
-      
-      // Special handling for portal@core5.co.in
-      if (decoded.email === "portal@core5.co.in") {
-        req.user = {
-          userId: decoded.userId,
-          role: decoded.role,
-          name: decoded.name || '',
-          universityId: decoded.universityId || decoded.university_id || 1,
-          email: decoded.email
-        };
-        
-        console.log('Portal Auth Success - User:', decoded.email, 'Role:', decoded.role);
-        return next();
-      }
-      
-      // For other users, normal auth
-      req.user = {
-        userId: decoded.userId,
-        role: decoded.role,
-        name: decoded.name || '',
-        universityId: decoded.universityId || decoded.university_id || 1,
-        email: decoded.email
-      };
-      
-      console.log('Regular Auth Success - User:', decoded.email, 'Role:', decoded.role);
-      return next();
-      
-    } catch (jwtError) {
-      console.log('JWT verification failed:', jwtError.message);
-      req.user = {
-        userId: null,
-        role: 'guest',
-        name: 'Guest'
-      };
-      return res.status(401).json({ success: false, message: "Authentication required" });
-    }
-  } catch (error) {
-    console.log('Auth middleware error:', error.message);
-    req.user = {
-      userId: null,
-      role: 'guest',
-      name: 'Guest'
-    };
-    return res.status(401).json({ success: false, message: "Authentication required" });
+// Every route below the login is for the platform owner only. The session is
+// verified by authMiddleware (signature, expiry, account still exists); this adds the role.
+const requireSuperadmin = (req, res, next) => {
+  if (req.user?.role !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied" });
   }
+  next();
+};
+const portalAuthMiddleware = [authMiddleware, requireSuperadmin];
+
+// The refresh token travels in an httpOnly cookie; read it without a cookie-parser dependency.
+const readCookie = (req, name) => {
+  const pair = (req.headers.cookie || "")
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`));
+  return pair ? decodeURIComponent(pair.slice(name.length + 1)) : null;
 };
 const { checkSchoolsQuota } = require("../middleware/quotaMiddleware");
 const { rateLimiters } = require("../middleware/rateLimiter");
@@ -164,8 +115,7 @@ router.post("/login", rateLimiters.login, async (req, res) => {
       }
 
       if (!user) {
-        console.log("Superadmin not found:", email);
-        return res.status(401).json({
+          return res.status(401).json({
           success: false,
           error: "invalid_credentials",
           message: "Incorrect email or password."
@@ -176,8 +126,7 @@ router.post("/login", rateLimiters.login, async (req, res) => {
       const passwordMatch = await bcrypt.compare(password, user.password_hash);
       
       if (!passwordMatch) {
-        console.log("Password mismatch for:", email);
-        return res.status(401).json({
+          return res.status(401).json({
           success: false,
           error: "invalid_credentials",
           message: "Incorrect email or password."
@@ -250,7 +199,7 @@ router.post("/login", rateLimiters.login, async (req, res) => {
 router.post("/refresh-token", (req, res) => {
   try {
     // Get refresh token from cookie
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = readCookie(req, "refreshToken");
     
     if (!refreshToken) {
       return res.status(401).json({
@@ -272,7 +221,7 @@ router.post("/refresh-token", (req, res) => {
 
     // Verify refresh token
     try {
-      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, { algorithms: ["HS256"] });
       
       // Generate new access token
       const accessToken = jwt.sign(
@@ -320,69 +269,6 @@ router.post("/refresh-token", (req, res) => {
       error: "server_error",
       message: "An unexpected error occurred. Please try again."
     });
-  }
-});
-
-// Get all clients (superadmin credentials)
-router.get("/clients", portalAuthMiddleware, (req, res) => {
-  try {
-    // Only allow superadmin role
-    if (req.user.role !== "superadmin") {
-      return res.status(403).json({ success: false, message: "Access denied" });
-    }
-
-    // For demo, return hardcoded clients
-    // In production, you'd query a superadmin_clients table
-    const clients = [
-      {
-        id: 1,
-        name: "Demo University",
-        email: "admin@demo.com",
-        password: "demo123",
-        created_at: new Date().toISOString()
-      }
-    ];
-
-    res.json({ success: true, clients });
-  } catch (error) {
-    console.error("Get clients error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
-// Create new client credentials
-router.post("/create-client", portalAuthMiddleware, (req, res) => {
-  try {
-    // Only allow superadmin role
-    if (req.user.role !== "superadmin") {
-      return res.status(403).json({ success: false, message: "Access denied" });
-    }
-
-    const { name, email, password } = req.body;
-
-    // Validate inputs
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: "All fields are required" });
-    }
-
-    // For demo, just return success
-    // In production, you'd save to database
-    console.log("Creating client:", { name, email, password });
-
-    res.json({
-      success: true,
-      message: "Client credentials created successfully",
-      client: {
-        id: Date.now(),
-        name,
-        email,
-        password,
-        created_at: new Date().toISOString()
-      }
-    });
-  } catch (error) {
-    console.error("Create client error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -437,82 +323,10 @@ router.delete(
 
 // ===== INTERNAL ADMIN PORTAL ROUTES =====
 
-// Test endpoint
-router.get("/internal/test", (req, res) => {
-  console.log(" Test endpoint called");
-  console.log("Request headers:", req.headers);
-  res.json({ success: true, message: "Internal portal API is working!" });
-});
-
-// Test superadmins endpoint without auth
-router.get("/internal/superadmins-test", async (req, res) => {
-  console.log("=== SUPERADMINS TEST ROUTE HIT ===");
-  console.log("Request method:", req.method);
-  console.log("Request URL:", req.url);
-  console.log("Request headers:", Object.keys(req.headers));
-  
-  try {
-    const query = `
-      SELECT id, email, role, created_at, expires_at, status
-      FROM users 
-      WHERE role = 'superadmin'
-      ORDER BY created_at DESC
-    `;
-    
-    console.log("Executing query:", query);
-    
-    getDatabaseFromRequest(req).all(query, [], (err, rows) => {
-      if (err) {
-        console.error("Error fetching superadmins:", err);
-        return res.status(500).json({ success: false, message: "Database error" });
-      }
-      
-      console.log(`Found ${rows.length} superadmins in database`);
-       
-      const superadmins = rows.map(row => ({
-        ...row,
-        plainPassword: 'Password hidden for security'
-      }));
-      
-      console.log("Sending response:", { success: true, data: superadmins });
-      res.json({ success: true, data: superadmins });
-    });
-  } catch (error) {
-    console.error("Internal server error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
-// Debug endpoint
-router.get("/internal/debug", (req, res) => {
-  console.log(" Debug endpoint called");
-  console.log("Request headers:", req.headers);
-  console.log("Request URL:", req.url);
-  console.log("Request method:", req.method);
-  res.json({ 
-    success: true, 
-    message: "Debug endpoint working!",
-    headers: req.headers,
-    url: req.url,
-    method: req.method
-  });
-});
-
-// Test delete endpoint
-router.get("/internal/test-delete", (req, res) => {
-  console.log(" Test delete endpoint called");
-  res.json({ success: true, message: "Delete endpoint test is working!" });
-});
-
 // Get all superadmins for internal portal
 router.get("/internal/superadmins", portalAuthMiddleware, async (req, res) => {
-  console.log("=== SUPERADMINS ROUTE HIT ===");
-  console.log("Request method:", req.method);
-  console.log("Request URL:", req.url);
-  console.log("Request headers:", Object.keys(req.headers));
   try {
     console.log("Internal superadmin API called");
-    console.log("User from auth middleware:", req.user);
     
     // Special handling for portal user - check if user exists and has valid token
     if (!req.user) {
@@ -566,8 +380,6 @@ router.get("/internal/superadmins", portalAuthMiddleware, async (req, res) => {
 router.post("/internal/create-superadmin", portalAuthMiddleware, async (req, res) => {
   try {
     console.log("Create superadmin endpoint called");
-    console.log("Request body:", req.body);
-    console.log("User from auth middleware:", req.user);
     
     // Special handling for portal user
     if (!req.user) {
@@ -719,7 +531,6 @@ router.post("/internal/reset-password", portalAuthMiddleware, async (req, res) =
 router.post("/internal/delete-superadmin", portalAuthMiddleware, async (req, res) => {
   try {
     console.log("POST Delete superadmin endpoint called");
-    console.log("User from auth middleware:", req.user);
     
     // Special handling for portal user
     if (!req.user) {
@@ -775,7 +586,6 @@ router.post("/internal/delete-superadmin", portalAuthMiddleware, async (req, res
 router.delete("/internal/delete-superadmin/:superadminId", portalAuthMiddleware, async (req, res) => {
   try {
     console.log("🗑️ Delete superadmin endpoint called");
-    console.log("👤 User from auth middleware:", req.user);
     
     // Special handling for portal user
     if (!req.user) {
@@ -871,13 +681,12 @@ router.post("/internal/disable-user", portalAuthMiddleware, async (req, res) => 
   }
 });
 
-// Helper function to generate secure password
+// Helper function to generate secure password (cryptographic randomness, shown to the portal admin once)
 function generateSecurePassword() {
-  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
   let password = "";
-  for (let i = 0; i < 10; i++) {
-    const randomIndex = Math.floor(Math.random() * charset.length);
-    password += charset[randomIndex];
+  for (let i = 0; i < 16; i++) {
+    password += charset[require("crypto").randomInt(charset.length)];
   }
   return password;
 }
@@ -885,7 +694,6 @@ function generateSecurePassword() {
 
 // Catch-all route for debugging
 router.use("*", (req, res) => {
-  console.log("=== CATCH-ALL ROUTE HIT ===");
   console.log("Method:", req.method);
   console.log("URL:", req.originalUrl);
   console.log("Path:", req.path);

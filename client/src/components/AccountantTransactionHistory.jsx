@@ -3,6 +3,7 @@ import axios from 'axios';
 import { onPayment } from '../accountant/mockSocket';
 import { useTransactionStore } from '../store/transactionStore';
 import { useUniversalPersistence } from '../hooks/useUniversalPersistenceSimple';
+import { API_ORIGIN } from '../config/api';
 
 const AccountantTransactionHistory = () => {
   const { transactions, getTotalRevenue, getTodayTransactions } = useTransactionStore();
@@ -25,7 +26,7 @@ const AccountantTransactionHistory = () => {
 
   const downloadInvoice = async (transaction) => {
     try {
-const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://core5.io'}/api/transactions/generate-invoice`, {
+const response = await axios.post(`${API_ORIGIN}/api/transactions/generate-invoice`, {
         transaction: transaction,
         student: { name: transaction.studentName, id: transaction.studentId },
         paymentOption: transaction.paymentOption || 'installment',

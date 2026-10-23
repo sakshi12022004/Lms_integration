@@ -4,6 +4,7 @@ import { Camera } from "lucide-react";
 import { useAuth } from "../../auth/auth";
 import { useTranslation } from "../../context/TranslationContext";
 import { toast } from "react-toastify";
+import { showPasswordNotice } from "../../components/admin/PasswordNotice";
 
 const AddTeacher = () => {
   const { token, API } = useAuth();
@@ -82,10 +83,11 @@ const AddTeacher = () => {
         return toast.error(data.message || t('failed_to_create_teacher'));
       }
 
-      toast.success(
-        `${t('teacher_created_successfully')} 🎉 ${t('temporary_password')}: ${data.generatedPassword}`,
-        { autoClose: false }
-      );
+      showPasswordNotice({
+        message: `${t('teacher_created_successfully')} 🎉`,
+        label: t('temporary_password'),
+        password: data.generatedPassword,
+      });
 
       // reset form
       setForm({

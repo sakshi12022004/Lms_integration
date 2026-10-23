@@ -1,3 +1,5 @@
+// The handlers below use the shared LMS database connection.
+const db = require('../config/database-switch');
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 
 
@@ -18,9 +20,9 @@ const createOrder = async (req, res) => {
     const totalAmount = quantity * (unitPrice || 0);
 
     db.run(`
-      INSERT INTO orders (requirementItemId, storekeeperId, itemName, quantity, unitPrice, totalAmount, vendorId, deliveryDate, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-    `, [requirementItemId, storekeeperId, itemName, quantity, unitPrice, totalAmount, vendorId || null, deliveryDate || null], function(err) {
+      INSERT INTO orders (requirementItemId, storekeeperId, itemName, quantity, unitPrice, totalAmount, vendorId, deliveryDate, status, university_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+    `, [requirementItemId, storekeeperId, itemName, quantity, unitPrice, totalAmount, vendorId || null, deliveryDate || null, req.user.universityId], function(err) {
       if (err) {
         console.error("Error creating order:", err);
         return res.status(500).json({ message: 'Database error: ' + err.message });
@@ -33,8 +35,8 @@ const createOrder = async (req, res) => {
       db.run(`
         UPDATE inventory 
         SET quantity = quantity + ?
-        WHERE itemName = ?
-      `, [quantity, itemName], function(err) {
+        WHERE itemName = ? AND university_id = ?
+      `, [quantity, itemName, req.user.universityId], function(err) {
         if (err) {
           console.error("Error updating inventory:", err);
           // Continue anyway, order is created
@@ -43,7 +45,7 @@ const createOrder = async (req, res) => {
         }
 
         // Create expense record
-        createExpenseRecord(itemName, quantity, totalAmount, orderId, (expenseErr) => {
+        createExpenseRecord(req.user.universityId, itemName, quantity, totalAmount, orderId, (expenseErr) => {
           if (expenseErr) {
             console.error("Error creating expense:", expenseErr);
           }
@@ -102,8 +104,9 @@ const getAllOrders = async (req, res) => {
       FROM orders o
       LEFT JOIN users u ON o.storekeeperId = u.id
       LEFT JOIN vendors v ON o.vendorId = v.id
+      WHERE o.university_id = ?
       ORDER BY o.orderDate DESC
-    `, (err, rows) => {
+    `, [req.user.universityId], (err, rows) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({ message: 'Database error' });
@@ -173,8 +176,8 @@ const updateOrderStatus = async (req, res) => {
     db.run(`
       UPDATE orders 
       SET status = ?, updatedAt = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `, [status, orderId], function(err) {
+      WHERE id = ? AND university_id = ?
+    `, [status, orderId, req.user.universityId], function(err) {
       if (err) {
         console.error("Error updating order:", err);
         return res.status(500).json({ message: 'Database error' });
@@ -204,14 +207,14 @@ const updateOrderStatus = async (req, res) => {
 };
 
 /* ================= CREATE EXPENSE RECORD ================= */
-const createExpenseRecord = (itemName, quantity, totalAmount, orderId, callback) => {
+const createExpenseRecord = (universityId, itemName, quantity, totalAmount, orderId, callback) => {
   const description = `Order #${orderId}: Purchase of ${quantity}x ${itemName}`;
   const date = new Date().toISOString().split('T')[0];
 
   db.run(`
-    INSERT INTO expenses (description, amount, category, date, status)
-    VALUES (?, ?, 'Supplies', ?, 'pending')
-  `, [description, totalAmount, date], function(err) {
+    INSERT INTO expenses (description, amount, category, date, status, university_id)
+    VALUES (?, ?, 'Supplies', ?, 'pending', ?)
+  `, [description, totalAmount, date, universityId], function(err) {
     if (err) {
       console.error("Error creating expense:", err);
       if (callback) callback(err);

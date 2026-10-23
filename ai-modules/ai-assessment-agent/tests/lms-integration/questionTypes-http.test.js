@@ -123,7 +123,7 @@ describe('LMS HTTP integration: question types, templates and AI-call efficiency
     const data = JSON.parse(provider.calls.at(-1).prompt.slice(provider.calls.at(-1).prompt.indexOf('{')));
     assert.deepEqual([data.educationalIntent.name, data.teacherInstructions], ['Numerical Practice', 'Use plant growth examples.']);
     const q = g.body.proposal.questions[0];
-    const saved = await call('POST', '/teacher/assessments/from-review', { auth: T1(), body: { assessment: { title: 'From AI', subject: 'Biology' }, questions: [q] } });
+    const saved = await call('POST', '/teacher/assessments/from-review', { auth: T1(), body: { assessment: { title: 'From AI', subject: 'Biology', classroomId: IDS.class10 }, questions: [q] } });
     assert.deepEqual([saved.status, saved.body.assessment.status, saved.body.assessment.questions[0].numericAnswer], [201, 'draft', { format: 'integer', value: '21' }]);
   });
 

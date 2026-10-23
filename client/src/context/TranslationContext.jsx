@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { API_BASE, API_ORIGIN } from '../config/api';
 
 let directTranslator = null;
 let ioClient = null;
@@ -285,6 +286,7 @@ const EN_TRANSLATIONS = {
   'login_password': 'Login Password',
   'temporary_password': 'Temporary Password',
   'generatedPassword': 'Temporary Password',
+  'nav_lectures': 'Your Lectures',
   'create_course_title': 'Create Course',
   'assign_mentor_students': 'Assign a mentor and students',
   'back': 'Back',
@@ -4927,8 +4929,8 @@ const TranslationProvider = ({ children }) => {
   const [translations, setTranslations] = useState(EN_TRANSLATIONS);
   const [isLoading, setIsLoading] = useState(false);
   const [version, setVersion] = useState(0);
-  const API = import.meta.env.VITE_BACKEND_URL || '/api';
-  const SOCKET_URL = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/api\/?$/, '');
+  const API = API_BASE;
+  const SOCKET_URL = API_ORIGIN;
   const supportedLanguages = ['en', 'ar', 'ur', 'es', 'fr', 'de', 'pt', 'ru', 'ja', 'ko', 'zh-CN', 'hi'];
   const isRTL = currentLanguage === 'ar';
 
@@ -5066,11 +5068,13 @@ const TranslationProvider = ({ children }) => {
   };
 
   const t = (key) => {
-    const translated = translations[key] || EN_TRANSLATIONS[key] || key;
-    if (translated !== key) {
-      console.log(`🗣️ t('${key}') → '${translated}' [lang: ${currentLanguage}]`);
-    }
-    return translated;
+    const translated = translations[key] || EN_TRANSLATIONS[key];
+    if (translated) return translated;
+    // A key with no text yet is shown as words ("chapter_completed" -> "Chapter completed"),
+    // not as the raw key.
+    if (typeof key !== 'string' || !/^[a-z0-9]+(_[a-z0-9]+)+$/.test(key)) return key;
+    const words = key.replace(/_/g, ' ');
+    return words.charAt(0).toUpperCase() + words.slice(1);
   };
 
   const value = {

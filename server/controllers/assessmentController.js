@@ -32,6 +32,18 @@ exports.createAssessment = async (req, res) => {
     if (!courseId || !title || !startTime || !endTime) {
       return res.status(400).json({ message: "Missing required fields" });
     }
+    // A window that closes before it opens can never be attempted by a student
+    const opens = new Date(startTime).getTime();
+    const closes = new Date(endTime).getTime();
+    if (!Number.isFinite(opens) || !Number.isFinite(closes)) {
+      return res.status(400).json({ message: "Start and end must be valid dates" });
+    }
+    if (closes <= opens) {
+      return res.status(400).json({ message: "The end time must be after the start time" });
+    }
+    if (timer !== undefined && timer !== null && timer !== "" && !(Number(timer) > 0 && Number(timer) <= 1440)) {
+      return res.status(400).json({ message: "The timer must be between 1 and 1440 minutes" });
+    }
 
     // Verify course exists and user is the mentor/course teacher
     db.get(
@@ -127,10 +139,11 @@ exports.getCourseAssessments = (req, res) => {
     const { courseId } = req.params;
     const now = new Date();
 
-    // Get all assessments for the course (not filtered by isPublished)
-    // All assessments created by the course teacher should be visible to students
+    // Staff see every assessment of the course. A student sees published ones only:
+    // a draft cannot be attempted, and its title is not theirs to read yet.
+    const draftsToo = req.user?.role !== "student";
     db.all(
-      "SELECT * FROM assessments WHERE courseId = ? ORDER BY createdAt DESC",
+      `SELECT * FROM assessments WHERE courseId = ?${draftsToo ? "" : " AND isPublished = 1"} ORDER BY createdAt DESC`,
       [courseId],
       (err, assessments) => {
         if (err) {
@@ -144,7 +157,7 @@ exports.getCourseAssessments = (req, res) => {
           const startTime = a.startTime ? new Date(a.startTime) : new Date(0); // Default to past
           const endTime = a.endTime ? new Date(a.endTime) : new Date(9999999999999); // Default to future
           const isUnlocked = startTime <= now && now <= endTime;
-          
+
           return {
             ...mapAssessment(a),
             isUnlocked: isUnlocked || (!a.startTime && !a.endTime) // Unlock if no time restrictions
@@ -256,7 +269,8 @@ exports.getAssessmentQuestions = (req, res) => {
           return res.status(500).json({ message: "Database error" });
         }
 
-        if (!assessment) {
+        const isStudent = req.user.role === "student";
+        if (!assessment || (isStudent && !assessment.isPublished)) {
           return res.status(404).json({ message: "Assessment not found" });
         }
 
@@ -278,11 +292,14 @@ exports.getAssessmentQuestions = (req, res) => {
                   parsedOptions = [];
                 }
               }
-              return {
+              const question = {
                 ...q,
                 _id: q.id,
                 options: parsedOptions
               };
+              // The answer key stays on the server; answers are marked in submitAssessment
+              if (isStudent) delete question.correctAnswer;
+              return question;
             });
 
             res.json({
@@ -325,7 +342,7 @@ exports.getQuestionImage = async (req, res) => {
 
     let allowed = String(row.createdBy) === String(userId) || String(row.mentorId) === String(userId);
     if (!allowed && req.user.role === "admin") {
-      allowed = Number(row.university_id) === Number(req.user.universityId || 1);
+      allowed = Number(row.university_id) === Number(req.user.universityId);
     }
     if (!allowed && req.user.role === "student" && row.isPublished) {
       allowed = !!(await get("SELECT id FROM course_students WHERE courseId = ? AND studentId = ?", [row.courseId, userId]));
@@ -373,7 +390,7 @@ exports.publishAssessment = async (req, res) => {
     const course = await get("SELECT id, mentorId, university_id FROM courses WHERE id = ?", [assessment.courseId]);
     const isOwner = String(assessment.createdBy) === String(userId) || (course && String(course.mentorId) === String(userId));
     const isSchoolAdmin =
-      req.user.role === "admin" && course && Number(course.university_id) === Number(req.user.universityId || 1);
+      req.user.role === "admin" && course && Number(course.university_id) === Number(req.user.universityId);
     if (!isOwner && !isSchoolAdmin) {
       return res.status(403).json({ message: "Not authorized for this assessment" });
     }
@@ -444,7 +461,7 @@ exports.publishAssessment = async (req, res) => {
  * SUBMIT ASSESSMENT (STUDENT)
  * ================================
  */
-exports.submitAssessment = (req, res) => {
+exports.submitAssessment = async (req, res) => {
   try {
     const { assessmentId, answers } = req.body;
     const studentId = req.user.userId;
@@ -452,6 +469,16 @@ exports.submitAssessment = (req, res) => {
     if (!assessmentId || !Array.isArray(answers)) {
       return res.status(400).json({ message: "Invalid request data" });
     }
+
+    // Published, and (for a first attempt) inside its start and end time. Whether the
+    // student takes this course at all was already checked by the API gate.
+    const assessment = await get("SELECT id, isPublished, startTime, endTime FROM assessments WHERE id = ?", [assessmentId]);
+    if (!assessment || !assessment.isPublished) {
+      return res.status(404).json({ message: "Assessment not found" });
+    }
+    const now = Date.now();
+    const notOpenYet = assessment.startTime && now < new Date(assessment.startTime).getTime();
+    const closed = assessment.endTime && now > new Date(assessment.endTime).getTime();
 
     // Check if student has already attempted this assessment
     db.get(
@@ -474,6 +501,12 @@ exports.submitAssessment = (req, res) => {
               result: previousAttempt.score >= (previousAttempt.totalQuestions * 0.6) ? "PASS" : "FAIL",
               correctAnswers: previousAttempt.correctAnswers ? JSON.parse(previousAttempt.correctAnswers) : []
             }
+          });
+        }
+
+        if (notOpenYet || closed) {
+          return res.status(403).json({
+            message: notOpenYet ? "This assessment has not started yet" : "The time for this assessment is over"
           });
         }
 
@@ -511,8 +544,10 @@ exports.submitAssessment = (req, res) => {
               let correctOption = -1;
               if (q.correctAnswer !== null && q.correctAnswer !== undefined) {
                 const ca = String(q.correctAnswer).trim();
-                // Try to parse as number first (should be 0-based index)
-                if (/^-?\d+$/.test(ca)) {
+                const byText = options.findIndex(opt => String(opt).trim() === ca);
+                if (byText !== -1) {
+                  correctOption = byText;
+                } else if (/^-?\d+$/.test(ca)) {
                   correctOption = parseInt(ca, 10);
                   // Validate it's within range
                   if (correctOption < 0 || correctOption >= options.length) {
@@ -560,7 +595,7 @@ exports.submitAssessment = (req, res) => {
 
             // Save attempt to database
             db.run(
-              `INSERT INTO assessment_attempts 
+              `INSERT INTO assessment_attempts
                (assessmentId, studentId, score, totalQuestions, percentage, result, correctAnswers, attemptedAt)
                VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
               [assessmentId, studentId, score, totalQuestions, percentage, result, JSON.stringify(correctAnswers)],
@@ -605,10 +640,10 @@ exports.getAssessmentAttempts = (req, res) => {
   try {
     const { assessmentId } = req.params;
     db.all(
-      `SELECT aa.*, u.name as studentName, u.email as studentEmail 
-       FROM assessment_attempts aa 
-       LEFT JOIN users u ON aa.studentId = u.id 
-       WHERE aa.assessmentId = ? 
+      `SELECT aa.*, u.name as studentName, u.email as studentEmail
+       FROM assessment_attempts aa
+       LEFT JOIN users u ON aa.studentId = u.id
+       WHERE aa.assessmentId = ?
        ORDER BY aa.attemptedAt DESC`,
       [assessmentId],
       (err, attempts) => {
@@ -633,11 +668,11 @@ exports.getCourseAssessmentAttempts = (req, res) => {
   try {
     const { courseId } = req.params;
     db.all(
-      `SELECT aa.*, a.title as assessmentTitle, u.name as studentName, u.email as studentEmail 
-       FROM assessment_attempts aa 
-       JOIN assessments a ON aa.assessmentId = a.id 
-       LEFT JOIN users u ON aa.studentId = u.id 
-       WHERE a.courseId = ? 
+      `SELECT aa.*, a.title as assessmentTitle, u.name as studentName, u.email as studentEmail
+       FROM assessment_attempts aa
+       JOIN assessments a ON aa.assessmentId = a.id
+       LEFT JOIN users u ON aa.studentId = u.id
+       WHERE a.courseId = ?
        ORDER BY aa.attemptedAt DESC`,
       [courseId],
       (err, attempts) => {

@@ -8,11 +8,7 @@ import { useAuth } from "../../auth/auth";
 const SuperAdminLogin = () => {
   const navigate = useNavigate();
   const { t, currentLanguage, changeLanguage } = useTranslation();
-  const { loginUser } = useAuth();
-
-  // Hard-coded superadmin credentials
-  const SUPERADMIN_EMAIL = "superadmin@lms.com";
-  const SUPERADMIN_PASSWORD = "SuperAdmin@123";
+  const { loginUser, API } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,32 +44,8 @@ const SuperAdminLogin = () => {
     try {
       setLoading(true);
 
-      // Check if credentials match hard-coded superadmin
-      if (email === SUPERADMIN_EMAIL && password === SUPERADMIN_PASSWORD) {
-        // Create a proper JWT-like token with superadmin role
-        const mockToken = "superadmin-" + btoa(JSON.stringify({ 
-          role: "superadmin", 
-          email: SUPERADMIN_EMAIL,
-          name: "Super Admin"
-        }));
-        
-        const mockUser = {
-          id: "superadmin-id",
-          name: "Super Admin",
-          email: SUPERADMIN_EMAIL,
-          role: "superadmin",
-        };
-
-        // Use loginUser to update auth context and localStorage
-        loginUser(mockToken, mockUser);
-
-        toast.success("✅ Super Admin logged in successfully!");
-        navigate("/superadmin/dashboard");
-        return;
-      }
-
-      // If not superadmin, try normal login
-      const res = await fetch("/api/auth/login", {
+      // The server checks the password and signs the session; nothing is decided in the browser.
+      const res = await fetch(`${API}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -144,13 +116,6 @@ const SuperAdminLogin = () => {
           </div>
           <h1 className="text-3xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Super Admin</h1>
           <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">Multi-University & Institutional Control</p>
-        </div>
-
-        {/* Credentials Info */}
-        <div className="bg-white border border-[#ebdcaa] rounded-none p-3.5 mb-6 text-xs text-slate-600">
-          <p className="text-[11px] uppercase tracking-wider font-semibold text-[#B99652] mb-1">Default Credentials:</p>
-          <p className="font-mono text-slate-800">Email: superadmin@lms.com</p>
-          <p className="font-mono text-slate-800">Pass: SuperAdmin@123</p>
         </div>
 
         {/* Login Form */}

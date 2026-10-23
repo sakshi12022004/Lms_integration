@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import LecturesTable from "../../components/lectures/LecturesTable";
 import { useAuth } from "../../auth/auth";
 import StudentLayout from "../../components/StudentLayout";
 import { toast } from "react-toastify";
@@ -26,6 +27,7 @@ import {
   Award,
   ExternalLink
 } from "lucide-react";
+import { fileLink } from "../../config/api";
 
 const CourseViewer = () => {
   const { courseId } = useParams();
@@ -305,7 +307,7 @@ const CourseViewer = () => {
       console.log('✅ Live classes API response status:', response.status);
       console.log('🎬 Live classes response data:', response.data);
       console.log('🎬 Number of live classes:', Array.isArray(response.data) ? response.data.length : 0);
-      setLiveClasses(Array.isArray(response.data) ? response.data : []);
+      setLiveClasses(Array.isArray(response.data?.data) ? response.data.data : Array.isArray(response.data) ? response.data : []);
       console.log('🎬 Live classes state updated');
     } catch (error) {
       console.error('❌ Error fetching live classes:', error.message);
@@ -680,9 +682,9 @@ const CourseViewer = () => {
                                             Watch Video
                                           </a>
                                         )}
-                                        {chapter.pdfUrl && (
+                                        {(chapter.pdfUrl || chapter.fileUrl) && (
                                           <a
-                                            href={chapter.pdfUrl}
+                                            href={fileLink(chapter.pdfUrl || chapter.fileUrl)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition-colors"
@@ -757,7 +759,7 @@ const CourseViewer = () => {
 
                                     <div className="flex items-center gap-2 shrink-0">
                                       <a
-                                        href={material.type?.includes('link') ? material.linkUrl : `${API.replace('/api', '')}${material.fileUrl}`}
+                                        href={material.type?.includes('link') ? material.linkUrl : fileLink(material.fileUrl)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={() => {
@@ -906,7 +908,7 @@ const CourseViewer = () => {
                         </p>
                       </div>
                       <a
-                        href={m.type?.includes('link') ? m.linkUrl : `${API.replace('/api', '')}${m.fileUrl}`}
+                        href={m.type?.includes('link') ? m.linkUrl : fileLink(m.fileUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => {
@@ -963,8 +965,8 @@ const CourseViewer = () => {
                                   <Video size={13} className="text-[#B99652]" /> Watch Video
                                 </a>
                               )}
-                              {ch.pdfUrl && (
-                                <a href={ch.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold flex items-center gap-1.5 text-red-600 hover:underline">
+                              {(ch.pdfUrl || ch.fileUrl) && (
+                                <a href={fileLink(ch.pdfUrl || ch.fileUrl)} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold flex items-center gap-1.5 text-red-600 hover:underline">
                                   <FileText size={13} /> View PDF
                                 </a>
                               )}
@@ -1020,107 +1022,8 @@ const CourseViewer = () => {
             </span>
           </div>
 
-          {liveClasses.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-              {liveClasses.map((liveClass, liveIndex) => {
-                const isLiveNow = liveClass.status === 'live';
-                const isCompleted = liveClass.status === 'completed';
-
-                return (
-                  <div 
-                    key={liveClass.id || liveClass._id}
-                    data-tour={liveIndex === 0 ? 'course-live-video' : undefined}
-                    className={`relative bg-white/95 backdrop-blur-sm rounded-none p-5 sm:p-6 border transition-all duration-300 hover:shadow-[0_10px_30px_rgba(0,35,102,0.12)] hover:-translate-y-0.5 flex flex-col justify-between ${
-                      isLiveNow
-                        ? 'border-red-400 bg-gradient-to-b from-red-50/40 via-white to-white shadow-[0_4px_20px_rgba(239,68,68,0.18)] ring-1 ring-red-400/40'
-                        : 'border-[#ebdcaa] shadow-[0_4px_20px_rgba(0,35,102,0.05)]'
-                    }`}
-                  >
-                    <div>
-                      {/* Top Row: Title + Status Badge */}
-                      <div className="flex items-start justify-between gap-3 mb-2.5">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-base sm:text-lg font-bold text-[#1e1b4b] leading-snug truncate">
-                            {liveClass.title}
-                          </h3>
-                          {liveClass.description && (
-                            <p className="text-xs sm:text-sm text-[#665e4d] mt-1 line-clamp-2 leading-relaxed">
-                              {liveClass.description}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Status Badge */}
-                        {isLiveNow ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-black bg-red-100 text-red-700 border border-red-300 shadow-xs shrink-0 animate-pulse">
-                            <span className="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
-                            LIVE NOW
-                          </span>
-                        ) : isCompleted ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-none text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200 shrink-0">
-                            <CheckCircle2 size={12} />
-                            Completed
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-semibold bg-[#fff8e7] text-[#92400e] border border-[#fde68a] shrink-0">
-                            <Clock size={12} className="text-[#d97706]" />
-                            Scheduled
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Time & Duration Info Cards */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-4 pt-3 border-t border-[#f4ecd4]">
-                        <div className="flex items-center gap-2 text-xs text-[#52493a] bg-[#fffdf4] px-3 py-2 rounded-none border border-[#ebdcaa]/80">
-                          <Calendar size={14} className="text-[#B99652] shrink-0" />
-                          <span className="font-medium truncate">
-                            {new Date(liveClass.scheduledStartTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
-                          </span>
-                        </div>
-                        {liveClass.duration && (
-                          <div className="flex items-center gap-2 text-xs text-[#52493a] bg-[#fffdf4] px-3 py-2 rounded-none border border-[#ebdcaa]/80">
-                            <Clock size={14} className="text-[#B99652] shrink-0" />
-                            <span className="font-medium">Duration: {liveClass.duration} mins</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Bottom Action Row */}
-                    <div className="flex items-center justify-between pt-2 border-t border-[#f4ecd4]/60 mt-1">
-                      <div className="text-[11px] text-[#8a7a5b] flex items-center gap-1.5 font-medium">
-                        <Video size={13} className="text-[#B99652]" />
-                        <span>Interactive Class</span>
-                      </div>
-
-                      <button
-                        onClick={() => handleJoinLiveClass(
-                          liveClass.id || liveClass._id,
-                          liveClass.meetingLink
-                        )}
-                        className={`inline-flex items-center gap-2 font-bold text-xs sm:text-sm py-2.5 px-5 rounded-none transition-all duration-200 shadow-sm active:scale-[0.98] ${
-                          isLiveNow
-                            ? 'bg-gradient-to-r from-red-600 via-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white shadow-[0_4px_16px_rgba(220,38,38,0.35)] animate-pulse'
-                            : 'bg-gradient-to-r from-[#002366] to-[#1e1b4b] hover:from-[#1e1b4b] hover:to-[#002366] text-white border border-[#B99652]/40 hover:border-[#B99652] shadow-[0_2px_10px_rgba(0,35,102,0.18)] hover:shadow-[0_4px_16px_rgba(0,35,102,0.28)]'
-                        }`}
-                      >
-                        <Video size={16} className={isLiveNow ? 'animate-bounce' : 'text-[#f1be38]'} />
-                        <span>{isLiveNow ? 'Join Live Now' : 'Join Class'}</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div data-tour="course-live-video" className="bg-white/85 backdrop-blur-sm rounded-none p-8 sm:p-10 border border-dashed border-[#ebdcaa] text-center shadow-[0_4px_20px_rgba(0,35,102,0.03)]">
-              <div className="w-16 h-16 bg-gradient-to-br from-[#002366]/10 to-[#B99652]/20 rounded-none flex items-center justify-center mx-auto mb-4 border border-[#ebdcaa]">
-                <Video className="text-[#002366]" size={28} />
-              </div>
-              <h3 className="text-base sm:text-lg font-bold text-[#1e1b4b] mb-1">No Live Classes Scheduled Yet</h3>
-              <p className="text-xs sm:text-sm text-[#7a705a] max-w-md mx-auto">Your instructor hasn't scheduled any live sessions for this course yet. Check back soon!</p>
-            </div>
-          )}
+          {/* lectures of this course for this student: Join opens the class inside the LMS */}
+          <LecturesTable API={API} token={token} mode="student" courseId={courseId} title="Your Lectures" />
         </div>
 
       </div>

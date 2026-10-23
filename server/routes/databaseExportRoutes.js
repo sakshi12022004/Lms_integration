@@ -1,5 +1,10 @@
 const express = require('express');
 const router = express.Router();
+
+// Credentials and payment verification values are never part of an export, whoever asks.
+const SECRET_COLUMNS = new Set(['password', 'password_hash', 'db_password', 'otp', 'razorpay_signature']);
+const isExportableColumn = (name) => !SECRET_COLUMNS.has(String(name).toLowerCase());
+const withoutSecretColumns = (row) => Object.fromEntries(Object.entries(row).filter(([column]) => isExportableColumn(column)));
 const path = require('path');
 const fs = require('fs');
 const translationService = require('../services/translationService');
@@ -92,7 +97,7 @@ router.get('/table/:tableName/structure', rateLimiters.sensitive, authMiddleware
         return res.status(500).json({ error: 'Error fetching table structure' });
       }
       
-      const cols = (columns || []).map(col => ({
+      const cols = (columns || []).filter(col => isExportableColumn(col.name)).map(col => ({
         name: col.name,
         column_name: col.name,
         data_type: col.type || 'TEXT',
@@ -132,7 +137,7 @@ router.get('/table/:tableName/data', rateLimiters.sensitive, authMiddleware, che
         }
         
         res.json({
-          data: rows,
+          data: (rows || []).map(withoutSecretColumns),
           total: countResult.total,
           limit: parseInt(limit),
           offset: parseInt(offset)
@@ -162,7 +167,7 @@ router.get('/table/:tableName/excel', rateLimiters.sensitive, authMiddleware, ch
       }
 
       // Build language-aware column map
-      const cols = (columns || []).map(col => col.name);
+      const cols = (columns || []).map(col => col.name).filter(isExportableColumn);
       const columnMap = {};
       cols.forEach(c => {
         const m = c.match(/^(.*)_(en|ar)$/);
@@ -337,7 +342,7 @@ router.get('/database/excel', rateLimiters.sensitive, authMiddleware, checkExpor
             return;
           }
 
-          const cols = (columns || []).map(col => col.name);
+          const cols = (columns || []).map(col => col.name).filter(isExportableColumn);
           const columnMap = {};
           cols.forEach(c => {
             const m = c.match(/^(.*)_(en|ar)$/);

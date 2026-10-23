@@ -19,23 +19,30 @@ const gatewayNotConfigured = (res) => res.status(503).json({
   message: 'Online payment gateway is not configured'
 });
 
+// Tests replace the gateway with a stand-in; production code never calls this.
+let gatewayStandIn = null;
+exports.setPaymentGatewayForTests = (client) => { gatewayStandIn = client; };
+
 // Create order
 exports.createOrder = async (req, res) => {
   try {
-    const razorpay = getRazorpay();
+    const razorpay = getRazorpay() && (gatewayStandIn || getRazorpay());
     if (!razorpay) return gatewayNotConfigured(res);
 
     const { amount, currency = 'INR', receipt, classroomId, classroomName, feeType } = req.body;
 
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid amount' 
+    // Rupees from the request become a whole number of paise; text, fractions of a paisa,
+    // zero, negatives and absurd sums are refused before the gateway is asked.
+    const amountPaise = Math.round(Number(amount) * 100);
+    if (typeof amount === 'boolean' || !Number.isFinite(amountPaise) || amountPaise < 100 || amountPaise > 100000000 * 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid amount'
       });
     }
 
     const options = {
-      amount: amount * 100, // Convert to paise
+      amount: amountPaise,
       currency,
       receipt: receipt || `receipt_${Date.now()}`,
       payment_capture: 1
@@ -56,7 +63,6 @@ exports.createOrder = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to create order',
-      error: error.message
     });
   }
 };
@@ -64,7 +70,7 @@ exports.createOrder = async (req, res) => {
 // Verify payment
 exports.verifyPayment = async (req, res) => {
   try {
-    const razorpay = getRazorpay();
+    const razorpay = getRazorpay() && (gatewayStandIn || getRazorpay());
     if (!razorpay) return gatewayNotConfigured(res);
 
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
@@ -76,71 +82,70 @@ exports.verifyPayment = async (req, res) => {
       });
     }
 
-    // Generate signature for verification
+    // The gateway's signature proves the browser did not invent this payment
     const crypto = require('crypto');
-    const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
+    const given = String(razorpay_signature);
+    const isAuthentic =
+      expectedSignature.length === given.length && crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(given));
+    if (!isAuthentic) {
+      return res.status(400).json({ success: false, message: 'Payment verification failed' });
+    }
 
-    const isAuthentic = expectedSignature === razorpay_signature;
+    // Who the fee is for: a student pays for themself; staff must name the student.
+    // (The API gate has already checked that a named student belongs to the caller's school.)
+    const studentId = req.user.role === 'student' ? req.user.userId : req.body.studentId;
+    if (!/^\d+$/.test(String(studentId))) {
+      return res.status(400).json({ success: false, message: 'A valid student ID is required.' });
+    }
 
-    if (isAuthentic) {
-      // Payment is verified - Save to database
-      try {
-        // Get payment details from Razorpay
-        const payment = await razorpay.payments.fetch(razorpay_payment_id);
-        
-        // Save transaction to MongoDB
-        const Transaction = require('../models/Transaction');
-        const Student = require('../models/Student');
-        
-        const transaction = new Transaction({
-          studentId: null, // Skip studentId for demo
-          studentName: req.body.studentName || 'Student Name',
-          orderId: razorpay_order_id,
-          paymentId: razorpay_payment_id,
-          amount: payment.amount / 100, // convert from paise to rupees
-          status: 'success',
-          paymentMethod: payment.method,
-          paymentOption: req.body.paymentOption || 'installment',
-          classroomId: req.body.classroomId,
-          classroomName: req.body.classroomName,
-          feeType: req.body.feeType || 'class_fee',
-          createdAt: new Date()
-        });
-        
-        await transaction.save();
-        
-        // Skip student fees update for demo (no studentId)
-        
+    // Amount and status come from the gateway, never from the request
+    let payment;
+    try {
+      payment = await razorpay.payments.fetch(razorpay_payment_id);
+    } catch (fetchError) {
+      console.error('Razorpay payment lookup failed:', fetchError.message);
+      return res.status(502).json({ success: false, message: 'The payment could not be confirmed with the gateway.' });
+    }
+    if (payment.order_id !== razorpay_order_id || payment.status !== 'captured') {
+      return res.status(400).json({ success: false, message: 'Payment verification failed' });
+    }
+
+    // Recorded once: the payments table has a unique index on the gateway payment id, so a
+    // repeated request (double click, retry) finds the existing row instead of adding one.
+    const db = req.tenant?.database || require('../config/database-switch');
+    const amountPaise = Number(payment.amount);
+    db.run(
+      `INSERT INTO payments (studentId, amount, amountPaise, type, status, transactionId, razorpay_payment_id, razorpay_order_id,
+                             razorpay_signature, description, allocationStatus, paymentMethod, recordedBy)
+       VALUES (?, ?, ?, 'online', 'success', ?, ?, ?, ?, ?, 'unallocated', ?, ?)`,
+      [studentId, amountPaise / 100, amountPaise, razorpay_payment_id, razorpay_payment_id, razorpay_order_id, given,
+        'Online fee payment', payment.method || 'online', req.user.userId],
+      function (insertError) {
+        if (insertError && /UNIQUE constraint failed/.test(insertError.message)) {
+          return res.status(200).json({ success: true, message: 'Payment already recorded', payment_id: razorpay_payment_id, order_id: razorpay_order_id });
+        }
+        if (insertError) {
+          console.error('Recording a verified payment failed:', insertError.message);
+          return res.status(500).json({ success: false, message: 'Payment verified but could not be recorded. Please contact the school office.' });
+        }
         res.status(200).json({
           success: true,
           message: 'Payment verified successfully',
           payment_id: razorpay_payment_id,
           order_id: razorpay_order_id,
-          transactionId: transaction._id
-        });
-      } catch (dbError) {
-        console.error('Database error:', dbError);
-        res.status(500).json({
-          success: false,
-          message: 'Payment verified but failed to save to database'
+          transactionId: this.lastID
         });
       }
-    } else {
-      res.status(400).json({
-        success: false,
-        message: 'Payment verification failed'
-      });
-    }
+    );
   } catch (error) {
     console.error('Error verifying payment:', error);
     res.status(500).json({
       success: false,
       message: 'Payment verification failed',
-      error: error.message
     });
   }
 };
@@ -550,53 +555,45 @@ exports.generateInvoice = async (req, res) => {
   }
 };
 
-// Get transaction history for a student
+// Payment history is read from the payments table (the same table the fee pages write).
+// These two handlers used a MongoDB model that this application never connects to.
+const PAYMENT_COLUMNS = `p.id, p.studentId, p.amount, p.type, p.status, p.transactionId, p.razorpay_payment_id,
+  p.razorpay_order_id, p.description, p.createdAt, u.name AS studentName, u.email AS studentEmail`;
+
+const paymentRows = (req, where, params) =>
+  new Promise((resolve, reject) => {
+    const db = req.tenant?.database || require('../config/database-switch');
+    db.all(
+      `SELECT ${PAYMENT_COLUMNS} FROM payments p JOIN users u ON u.id = p.studentId
+       WHERE ${where} ORDER BY p.createdAt DESC, p.id DESC`,
+      params,
+      (err, rows) => (err ? reject(err) : resolve(rows || []))
+    );
+  });
+
+// One student's payments. The route has already checked that a student asks only for
+// their own id and that the student belongs to the caller's school.
 exports.getTransactionHistory = async (req, res) => {
   try {
-    const Transaction = require('../models/Transaction');
     const studentId = req.params.studentId;
-    
-    let transactions;
-    if (studentId && studentId !== 'demo') {
-      // Fetch transactions for specific student
-      transactions = await Transaction.find({ studentId })
-        .sort({ createdAt: -1 });
-    } else {
-      // Fetch all transactions for demo
-      transactions = await Transaction.find({})
-        .sort({ createdAt: -1 });
+    if (!/^\d+$/.test(String(studentId))) {
+      return res.status(400).json({ success: false, message: 'A valid student ID is required.' });
     }
-    
-    res.status(200).json({
-      success: true,
-      transactions
-    });
+    const transactions = await paymentRows(req, 'p.studentId = ? AND u.university_id = ?', [studentId, req.user.universityId]);
+    res.status(200).json({ success: true, transactions });
   } catch (error) {
-    console.error('Error fetching transactions:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching transactions'
-    });
+    console.error('Error fetching transactions:', error.message);
+    res.status(500).json({ success: false, message: 'Error fetching transactions' });
   }
 };
 
-// Get all transactions for accountant portal
+// All payments of the caller's school, for the accountant portal
 exports.getAllTransactions = async (req, res) => {
   try {
-    const Transaction = require('../models/Transaction');
-    
-    const transactions = await Transaction.find({})
-      .sort({ createdAt: -1 });
-    
-    res.status(200).json({
-      success: true,
-      transactions
-    });
+    const transactions = await paymentRows(req, 'u.university_id = ?', [req.user.universityId]);
+    res.status(200).json({ success: true, transactions });
   } catch (error) {
-    console.error('Error fetching all transactions:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching transactions'
-    });
+    console.error('Error fetching all transactions:', error.message);
+    res.status(500).json({ success: false, message: 'Error fetching transactions' });
   }
 };

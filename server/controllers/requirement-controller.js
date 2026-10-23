@@ -25,7 +25,7 @@ const createRequirement = async (req, res) => {
     `, [teacherId, teacherName, classroomName, priority], function(err) {
       if (err) {
         console.error("Error creating requirement:", err);
-        return res.status(500).json({ message: 'Database error: ' + err.message });
+        return res.status(500).json({ message: 'Database error' });
       }
 
       const requirementId = this.lastID;
@@ -95,8 +95,6 @@ const createRequirement = async (req, res) => {
 const getAllRequirements = async (req, res) => {
   try {
     console.log("GET ALL REQUIREMENTS - Request received");
-    console.log("GET ALL REQUIREMENTS - User:", req.user);
-    console.log("GET ALL REQUIREMENTS - User role:", req.user.role);
 
     db.all(`
       SELECT 
@@ -112,9 +110,11 @@ const getAllRequirements = async (req, res) => {
         ri.quantity,
         ri.status as itemStatus
       FROM requirements r
+      JOIN users teacher ON teacher.id = r.teacherId
       LEFT JOIN requirement_items ri ON r.id = ri.requirementId
+      WHERE teacher.university_id = ?
       ORDER BY r.requestedAt DESC, ri.id
-    `, (err, rows) => {
+    `, [req.user.universityId], (err, rows) => {
       try {
         if (err) {
           console.error("Database error in getAllRequirements:", err);
@@ -171,7 +171,6 @@ const getMyRequirements = async (req, res) => {
     const teacherId = req.user.userId;
     console.log("=== GET MY REQUIREMENTS ===");
     console.log("Teacher ID from JWT:", teacherId);
-    console.log("User object:", req.user);
 
     db.all(`
       SELECT 
@@ -290,14 +289,14 @@ const updateRequirementItemStatus = async (req, res) => {
     
     console.log("UPDATE REQUIREMENT ITEM - STARTING");
     console.log("UPDATE REQUIREMENT ITEM - Request:", { itemId, status });
-    console.log("UPDATE REQUIREMENT ITEM - User:", req.user);
 
     // First, get the requirement item to find the requirementId and teacherId
     db.get(`
       SELECT ri.*, r.teacherId, r.classroomName FROM requirement_items ri
       JOIN requirements r ON ri.requirementId = r.id
-      WHERE ri.id = ?
-    `, [itemId], (err, item) => {
+      JOIN users teacher ON teacher.id = r.teacherId
+      WHERE ri.id = ? AND teacher.university_id = ?
+    `, [itemId, req.user.universityId], (err, item) => {
       if (err) {
         console.error("Error finding requirement item:", err);
         return res.status(500).json({ message: 'Database error' });

@@ -15,7 +15,7 @@ const createAnnouncement = async (req, res) => {
     const { title, message, publishFor, courseId, classroomId, allClasses } = req.body;
     const userId = req.user.userId;
     const role = req.user.role;
-    const universityId = req.user?.universityId || req.user?.university_id || 1;
+    const universityId = req.user?.universityId || req.user?.university_id;
 
     if (!title || !message) {
       return res.status(400).json({ message: "Title and message required" });
@@ -147,7 +147,7 @@ const getAllAnnouncements = async (req, res) => {
   try {
     const role = req.user.role;
     const userId = req.user.userId;
-    const universityId = req.user?.universityId || req.user?.university_id || 1;
+    const universityId = req.user?.universityId || req.user?.university_id;
 
     let query = `
       SELECT a.*, u.name as createdByUserName
@@ -226,7 +226,7 @@ const deleteAnnouncement = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.userId;
     const role = req.user.role;
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
 
     // Check if announcement exists and user has permission
     db.get("SELECT * FROM announcements WHERE id = ? AND university_id = ?", [id, universityId], (err, announcement) => {
@@ -269,7 +269,6 @@ const markAsRead = async (req, res) => {
     // Extract userId from req.user (handle both userId and id properties)
     const userId = req.user?.userId || req.user?.id;
 
-    console.log(`📢 Mark as read: announcement ${id}, user ${userId}, req.user:`, req.user);
 
     if (!userId) {
       console.warn(`⚠️ No userId for announcement ${id}, skipping mark as read`);
@@ -341,7 +340,7 @@ const markAsRead = async (req, res) => {
 const getAnnouncement = async (req, res) => {
   try {
     const userId = req.user?.userId;
-    const universityId = req.user?.universityId || req.user?.university_id || 1;
+    const universityId = req.user?.universityId || req.user?.university_id;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     db.get(

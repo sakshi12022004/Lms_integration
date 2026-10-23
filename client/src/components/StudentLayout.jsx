@@ -12,7 +12,8 @@ import {
   FileCheck,
   Calendar,
   CreditCard,
-  Bell
+  Bell,
+  Video
 } from 'lucide-react';
 import { useAuth } from "../auth/auth";
 import QuotaLimitModal from './QuotaLimitModal';
@@ -20,6 +21,7 @@ import { useTranslation } from "../context/TranslationContext";
 import GuideBotLauncher from '../guidebot/runtime/GuideBotLauncher';
 import whiteLogo from '../assets/core5-final-rbg.png';
 import AnnouncementBell from './AnnouncementBell';
+import LiveNowBanner from './lectures/LiveNowBanner';
 
 const StudentLayout = ({ children }) => {
   const location = useLocation();
@@ -88,6 +90,14 @@ const StudentLayout = ({ children }) => {
       label: 'Results',
       description: 'Academic Results',
       tourId: 'nav-results'
+    },
+    {
+      path: '/student/lectures',
+      nameKey: 'nav_lectures',
+      icon: <Video size={20} />,
+      label: 'Your Lectures',
+      description: 'Live classes and history',
+      tourId: 'nav-lectures'
     },
     {
       path: '/student/attendance',
@@ -383,6 +393,9 @@ const StudentLayout = ({ children }) => {
           flex-1 overflow-y-auto
         `}
       >
+
+        {/* A lecture of the student's that is live or about to start: Join from any page */}
+        <LiveNowBanner API={API} token={token} />
 
         {/* ================= MOBILE MENU TRIGGER ================= */}
         <div className="md:hidden p-3 flex items-center justify-between bg-white border-b border-gray-100">

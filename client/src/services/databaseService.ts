@@ -1,7 +1,8 @@
 // Database persistence service for all LMS entities
 import axios from 'axios';
+import { API_BASE } from '../config/api';
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://core5.io/api';
+const API_BASE_URL = API_BASE;
 
 class DatabasePersistenceService {
   // Transactions

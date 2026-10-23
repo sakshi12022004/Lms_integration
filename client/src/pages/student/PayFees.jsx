@@ -25,7 +25,7 @@ import { useTranslation } from '../../context/TranslationContext';
 import { toast } from 'react-toastify';
 
 // Razorpay test configuration
-const RAZORPAY_KEY_ID = 'rzp_test_S7aUmYSaQyE0h6';
+const RAZORPAY_KEY_ID = (import.meta.env.VITE_RAZORPAY_KEY_ID || '');
 
 const PayFees = () => {
   const { user, token, API } = useAuth();
@@ -256,6 +256,19 @@ const PayFees = () => {
     setShowPaymentModal(true);
   };
 
+  // "Pay Fees Online": start with the first plan the school offers, or the full balance
+  const openPayment = () => {
+    const plan = activePlans[0];
+    if (plan && plan.installments?.length) {
+      openPlanPayment(plan, 0);
+      return;
+    }
+    setPaymentOption('Full Payment');
+    setPaymentAmount(String(pendingAmount > 0 ? pendingAmount : totalFee));
+    setPaymentError('');
+    setShowPaymentModal(true);
+  };
+
   const handleSelectPlanInModal = (planId) => {
     setSelectedPlanId(planId);
     setSelectedInstallmentIdx(0);
@@ -291,74 +304,74 @@ const PayFees = () => {
     setPaymentLoading(true);
     setPaymentError('');
 
+    const authHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+
     try {
+      // The server creates the order. Nothing is recorded as paid from this page: a payment
+      // counts only after the server has confirmed it with the gateway (verify-payment).
+      const orderRes = await fetch(`${API}/payments/create-order`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ amount: numAmount, feeType: paymentOption })
+      });
+      const orderData = await orderRes.json().catch(() => ({}));
+      if (orderRes.status === 503) {
+        setPaymentError('Online payment is not available yet. Please pay at the school office.');
+        return;
+      }
+      if (!orderRes.ok || !orderData.success || !orderData.order?.id) {
+        throw new Error(orderData.message || 'The payment could not be started.');
+      }
+
       if (!window.Razorpay) {
         await new Promise((resolve, reject) => {
           const script = document.createElement('script');
           script.src = 'https://checkout.razorpay.com/v1/checkout.js';
           script.async = true;
           script.onload = resolve;
-          script.onerror = reject;
+          script.onerror = () => reject(new Error('The payment window could not be loaded. Check your connection and try again.'));
           document.body.appendChild(script);
         });
       }
 
       const options = {
         key: RAZORPAY_KEY_ID,
-        amount: numAmount * 100,
-        currency: 'INR',
+        order_id: orderData.order.id,
+        amount: orderData.order.amount,
+        currency: orderData.order.currency || 'INR',
         name: 'Core5 Academy of Excellence',
         description: `Fee Payment - ${user?.name || 'Student'} (${paymentOption})`,
         image: '/core5-final-rbg.png',
         prefill: {
-          name: user?.name || 'Student',
-          email: user?.email || 'student@core5.co.in',
-          contact: user?.phone || '9876543210'
+          name: user?.name || '',
+          email: user?.email || '',
+          contact: user?.phone || ''
         },
         theme: {
           color: '#002366'
         },
         handler: async function (response) {
           try {
-            const newTransaction = {
-              studentId: user?.id,
-              studentName: user?.name,
-              amount: numAmount,
-              paymentOption: paymentOption,
-              status: 'success',
-              feeCategory: currentStructure.category || 'Tuition',
-              feeDescription: currentStructure.description || 'Academic Fee',
-              transactionId: response.razorpay_payment_id || `TXN_${Date.now()}`,
-              razorpay_payment_id: response.razorpay_payment_id,
-              type: paymentOption,
-              description: `Fee payment - ${paymentOption === 'full' ? 'Full Clearance' : paymentOption === 'term1' ? 'Term 1' : 'Term 2'}`
-            };
-
-            const uiTransaction = {
-              id: response.razorpay_payment_id || `TXN_${Date.now()}`,
-              ...newTransaction,
-              paymentDate: new Date().toLocaleDateString('en-GB'),
-              paymentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              timestamp: new Date().toISOString()
-            };
-
-            emitTransaction(uiTransaction);
-
-            fetch(`${API}/transactions`, {
+            const verifyRes = await fetch(`${API}/payments/verify-payment`, {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`
-              },
-              body: JSON.stringify(newTransaction)
-            }).catch(e => console.warn('Background sync error:', e));
-
+              headers: authHeaders,
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            const verifyData = await verifyRes.json().catch(() => ({}));
+            if (!verifyRes.ok || !verifyData.success) {
+              throw new Error(verifyData.message || 'The payment could not be confirmed.');
+            }
             setShowPaymentModal(false);
-            toast.success(`Payment of ₹${numAmount.toLocaleString('en-IN')} completed successfully!`);
+            toast.success(`Payment of ₹${numAmount.toLocaleString('en-IN')} received.`);
             if (user?.id) fetchDbPayments(user.id);
           } catch (err) {
-            console.error('Error handling payment success:', err);
-            toast.success(`Payment verified! ID: ${response.razorpay_payment_id}`);
+            console.error('Payment confirmation error:', err);
+            setPaymentError(`${err.message} If money was taken, contact the school office with payment ID ${response.razorpay_payment_id}.`);
+            toast.error('Payment could not be confirmed');
           }
         }
       };
@@ -371,24 +384,9 @@ const PayFees = () => {
       rzp.open();
 
     } catch (err) {
-      console.error('Razorpay initialization error:', err);
-      const fakeTxnId = `pay_sim_${Date.now().toString().slice(-8)}`;
-      const uiTransaction = {
-        id: fakeTxnId,
-        studentId: user?.id,
-        studentName: user?.name,
-        amount: numAmount,
-        paymentOption: paymentOption,
-        status: 'success',
-        feeCategory: currentStructure.category || 'Tuition',
-        transactionId: fakeTxnId,
-        paymentDate: new Date().toLocaleDateString('en-GB'),
-        paymentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        description: `Fee payment - ${paymentOption}`
-      };
-      emitTransaction(uiTransaction);
-      setShowPaymentModal(false);
-      toast.success(`Simulated payment of ₹${numAmount.toLocaleString('en-IN')} recorded successfully!`);
+      console.error('Payment start error:', err);
+      setPaymentError(err.message || 'The payment could not be started.');
+      toast.error('Payment could not be started');
     } finally {
       setPaymentLoading(false);
     }

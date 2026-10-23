@@ -102,16 +102,23 @@ const enrollStudentInClassroom = async (studentId, classroomId) => {
 
   // Same follow-up as the existing "assign student" flow: give the student the
   // courses that belong to this classroom.
-  await run(
-    `INSERT OR IGNORE INTO course_students (courseId, studentId)
-     SELECT id, ? FROM courses WHERE classroomId = ?`,
-    [studentId, classroomId]
-  );
+  // (required here, not at the top: courseClasses -> teachingScope -> dbAsync is a longer chain)
+  await require('./courseClasses').enrollStudentInClassCourses(studentId, classroomId);
 
   return { alreadyEnrolled: !!existing, studentCount };
 };
 
+// Marks and attendance may only be recorded for a student who is in that classroom.
+const isStudentOfClassroom = async (studentId, classroomId) => {
+  const membership = await get(
+    'SELECT id FROM student_classroom_assignment WHERE studentId = ? AND classroomId = ?',
+    [studentId, classroomId]
+  );
+  return Boolean(membership);
+};
+
 module.exports = {
+  isStudentOfClassroom,
   resolveClassroomSelection,
   refreshStudentCount,
   enrollStudentInClassroom,

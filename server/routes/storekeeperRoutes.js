@@ -17,7 +17,6 @@ router.get('/vendors', authMiddleware, (req, res) => {
     const userId = req.user?.userId;
     
     console.log('GET /vendors - Request received');
-    console.log('User from auth middleware:', req.user);
     
     if (!userId) {
       return res.status(401).json({ success: false, message: 'Storekeeper not authenticated' });
@@ -118,7 +117,6 @@ router.get('/vendor-stock', authMiddleware, (req, res) => {
     const userId = req.user?.userId;
     
     console.log('GET /vendor-stock - Request received');
-    console.log('User from auth middleware:', req.user);
     
     if (!userId) {
       return res.status(401).json({ success: false, message: 'Storekeeper not authenticated' });

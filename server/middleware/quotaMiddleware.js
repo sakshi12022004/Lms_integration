@@ -232,7 +232,7 @@ exports.checkClassroomQuota = async (req, res, next) => {
 
 
 
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
 
     const quota = await getQuotaForUser(userId, req);
 
@@ -318,7 +318,7 @@ exports.checkTeacherQuota = async (req, res, next) => {
 
 
 
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
 
     const quota = await getQuotaForUser(userId, req);
 
@@ -396,7 +396,7 @@ exports.checkMentorQuota = async (req, res, next) => {
 
 
 
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
 
     const quota = await getQuotaForUser(userId, req);
 
@@ -462,7 +462,7 @@ exports.checkStudentQuota = async (req, res, next) => {
 
 
 
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
 
     const quota = await getQuotaForUser(userId, req);
 
@@ -969,7 +969,7 @@ exports.getQuotaUsage = async (req, res) => {
 
 
 
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
 
     const quota = await getQuotaForUser(userId, req);
 
@@ -1135,7 +1135,7 @@ exports.checkCoursesQuota = async (req, res, next) => {
 
 
 
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
 
     const quota = await getQuotaForUser(userId, req);
 

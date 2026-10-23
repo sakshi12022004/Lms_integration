@@ -11,7 +11,7 @@ import { Loader2, Search, Users, X } from "lucide-react";
  * onConfirm(ids, wholeClass): wholeClass = every student selected (sent as "whole class", so students who
  * join the class later also get the test, as before).
  */
-export default function AssignToModal({ base, auth, classroom, classLabel, testTitle, suggested = null, busy = false, onCancel, onConfirm }) {
+export default function AssignToModal({ base, auth, classroom, courseId = null, classLabel, testTitle, suggested = null, busy = false, onCancel, onConfirm }) {
   const [students, setStudents] = useState(null); // null = loading
   const [loadError, setLoadError] = useState("");
   const [selected, setSelected] = useState(() => new Set());
@@ -20,7 +20,8 @@ export default function AssignToModal({ base, auth, classroom, classLabel, testT
 
   useEffect(() => {
     let alive = true;
-    axios.get(`${base}/classrooms/${classroom.id}/students`, auth)
+    // a course test can only be given to the class's students enrolled in that course
+    axios.get(`${base}/classrooms/${classroom.id}/students${courseId ? `?courseId=${courseId}` : ""}`, auth)
       .then((res) => {
         if (!alive) return;
         const list = res.data.students;

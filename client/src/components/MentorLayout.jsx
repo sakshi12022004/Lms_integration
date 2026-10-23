@@ -20,6 +20,7 @@ import { useAuth } from "../auth/auth";
 import QuotaLimitModal from './QuotaLimitModal';
 import { useTranslation } from "../context/TranslationContext";
 import AnnouncementBell from "./AnnouncementBell";
+import LiveNowBanner from "./lectures/LiveNowBanner";
 import LoginFooter from './LoginFooter';
 import GuideBotLauncher from '../guidebot/runtime/GuideBotLauncher';
 import whiteLogo from '../assets/core5-final-rbg.png';
@@ -66,6 +67,12 @@ const MentorLayout = ({ children }) => {
           nameKey: "my_classrooms",
           icon: <School size={20} />,
           tourId: "nav-my-classroom",
+        },
+        {
+          path: "/mentor/students",
+          nameKey: "my_students",
+          icon: <BookOpen size={20} />,
+          tourId: "nav-my-students",
         },
         {
           path: "/mentor/attendance",
@@ -299,6 +306,8 @@ const MentorLayout = ({ children }) => {
         </header>
 
         {/* ===== CONTENT ===== */}
+        {/* the teacher's lecture that is live or due: Start / Open from any page */}
+        <LiveNowBanner API={API} token={token} mode="teacher" />
         <div className="flex-1 overflow-y-auto scrollable-content p-4 md:p-6">{children}</div>
       </main>
       

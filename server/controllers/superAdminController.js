@@ -1,5 +1,6 @@
 const db = require("../config/database-switch");
 const bcrypt = require("bcryptjs");
+const { isEmail } = require("../helpers/validators");
 const {
   getSuperadminSubscription,
   checkUniversityQuota,
@@ -39,6 +40,10 @@ const createUniversityWithAdmin = async (req, res) => {
       return res.status(400).json({ message: "Official email is required" });
     }
 
+    if (!isEmail(resolvedAdminEmail)) {
+      return res.status(400).json({ message: "Enter a valid email address" });
+    }
+
     if (phone && !/^[0-9]{10}$/.test(String(phone).replace(/\D/g, ''))) {
       return res.status(400).json({ message: "Phone number must be exactly 10 digits" });
     }
@@ -64,7 +69,7 @@ const createUniversityWithAdmin = async (req, res) => {
     }
 
     // 🔑 auto-generate password
-    const rawPassword = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6).toUpperCase();
+    const rawPassword = require('../utils/passwordUtils').generatePassword(12);
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
     // Create university first to get the ID
@@ -125,6 +130,10 @@ const createUser = async (req, res) => {
 
     if (!name || !email || !password || !role || !universityId) {
       return res.status(400).json({ message: "All fields are required (including universityId)" });
+    }
+
+    if (!isEmail(email)) {
+      return res.status(400).json({ message: "Enter a valid email address" });
     }
 
     // ✅ normalize email
@@ -294,6 +303,9 @@ const updateUser = async (req, res) => {
 
     const updatedName = name !== undefined ? name.trim() : user.name;
     const updatedEmail = email !== undefined ? email.trim().toLowerCase() : user.email;
+    if (email !== undefined && !isEmail(updatedEmail)) {
+      return res.status(400).json({ message: "Enter a valid email address" });
+    }
     const updatedRole = role !== undefined ? role : user.role;
     const updatedApproved = isApproved !== undefined ? (isApproved ? 1 : 0) : user.isApproved;
     const updatedUniId = universityId !== undefined ? universityId : user.university_id;

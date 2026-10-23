@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/auth';
 import { Download, Database, FileSpreadsheet, RefreshCw, Eye, AlertCircle, CheckCircle } from 'lucide-react';
+import { downloadWithSession } from '../config/download';
 
 const DatabaseExport = () => {
   const { token, API } = useAuth();
@@ -101,7 +102,7 @@ const DatabaseExport = () => {
 
   const downloadTableExcel = (tableName) => {
     setExportStatus({ type: 'info', message: `Downloading ${tableName} data...` });
-    window.open(`${API}/database-export/table/${tableName}/excel?token=${token}&lang=${exportLang}`, '_blank');
+    downloadWithSession(`${API}/database-export/table/${tableName}/excel?lang=${exportLang}`).catch((err) => alert(err.message));
     setTimeout(() => {
       setExportStatus({ type: 'success', message: `${tableName} export completed!` });
     }, 2000);
@@ -109,7 +110,7 @@ const DatabaseExport = () => {
 
   const downloadFullDatabase = () => {
     setExportStatus({ type: 'info', message: 'Downloading full database...' });
-    window.open(`${API}/database-export/database/excel?token=${token}&lang=${exportLang}`, '_blank');
+    downloadWithSession(`${API}/database-export/database/excel?lang=${exportLang}`).catch((err) => alert(err.message));
     setTimeout(() => {
       setExportStatus({ type: 'success', message: 'Full database export completed!' });
     }, 3000);

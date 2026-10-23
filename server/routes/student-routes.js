@@ -9,6 +9,11 @@ const {
 
 const router = express.Router();
 
+// Ids in the URL must name a record the caller may work with: same school, and for
+// students and teachers their own classes, courses and records (helpers/schoolScope.js).
+const { guardParams } = require("../helpers/schoolScope");
+guardParams(router, { studentId: "user" });
+
 // All routes require authentication
 router.use(authMiddleware);
 

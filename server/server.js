@@ -1,33 +1,35 @@
+const path = require("path");
+
+// Environment first: every module below reads process.env while loading.
+// Automated tests set LMS_SKIP_DOTENV so a developer's real .env (mail, payment
+// and AI credentials) can never leak into a test run.
+if (process.env.LMS_SKIP_DOTENV !== "true") {
+  require("dotenv").config({ path: path.join(__dirname, ".env") });
+}
+
+const { assertSecureStartup, getAllowedOrigins } = require("./config/securityConfig");
+assertSecureStartup();
+
+require("./middleware/asyncErrors"); // errors thrown in async handlers reach the error handler
 const express = require("express");
 const cors = require("cors");
-const connectDB = require("./config/database-switch");
-const path = require("path");
 const http = require("http");
 const { Server } = require("socket.io");
-const fs = require("fs");
 
-// Load environment variables early
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+require("./config/database-switch");
+const { securityMiddleware } = require("./middleware/security");
+const { rateLimiters } = require("./middleware/rateLimiter");
+const authMiddleware = require("./middleware/authMiddleware");
+const requireTenant = require("./middleware/requireTenant");
+const { apiAccessGate } = require("./middleware/apiAccessGate");
+const { verifyToken } = require("./config/jwt");
+const { UPLOADS_DIR, requireSignedUploadLink } = require("./middleware/uploadPolicy");
 
-// Import security middleware
-const { securityMiddleware } = require('./middleware/security');
-console.log('🛡️ Security middleware loaded with Helmet');
-
-// Import rate limiting middleware
-const { rateLimiters } = require('./middleware/rateLimiter');
-console.log('✅ Rate limiting middleware loaded (50 requests per minute)');
-
-// Import subscription scheduler for automated expiration
-require('./schedulers/subscription-scheduler');
-console.log('📅 Checking for expired subscriptions at 16/3/2026, 11:43:10 am');
-require('./schedulers/plan-monitor');
-console.log('🚀 Starting Automated Plan Monitoring System...');
-console.log('📅 Checking for plan changes every 30 seconds');
-
-console.log('Looking for .env at:', path.join(__dirname, '.env'));
-console.log('.env file exists:', fs.existsSync(path.join(__dirname, '.env')));
-if (fs.existsSync(path.join(__dirname, '.env'))) {
-  console.log('Loaded .env configuration successfully');
+// Background jobs (subscription expiry, plan monitor). Tests switch them off.
+const backgroundJobsEnabled = process.env.LMS_DISABLE_BACKGROUND_JOBS !== "true";
+if (backgroundJobsEnabled) {
+  require("./schedulers/subscription-scheduler");
+  require("./schedulers/plan-monitor");
 }
 
 const app = express();
@@ -35,64 +37,75 @@ const app = express();
 // Apply security middleware globally (after app creation, before other middleware)
 app.use(securityMiddleware);
 
-// Apply rate limiting to test endpoint
-app.get('/api/test-rate-limit', rateLimiters.general, (req, res) => {
-  res.json({
-    success: true,
-    message: 'Rate limiting test endpoint',
-    timestamp: new Date().toISOString(),
-    rateLimitInfo: {
-      limit: 50,
-      windowMs: 60000,
-      message: '50 requests per minute allowed'
-    }
+// Behind a reverse proxy the client address is in X-Forwarded-For. Trust it only
+// when the operator says how many proxies there are; otherwise anyone could spoof
+// the address the rate limiters count by.
+if (process.env.TRUST_PROXY_HOPS) {
+  app.set("trust proxy", parseInt(process.env.TRUST_PROXY_HOPS, 10) || 0);
+}
+
+// Every request gets an id (returned as X-Request-Id) and one log line when it ends:
+// what was asked, by which account, the result and how long it took. No bodies, query
+// strings, tokens or names are logged.
+app.use((req, res, next) => {
+  req.id = require("crypto").randomUUID();
+  res.setHeader("X-Request-Id", req.id);
+  if (process.env.LMS_ACCESS_LOG === "off") return next();
+  const started = process.hrtime.bigint();
+  res.on("finish", () => {
+    console.log(JSON.stringify({
+      time: new Date().toISOString(),
+      requestId: req.id,
+      method: req.method,
+      path: req.originalUrl.split("?")[0],
+      status: res.statusCode,
+      ms: Math.round(Number(process.hrtime.bigint() - started) / 1e6),
+      userId: req.user?.userId ?? null,
+      role: req.user?.role ?? null,
+      school: req.user?.universityId ?? null,
+    }));
   });
+  next();
 });
 
 // Set timeout configurations for stability
 app.use((req, res, next) => {
   res.setTimeout(300000, () => {
-    console.log('Request timeout');
-    res.status(408).send('Request timeout');
+    res.status(408).send("Request timeout");
   });
   next();
 });
 
-// Increase body size limits for large requests
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+/* ================= CORS ================= */
+// One explicit allow-list. A wildcard origin together with credentials would let
+// any website call this API with a signed-in user's session.
+const allowedCorsOrigins = getAllowedOrigins();
+console.log("CORS origins allowed:", allowedCorsOrigins);
 
-// Comprehensive CORS configuration
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000', 'http://localhost:8080'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Authorization', 'Cache-Control', 'Accept', 'X-CSRF-Token', 'X-Auth-Token'],
-  exposedHeaders: ['Content-Length', 'Content-Type']
+app.use(
+  cors({
+    origin: allowedCorsOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-User-ID", "Cache-Control", "Accept"],
+    exposedHeaders: ["Content-Length", "Content-Type", "Content-Disposition"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    maxAge: 86400,
+  })
+);
+
+// JSON bodies are small in this application (files travel as multipart uploads with their
+// own limits), so a modest ceiling keeps one request from exhausting memory.
+const jsonBodyLimit = process.env.JSON_BODY_LIMIT || "5mb";
+app.use(express.json({
+  limit: jsonBodyLimit,
+  // the meeting provider's webhook signature is computed over the exact bytes received
+  verify: (req, res, buf) => {
+    if (req.originalUrl.startsWith("/api/live-classes/webhooks/")) req.rawBody = buf.toString("utf8");
+  },
 }));
-
-// Manual CORS middleware for additional control
-app.use((req, res, next) => {
-  console.log('🔍 Global CORS - Method:', req.method, 'URL:', req.url, 'Origin:', req.headers.origin);
-  
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Authorization, Cache-Control, Accept, X-CSRF-Token, X-Auth-Token, X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400');
-  res.header('Access-Control-Expose-Headers', 'Content-Length, Content-Type');
-  
-  if (req.method === 'OPTIONS') {
-    console.log('✅ Global CORS Preflight - Sending 200');
-    return res.status(200).send();
-  }
-  
-  next();
-});
-
-console.log('Environment variables loaded:');
-console.log('PORT:', process.env.PORT);
-console.log('JWT_REFRESH_SECRET:', process.env.JWT_REFRESH_SECRET ? 'SET' : 'NOT SET');
+app.use(express.urlencoded({ limit: jsonBodyLimit, extended: true }));
 
 /* ================= DATABASE INITIALIZATION ================= */
 const masterDB = require("./config/master-db");
@@ -101,15 +114,11 @@ const tenantConnectionManager = require("./config/tenant-connection-manager");
 // Initialize master database connection
 async function initializeDatabase() {
   try {
-    console.log('🔧 Initializing master database connection...');
     await masterDB.connect();
-    
-    // Set master database for tenant connection manager
     tenantConnectionManager.setMasterDB(masterDB);
-    
-    console.log('✅ Database initialization complete');
+    console.log("✅ Database initialization complete");
   } catch (error) {
-    console.error('❌ Database initialization failed:', error.message);
+    console.error("❌ Database initialization failed:", error.message);
     process.exit(1);
   }
 }
@@ -122,33 +131,9 @@ const server = http.createServer(app);
 
 // Set server timeout configurations for stability
 server.timeout = 300000; // 5 minutes
-server.keepAliveTimeout = 65000; // 65 seconds  
+server.keepAliveTimeout = 65000; // 65 seconds
 server.headersTimeout = 66000; // 66 seconds
 server.requestTimeout = 300000; // 5 minutes
-
-const defaultCorsOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5174", 
-  "http://localhost:5175",
-  "http://localhost:5176",
-  "http://localhost:5177",
-  "http://localhost:5178",
-  "http://127.0.0.1:5173",
-  "http://127.0.0.1:5174",
-  "http://127.0.0.1:5175",
-  "http://127.0.0.1:5176",
-  "http://127.0.0.1:5177",
-  "http://127.0.0.1:5178"
-];
-
-const extraCorsOrigins = (process.env.CORS_ORIGINS || "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-const allowedCorsOrigins = Array.from(new Set([...defaultCorsOrigins, ...extraCorsOrigins]));
-
-console.log('CORS origins allowed:', allowedCorsOrigins);
 
 /* ================= SOCKET.IO ================= */
 const io = new Server(server, {
@@ -159,75 +144,118 @@ const io = new Server(server, {
   },
 });
 
-/* Make io accessible in controllers */
-app.use((req, res, next) => {
-  req.io = io;
-  next();
-});
-
-io.on("connection", (socket) => {
-  console.log("🟢 Socket connected:", socket.id);
-
-  // A signed-in client joins its own room so targeted notifications reach only that user
+// Realtime events carry school data, so a socket only receives them after it has
+// proved who it is. It then joins a room for its own account and one for its school.
+// A socket without a valid token stays connected but is in no room and hears nothing.
+io.on("connection", async (socket) => {
   try {
     const socketToken = socket.handshake?.auth?.token;
-    if (socketToken) {
-      const decoded = require("jsonwebtoken").verify(socketToken, process.env.JWT_SECRET || "default_jwt_secret_key");
-      if (decoded?.userId) socket.join(`user:${decoded.userId}`);
-    }
+    if (!socketToken) return;
+    const principal = await authMiddleware.resolvePrincipal(verifyToken(socketToken));
+    if (!principal || principal.stale) return;
+    if (principal.userId != null) socket.join(`user:${principal.userId}`);
+    if (principal.universityId != null) socket.join(`school:${principal.universityId}`);
   } catch (socketAuthErr) {
-    // Invalid or expired token: the socket stays connected but receives no targeted notifications
+    // Invalid or expired token: no rooms, no events.
   }
+});
 
-  socket.on("disconnect", () => {
-    console.log("🔴 Socket disconnected:", socket.id);
-  });
+const SECRET_FIELDS = new Set(["password", "password_hash", "db_password", "razorpay_signature", "otp"]);
+
+/** Deep copy of a realtime payload without credential fields. */
+function withoutSecrets(value) {
+  if (Array.isArray(value)) return value.map(withoutSecrets);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !SECRET_FIELDS.has(key))
+        .map(([key, nested]) => [key, withoutSecrets(nested)])
+    );
+  }
+  return value;
+}
+
+/* Realtime access for controllers: req.io.emit() reaches only the caller's own school. */
+app.use((req, res, next) => {
+  req.io = {
+    emit: (event, payload) => {
+      const universityId = req.user?.universityId;
+      if (universityId == null) return false;
+      return io.to(`school:${universityId}`).emit(event, withoutSecrets(payload));
+    },
+    to: (room) => io.to(room),
+  };
+  next();
 });
 
 // Notifications: realtime delivery + time-based reminders (deadlines, attendance, approvals)
 require("./services/notificationService").setIo(io);
-require("./schedulers/notification-scheduler").start();
+if (backgroundJobsEnabled) {
+  require("./schedulers/notification-scheduler").start();
+}
 
-// Make plan change emitter available globally for real-time updates
+// Plan changes are announced to the school they belong to, not to every connected browser.
 global.emitPlanChange = (planChangeData) => {
-  console.log("📡 Emitting plan change to all connected clients:", planChangeData);
-  io.emit('planChanged', planChangeData);
+  const universityId = planChangeData?.universityId ?? planChangeData?.university_id;
+  if (universityId == null) return;
+  io.to(`school:${universityId}`).emit("planChanged", planChangeData);
 };
 
 // Start server-side translator monitor (optional - controlled via MONITOR_* env vars)
-try {
-  const startTranslatorMonitor = require('./monitor/translatorMonitor');
-  startTranslatorMonitor(io).catch && startTranslatorMonitor(io);
-} catch (e) {
-  console.warn('Could not start translator monitor:', e.message || e);
+if (backgroundJobsEnabled) {
+  try {
+    const startTranslatorMonitor = require("./monitor/translatorMonitor");
+    startTranslatorMonitor(io).catch && startTranslatorMonitor(io);
+  } catch (e) {
+    console.warn("Could not start translator monitor:", e.message || e);
+  }
 }
 
 /* ================= MIDDLEWARE ================= */
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 // Language middleware - extract user's language preference
-const languageMiddleware = require('./middleware/languageMiddleware');
+const languageMiddleware = require("./middleware/languageMiddleware");
 app.use(languageMiddleware);
 
+/* ================= STATIC FILES ================= */
+// Uploaded files are served as downloads with their sniffing disabled, so an
+// uploaded HTML or SVG file cannot run script in the LMS origin.
 app.use(
-  cors({
-    origin: allowedCorsOrigins,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-User-ID"],
-    preflightContinue: false,
-    optionsSuccessStatus: 204
+  "/uploads",
+  requireSignedUploadLink, // private: only links handed out by the API to an authorised caller
+  express.static(UPLOADS_DIR, {
+    dotfiles: "deny",
+    index: false,
+    setHeaders: (res, filePath) => {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+      if (/\.(html?|svg|xml|xhtml|js|mjs)$/i.test(filePath)) {
+        res.setHeader("Content-Disposition", "attachment");
+      }
+    },
   })
 );
 
-/* ================= STATIC FILES ================= */
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-/* ================= TEST ROUTE (Early binding test) ================= */
+/* ================= HEALTH ================= */
+// Liveness: the process is up and answering.
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// Readiness: the process can also reach its database, and is not shutting down.
+// A load balancer or supervisor should send traffic only while this answers 200.
+let shuttingDown = false;
+app.get("/health/ready", (req, res) => {
+  if (shuttingDown) return res.status(503).json({ status: "shutting_down" });
+  require("./config/database-switch").get("SELECT 1 AS ok", [], (err, row) => {
+    if (err || !row) return res.status(503).json({ status: "database_unavailable" });
+    res.json({ status: "ready" });
+  });
+});
+
+/* ================= API ACCESS GATE ================= */
+// Deny by default: every /api request must match an entry in config/accessPolicy.js.
+// Public entries pass; everything else needs a valid session and an allowed role.
+app.use("/api", rateLimiters.general, apiAccessGate);
 
 /* ================= ROUTES ================= */
 
@@ -235,26 +263,22 @@ app.get("/health", (req, res) => {
 app.use("/api/auth", require("./routes/auth-routes"));
 app.use("/api/password-reset", require("./routes/passwordResetRoutes"));
 app.use("/api/users", require("./routes/user-routes"));
-const tenantDatabaseIsolation = require("./middleware/tenant-db-isolated");
-// app.use("/api/superadmin", tenantDatabaseIsolation, require("./routes/superadminRoutes")); // REMOVED - DUPLICATE
 app.use("/api/student", require("./routes/student-routes"));
 
 /* Language Preferences */
 app.use("/api/language", require("./routes/languageRoutes"));
 
-
 /* Admin (ADD STUDENT / TEACHER / CLASSROOM later) */
 app.use("/api/admin", require("./routes/adminRoutes"));
 
 /* Student Onboarding Agent */
-const authMiddleware = require("./middleware/authMiddleware");
 const onboarding = require("./routes/onboardingRoutes");
-app.use("/api/onboarding", authMiddleware, onboarding.router, onboarding.errorHandler);
+app.use("/api/onboarding", authMiddleware, requireTenant, onboarding.router, onboarding.errorHandler);
 app.use("/api/student-setup", onboarding.setupRateLimit, onboarding.setupRouter, onboarding.errorHandler);
 
 /* AI Assessment Agent */
 const assessmentAgent = require("./routes/assessmentAgentRoutes");
-app.use("/api/assessment-agent", authMiddleware, assessmentAgent.router, assessmentAgent.errorHandler);
+app.use("/api/assessment-agent", authMiddleware, requireTenant, assessmentAgent.router, assessmentAgent.errorHandler);
 
 /* ✅ CLASSROOMS (NEW – NO LOGIC CHANGE) */
 app.use("/api/classrooms", require("./routes/classroomRoutes"));
@@ -275,6 +299,9 @@ app.use("/api/calendar", require("./routes/calendarRoutes"));
 
 /* Live Classes */
 app.use("/api/live-classes", require("./routes/liveClassRoutes"));
+
+// Help assistant (forwards to universalChatbot with the verified role)
+app.use("/api/assistant", require("./routes/assistantRoutes"));
 
 /* Announcements */
 app.use("/api/announcements", require("./routes/announcementRoutes"));
@@ -343,11 +370,16 @@ app.use("/api/vendor", require("./routes/vendorRoutes"));
 /* Superadmin Portal */
 app.use("/api/superadmin", require("./routes/superadminRoutes"));
 
-/* Universal CRUD Routes for All Entities - MUST be last */
+/* School-scoped entity routes - MUST be last */
 app.use("/api", require("./routes/universalRoutes"));
 
+/* Unknown API paths get JSON, not the HTML default */
+app.use("/api", (req, res) => {
+  res.status(404).json({ success: false, message: "Not found" });
+});
+
 /* Global Error Handler */
-const { globalErrorHandler } = require('./middleware/global-error-handler');
+const { globalErrorHandler } = require("./middleware/global-error-handler");
 app.use(globalErrorHandler);
 
 /* ================= ROOT ================= */
@@ -355,30 +387,56 @@ app.get("/", (req, res) => {
   res.json({ message: "🚀 Unstop LMS API running" });
 });
 
+/* ================= PROCESS SAFETY NET ================= */
+// One failing request must not take the whole service down. Errors that escape a
+// request (for example thrown inside a database callback) are logged, and the
+// process keeps serving other schools.
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason instanceof Error ? reason.stack : reason);
+});
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error.stack || error.message);
+  // Under a process supervisor (LMS_EXIT_ON_FATAL=true) the safest reaction is a clean
+  // restart. Without one, exiting would turn a single failed request into an outage.
+  if (process.env.LMS_EXIT_ON_FATAL === "true") shutdown("uncaughtException", 1);
+});
+
+// Graceful shutdown: stop taking new requests, let running ones finish, close sockets and
+// the database, then exit. A hard exit follows if that takes longer than 10 seconds.
+function shutdown(reason, exitCode = 0) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`Shutting down (${reason})...`);
+  const hardStop = setTimeout(() => process.exit(exitCode || 1), 10000);
+  hardStop.unref();
+  io.close(() => {
+    server.close(() => {
+      require("./config/database-switch").close(() => process.exit(exitCode));
+    });
+  });
+}
+
 /* ================= START SERVER ================= */
-const PORT = process.env.PORT || 5002;
+function start(port = process.env.PORT || 5002) {
+  server.on("error", (err) => {
+    console.error("❌ Server socket error:", err.message, err.code);
+    process.exit(1);
+  });
 
-server.on('error', (err) => {
-  console.error('❌ Server socket error:', err.message, err.code);
-  process.exit(1);
-});
+  return server.listen(port, "0.0.0.0", () => {
+    console.log(`🚀 Server running on port ${server.address().port}`);
+  });
+}
 
-server.on('clientError', (err, socket) => {
-  console.error('❌ Client error:', err.message);
-});
+if (require.main === module) {
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  // Windows has no SIGTERM: a supervisor there asks for a clean stop with a message
+  // (PM2 does this with `shutdown_with_message: true`).
+  process.on("message", (message) => {
+    if (message === "shutdown") shutdown("shutdown message");
+  });
+  start();
+}
 
-console.log('[DEBUG] About to call server.listen()');
-const listenServer = server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`✅ Server is actively listening on 0.0.0.0:${PORT}`);
-});
-
-listenServer.on('error', (err) => {
-  console.error('❌ Listen error:', err.message, err.code);
-  process.exit(1);
-});
-
-// Log listening status after a delay
-setTimeout(() => {
-  console.log('[DEBUG] Server still running after 2 seconds');
-}, 2000);
+module.exports = { app, server, io, start };

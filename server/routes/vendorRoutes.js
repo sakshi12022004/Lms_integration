@@ -10,7 +10,7 @@ const getVendorUniversityId = (vendorId, callback) => {
     if (err) {
       callback(err, null);
     } else {
-      callback(null, vendor ? vendor.university_id : 1);
+      callback(null, vendor ? vendor.university_id : null); // no default school
     }
   });
 };
@@ -22,9 +22,6 @@ const getVendorUniversityId = (vendorId, callback) => {
 router.get('/stats', authMiddleware, (req, res) => {
   try {
     const vendorId = req.user?.userId;
-console.log("CURRENT LOGGED IN VENDOR:", vendorId);
-
-console.log("FULL USER:", req.user);    
     if (!vendorId) {
       return res.status(401).json({ success: false, message: 'Vendor not authenticated' });
     }

@@ -1,22 +1,40 @@
 import { useEffect, useState } from "react";
-import { useUniversalPersistence } from "../hooks/useUniversalPersistenceSimple";
+import { useAuth } from "../auth/auth";
 import { useTranslation } from "../context/TranslationContext";
 
+// Notices for the signed-in user. They come from the announcements endpoint, which returns
+// only this school's notices meant for this user's role (and notices addressed to the user).
 const Announcements = () => {
   const { t } = useTranslation();
-  // Use universal persistence for announcements
-  const { data: announcements, loading, error, addItem, updateItem, removeItem } = useUniversalPersistence('announcements');
-  
-  const token =
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("unstop_token");
+  const { API, token } = useAuth();
+  const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/announcements`, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+        const list = Array.isArray(data) ? data : data?.announcements || data?.data || [];
+        if (!cancelled) setAnnouncements(list);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [API, token]);
 
   const markAsRead = async (id) => {
     try {
-      await updateItem(id, { status: 'read' });
-    } catch (error) {
-      console.error('Error marking announcement as read:', error);
+      await fetch(`${API}/announcements/${id}/read`, { method: "PUT", headers: { Authorization: `Bearer ${token}` } });
+    } catch (err) {
+      console.error('Error marking announcement as read:', err);
     }
   };
 
@@ -51,9 +69,9 @@ const Announcements = () => {
       <div className="space-y-4">
         {announcements.map((a) => (
           <div
-            key={a._id}
+            key={a.id ?? a._id}
             className="border rounded-lg p-4 bg-white hover:bg-gray-50 cursor-pointer"
-            onClick={() => markAsRead(a._id)}
+            onClick={() => markAsRead(a.id ?? a._id)}
           >
             <h3 className="font-semibold text-lg">{a.title}</h3>
             <p className="text-gray-700 mt-1">{a.content || a.message}</p>

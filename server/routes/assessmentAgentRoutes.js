@@ -15,7 +15,7 @@ const { onAssessmentAgentEvent } = require("../services/assessmentAgentNotificat
  * Unrelated to the legacy course assessments at /api/assessments.
  * All logic lives in ai-modules/ai-assessment-agent. To remove the feature, see its README.
  */
-const dbPath = path.join(__dirname, "..", "data", "lms_permanent.db");
+const { DB_PATH: dbPath } = require("../config/dbPath");
 
 // One private store for question pictures, shared with the course assessments (routes/assessmentRoutes.js)
 const questionImageStore = createQuestionImageStore();

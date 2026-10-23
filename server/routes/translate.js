@@ -8,25 +8,6 @@ const router = express.Router();
 const translationService = require('../services/translationService');
 
 /**
- * GET /api/translate/test
- * Simple test endpoint to verify translation service availability
- */
-router.get('/test', async (req, res) => {
-  try {
-    const available = await translationService.isServiceAvailable();
-    const languages = await translationService.getSupportedLanguages();
-    res.json({
-      message: 'Translation API is working',
-      serviceAvailable: available,
-      supportedLanguages: languages
-    });
-  } catch (error) {
-    console.error('Translation test error:', error.message);
-    res.status(500).json({ error: 'Translation service test failed' });
-  }
-});
-
-/**
  * POST /api/translate
  * Body: { text, sourceLanguage = 'en', targetLanguage }
  * Uses the TranslationService which prefers LibreTranslate and falls back to mock translations.

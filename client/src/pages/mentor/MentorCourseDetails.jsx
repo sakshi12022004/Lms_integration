@@ -6,6 +6,7 @@ import MentorLayout from "../../components/MentorLayout";
 import { toast } from "react-toastify";
 import { Plus, Edit, Eye, Trash2, BookOpen } from "lucide-react";
 import io from "socket.io-client";
+import { fileLink } from "../../config/api";
 
 const MentorCourseDetails = () => {
     const { courseId } = useParams();
@@ -21,8 +22,10 @@ const MentorCourseDetails = () => {
 
     useEffect(() => {
         fetchCourseData();
-        const socket = io({
-          transports: ["websocket", "polling"]
+        const socket = io(API.replace(/\/api\/?$/, ""), {
+          transports: ["websocket", "polling"],
+          // the server only sends realtime events to sockets that carry a valid session
+          auth: { token: localStorage.getItem("token") || undefined }
         });
         const onProgress = (data) => {
             if (data.courseId === courseId) {
@@ -147,7 +150,7 @@ const MentorCourseDetails = () => {
                                             <h3 className="font-semibold text-sm">{material.title}</h3>
                                             <p className="text-xs text-gray-500 mt-1">Type: {material.type}</p>
                                             {material.fileUrl && (
-                                                <a href={material.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline mt-1 block">
+                                                <a href={fileLink(material.fileUrl)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline mt-1 block">
                                                     📥 Download
                                                 </a>
                                             )}

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import AccountantLayout from '../../components/AccountantLayout';
 import { useAuth } from '../../auth/auth';
+import { API_ORIGIN } from '../../config/api';
 
 export default function AccountantDatabaseExport() {
   const { token, API } = useAuth();
@@ -31,7 +32,7 @@ export default function AccountantDatabaseExport() {
   const [invoices, setInvoices] = useState([]);
   const [funds, setFunds] = useState([]);
 
-  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  const API_URL = API_ORIGIN;
 
   useEffect(() => {
     fetchAllData();
@@ -48,23 +49,11 @@ export default function AccountantDatabaseExport() {
         if (feesRes.data?.success && feesRes.data?.students?.length > 0) {
           setStudents(feesRes.data.students);
         } else {
-          // Fallback realistic records
-          setStudents([
-            { id: 'STU-101', name: 'Rahul Sharma', email: 'rahul.s@university.edu', phone: '9876543210', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 15000, remainingBalance: 0, status: 'Paid', dueDate: '2026-10-31' },
-            { id: 'STU-102', name: 'Priya Verma', email: 'priya.v@university.edu', phone: '9812345678', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 5000, remainingBalance: 10000, status: 'Partial', dueDate: '2026-10-31' },
-            { id: 'STU-103', name: 'Aman Deep', email: 'aman.d@university.edu', phone: '9988776655', className: 'Information Tech - Sec B', totalFee: 15000, paidAmount: 0, remainingBalance: 15000, status: 'Pending', dueDate: '2026-10-31' },
-            { id: 'STU-104', name: 'Neha Gupta', email: 'neha.g@university.edu', phone: '9765432109', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 0, remainingBalance: 15000, status: 'Pending', dueDate: '2026-10-31' },
-            { id: 'STU-105', name: 'Vikram Mehta', email: 'vikram.m@university.edu', phone: '9123456789', className: 'Mechanical Engineering - Sec A', totalFee: 18000, paidAmount: 18000, remainingBalance: 0, status: 'Paid', dueDate: '2026-09-15' },
-            { id: 'STU-106', name: 'Ananya Roy', email: 'ananya.r@university.edu', phone: '9345678901', className: 'Electronics - Sec B', totalFee: 16500, paidAmount: 8500, remainingBalance: 8000, status: 'Partial', dueDate: '2026-11-01' }
-          ]);
+          // No records: show none (never invented ones)
+          setStudents([]);
         }
       } catch (err) {
-        setStudents([
-          { id: 'STU-101', name: 'Rahul Sharma', email: 'rahul.s@university.edu', phone: '9876543210', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 15000, remainingBalance: 0, status: 'Paid', dueDate: '2026-10-31' },
-          { id: 'STU-102', name: 'Priya Verma', email: 'priya.v@university.edu', phone: '9812345678', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 5000, remainingBalance: 10000, status: 'Partial', dueDate: '2026-10-31' },
-          { id: 'STU-103', name: 'Aman Deep', email: 'aman.d@university.edu', phone: '9988776655', className: 'Information Tech - Sec B', totalFee: 15000, paidAmount: 0, remainingBalance: 15000, status: 'Pending', dueDate: '2026-10-31' },
-          { id: 'STU-104', name: 'Neha Gupta', email: 'neha.g@university.edu', phone: '9765432109', className: 'Computer Science - Sec A', totalFee: 15000, paidAmount: 0, remainingBalance: 15000, status: 'Pending', dueDate: '2026-10-31' }
-        ]);
+        setStudents([]);
       }
 
       // 2. Fetch Vendor Invoices Data

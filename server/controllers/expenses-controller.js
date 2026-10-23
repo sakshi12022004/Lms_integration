@@ -1,3 +1,5 @@
+// The handlers below use the shared LMS database connection.
+const db = require('../config/database-switch');
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 
 
@@ -18,8 +20,9 @@ const getAllExpenses = async (req, res) => {
         approvedBy,
         createdAt
       FROM expenses
+      WHERE university_id = ?
       ORDER BY createdAt DESC
-    `, (err, rows) => {
+    `, [req.user.universityId], (err, rows) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({ message: 'Database error' });
@@ -47,9 +50,9 @@ const createExpense = async (req, res) => {
     }
 
     db.run(`
-      INSERT INTO expenses (description, amount, category, date, status)
-      VALUES (?, ?, ?, ?, ?)
-    `, [description, amount, category || 'Other', date || new Date().toISOString().split('T')[0], status || 'pending'], function(err) {
+      INSERT INTO expenses (description, amount, category, date, status, university_id)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [description, amount, category || 'Other', date || new Date().toISOString().split('T')[0], status || 'pending', req.user.universityId], function(err) {
       if (err) {
         console.error("Error creating expense:", err);
         return res.status(500).json({ message: 'Database error: ' + err.message });
@@ -100,8 +103,8 @@ const updateExpenseStatus = async (req, res) => {
     db.run(`
       UPDATE expenses 
       SET status = ?, updatedAt = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `, [status, expenseId], function(err) {
+      WHERE id = ? AND university_id = ?
+    `, [status, expenseId, req.user.universityId], function(err) {
       if (err) {
         console.error("Error updating expense:", err);
         return res.status(500).json({ message: 'Database error' });
@@ -142,9 +145,10 @@ const getExpenseSummary = async (req, res) => {
         COUNT(*) as count,
         status
       FROM expenses
+      WHERE university_id = ?
       GROUP BY category, status
       ORDER BY totalAmount DESC
-    `, (err, rows) => {
+    `, [req.user.universityId], (err, rows) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({ message: 'Database error' });

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useState } from "react";
 import { X, Trash2 } from "lucide-react";
+import { API_ORIGIN } from "../config/api";
 
 const EditEventModal = ({ event, role, onClose, onRefresh }) => {
   const [title, setTitle] = useState(event.title);
@@ -13,7 +14,7 @@ const EditEventModal = ({ event, role, onClose, onRefresh }) => {
     localStorage.getItem("authToken") ||
     localStorage.getItem("unstop_token");
 
-const apiUrl = import.meta.env.VITE_BACKEND_URL || "https://core5.io";
+const apiUrl = API_ORIGIN;
 
   const canModify =
     role === event.extendedProps.createdByRole;

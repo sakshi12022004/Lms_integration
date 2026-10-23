@@ -34,7 +34,7 @@ import { LETTERS, TYPE_LABEL, answerKeyText, blankQuestion, toBody, toEditable }
  * in App.jsx to remove the UI.
  */
 
-const EMPTY_DETAILS = { title: "", subject: "", description: "", classroomId: "", durationMinutes: "", opensAt: "", closesAt: "" };
+const EMPTY_DETAILS = { title: "", subject: "", description: "", classroomId: "", courseId: "", durationMinutes: "", opensAt: "", closesAt: "" };
 
 /* Step 5: <input type="datetime-local"> works in the teacher's local time; the server stores UTC ISO. */
 const toLocalInput = (iso) => {
@@ -99,6 +99,8 @@ export default function TeacherAssessments() {
 
   const [list, setList] = useState([]);
   const [classrooms, setClassrooms] = useState([]);
+  // class id -> the teacher's courses taught to that class (a test belongs to one of them)
+  const [coursesByClass, setCoursesByClass] = useState({});
   const [current, setCurrent] = useState(null); // open assessment (detail)
   const [creating, setCreating] = useState(false); // "New test" form before the draft exists
   const [details, setDetails] = useState(EMPTY_DETAILS);
@@ -139,13 +141,18 @@ export default function TeacherAssessments() {
 
   const loadList = useCallback(async () => {
     try {
-      const [a, c] = await Promise.all([axios.get(`${base}/assessments`, auth), axios.get(`${base}/classrooms`, auth)]);
+      const [a, c, o] = await Promise.all([
+        axios.get(`${base}/assessments`, auth),
+        axios.get(`${base}/classrooms`, auth),
+        axios.get(`${API}/courses/teaching/overview`, auth).catch(() => null),
+      ]);
       setList(a.data.assessments);
       setClassrooms(c.data.classrooms);
+      setCoursesByClass(Object.fromEntries((o?.data?.data?.classes || []).map((k) => [String(k.id), k.courses])));
     } catch (err) {
       toast.error(errorText(err));
     }
-  }, [base, auth]);
+  }, [base, auth, API]);
 
   useEffect(() => { loadList(); }, [loadList]);
 
@@ -159,6 +166,7 @@ export default function TeacherAssessments() {
       subject: assessment.subject,
       description: assessment.description || "",
       classroomId: assessment.classroomId ?? "",
+      courseId: assessment.courseId ?? "",
       durationMinutes: assessment.durationMinutes ?? "",
       opensAt: toLocalInput(assessment.opensAt),
       closesAt: toLocalInput(assessment.closesAt),
@@ -191,6 +199,7 @@ export default function TeacherAssessments() {
     subject: details.subject,
     description: details.description,
     classroomId: details.classroomId === "" ? null : Number(details.classroomId),
+    ...(details.courseId === "" ? {} : { courseId: Number(details.courseId) }),
     durationMinutes: details.durationMinutes === "" ? null : Number(details.durationMinutes),
     opensAt: toIso(details.opensAt),
     closesAt: toIso(details.closesAt),
@@ -257,6 +266,7 @@ export default function TeacherAssessments() {
           base={base}
           auth={auth}
           classrooms={classrooms}
+          coursesByClass={coursesByClass}
           classLabel={classLabel}
           errorText={errorText}
           prefill={aiPrefill}
@@ -391,6 +401,16 @@ export default function TeacherAssessments() {
                         <School size={12} className="text-[#B99652]" />
                         {classLabel(a.classroom)}
                       </span>
+                      {a.course && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#fffdf4] border border-[#ebdcaa]/80 rounded-none font-medium">
+                          {a.course.title}
+                        </span>
+                      )}
+                      {a.legacy && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 text-gray-600 border border-gray-200 rounded-none font-medium" title="Made before tests belonged to a course">
+                          Legacy (no course)
+                        </span>
+                      )}
                       {a.status === "published" && a.recipients?.mode === "selected" && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#fff8e7] text-[#92400e] border border-[#fde68a] rounded-none font-medium">
                           {recipientsText(a.recipients)}
@@ -551,11 +571,31 @@ export default function TeacherAssessments() {
               <select
                 className="w-full p-2.5 border border-[#ebdcaa] rounded-none text-sm text-[#1e1b4b] bg-white focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]/30 outline-none"
                 value={details.classroomId}
-                onChange={(e) => setDetails({ ...details, classroomId: e.target.value })}
+                onChange={(e) => setDetails({ ...details, classroomId: e.target.value, courseId: "" })}
               >
-                <option value="">Choose class (required to publish)</option>
+                <option value="">Choose class</option>
                 {classrooms.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#1e1b4b] mb-1.5">Course *</label>
+              <select
+                aria-label="Course"
+                className="w-full p-2.5 border border-[#ebdcaa] rounded-none text-sm text-[#1e1b4b] bg-white focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]/30 outline-none"
+                value={details.courseId}
+                disabled={!details.classroomId}
+                onChange={(e) => setDetails({ ...details, courseId: e.target.value })}
+              >
+                <option value="">{details.classroomId ? "Choose course" : "Choose a class first"}</option>
+                {(coursesByClass[String(details.classroomId)] || []).map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              </select>
+              {details.classroomId && (coursesByClass[String(details.classroomId)] || []).length === 0 && (
+                <p className="text-xs text-amber-700 mt-1">You mentor no course taught to this class. Ask your admin to assign one.</p>
+              )}
+              {current && current.legacy && !details.courseId && (
+                <p className="text-xs text-gray-500 mt-1">Made before tests had a course (legacy). Choose its course to link it.</p>
+              )}
             </div>
 
             <div>
@@ -754,6 +794,7 @@ export default function TeacherAssessments() {
           base={base}
           auth={auth}
           classroom={publishClass}
+          courseId={current?.courseId ?? null}
           classLabel={classLabel}
           testTitle={current.title}
           busy={busy}

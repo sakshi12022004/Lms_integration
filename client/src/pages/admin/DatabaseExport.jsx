@@ -4,6 +4,7 @@ import AdminLayout from '../../components/AdminLayout';
 import { useAuth } from '../../auth/auth';
 import { Download, Database, FileSpreadsheet, RefreshCw, Eye, AlertCircle, CheckCircle } from 'lucide-react';
 import QuotaLimitModal from '../../components/QuotaLimitModal';
+import { downloadWithSession } from '../../config/download';
 
 const DatabaseExport = () => {
   const { token, API } = useAuth();
@@ -109,7 +110,7 @@ const DatabaseExport = () => {
   const downloadTableExcel = (tableName) => {
     // DISABLED: Allow all downloads without quota restrictions
     setExportStatus({ type: 'info', message: `Downloading ${tableName} data...` });
-    window.open(`${API}/database-export/table/${tableName}/excel?token=${token}&lang=${exportLang}`, '_blank');
+    downloadWithSession(`${API}/database-export/table/${tableName}/excel?lang=${exportLang}`).catch((err) => alert(err.message));
     setTimeout(() => {
       setExportStatus({ type: 'success', message: `Downloaded ${tableName} data successfully!` });
     }, 2000);
@@ -118,7 +119,7 @@ const DatabaseExport = () => {
   const downloadFullDatabase = () => {
     // DISABLED: Allow all downloads without quota restrictions
     setExportStatus({ type: 'info', message: 'Downloading full database...' });
-    window.open(`${API}/database-export/database/excel?token=${token}&lang=${exportLang}`, '_blank');
+    downloadWithSession(`${API}/database-export/database/excel?lang=${exportLang}`).catch((err) => alert(err.message));
     setTimeout(() => {
       setExportStatus({ type: 'success', message: 'Full database downloaded successfully!' });
     }, 2000);

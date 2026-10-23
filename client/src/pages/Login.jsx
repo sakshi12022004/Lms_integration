@@ -13,6 +13,7 @@ import OTPInput from '../components/OTPInput';
 import videoBg from '../assets/login-bg.mp4';
 import whiteLogo from '../../../core5-final-rbg.png';
 import passwordResetService from '../services/passwordResetService';
+import { API_BASE } from '../config/api';
 
 /* ============================================================
    LOGIN COMPONENT
@@ -24,7 +25,7 @@ const Login = () => {
   const navigate = useNavigate();
   
   // Ensure API URL is always set
-  const API = import.meta.env.VITE_BACKEND_URL || 'https://core5.io/api';
+  const API = API_BASE;
 
   // Security: Redirect if already logged in
   useEffect(() => {

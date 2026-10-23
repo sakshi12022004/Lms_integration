@@ -2,8 +2,17 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User'); // Assuming you have a User model
 
+// A signed-in user may read or change only their own language preference.
+const ownEmailOnly = (req, res, next) => {
+  const email = String(req.body?.email || req.params?.email || '').trim().toLowerCase();
+  if (!email || email !== String(req.user?.email || '').toLowerCase()) {
+    return res.status(403).json({ success: false, message: 'Access denied' });
+  }
+  next();
+};
+
 // Save user language preference
-router.post('/user/preference', async (req, res) => {
+router.post('/user/preference', ownEmailOnly, async (req, res) => {
   try {
     const { email, language } = req.body;
     
@@ -49,7 +58,7 @@ router.post('/user/preference', async (req, res) => {
 });
 
 // Get user language preference
-router.get('/user/preference/:email', async (req, res) => {
+router.get('/user/preference/:email', ownEmailOnly, async (req, res) => {
   try {
     const { email } = req.params;
     

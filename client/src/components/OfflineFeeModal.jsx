@@ -3,6 +3,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { X, DollarSign, User, CreditCard, Calendar, FileText, CheckCircle, Search, Download, Clock } from 'lucide-react';
 import { generateInvoicePdf } from '../accountant/invoice';
+import { API_ORIGIN } from '../config/api';
 
 // One key per collection attempt, so a retried submit can never record the payment twice
 const newIdempotencyKey = () =>
@@ -26,7 +27,7 @@ export default function OfflineFeeModal({ isOpen, onClose, onSuccess }) {
   const [recordedTx, setRecordedTx] = useState(null);
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
 
-  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5002';
+  const API_URL = API_ORIGIN;
 
   useEffect(() => {
     if (isOpen) {

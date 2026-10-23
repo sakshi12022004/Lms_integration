@@ -18,6 +18,7 @@ import {
 import MentorLayout from '../../components/MentorLayout';
 import AccountantLayout from '../../components/AccountantLayout';
 import { useAuth } from '../../auth/auth';
+import { API_ORIGIN } from '../../config/api';
 
 export default function ClassFeeStatus() {
   const { API, token, user } = useAuth();
@@ -29,7 +30,7 @@ export default function ClassFeeStatus() {
   const [sendingReminderId, setSendingReminderId] = useState(null);
   const [sendingBulk, setSendingBulk] = useState(false);
 
-  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  const API_URL = API_ORIGIN;
 
   useEffect(() => {
     fetchStudentFees();
@@ -46,13 +47,8 @@ export default function ClassFeeStatus() {
       }
     } catch (err) {
       console.error("Failed to fetch student fees:", err);
-      // Fallback mock students if DB yields empty
-      setStudents([
-        { id: 1, name: 'Rahul Sharma', email: 'rahul.s@university.edu', phone: '9876543210', className: 'Computer Science - Section A', totalFee: 15000, paidAmount: 15000, remainingBalance: 0, status: 'Paid', dueDate: '2026-10-31' },
-        { id: 2, name: 'Priya Verma', email: 'priya.v@university.edu', phone: '9812345678', className: 'Computer Science - Section A', totalFee: 15000, paidAmount: 5000, remainingBalance: 10000, status: 'Partial', dueDate: '2026-10-31' },
-        { id: 3, name: 'Aman Deep', email: 'aman.d@university.edu', phone: '9988776655', className: 'Information Technology - Section B', totalFee: 15000, paidAmount: 0, remainingBalance: 15000, status: 'Pending', dueDate: '2026-10-31' },
-        { id: 4, name: 'Neha Gupta', email: 'neha.g@university.edu', phone: '9765432109', className: 'Computer Science - Section A', totalFee: 15000, paidAmount: 0, remainingBalance: 15000, status: 'Pending', dueDate: '2026-10-31' }
-      ]);
+      // Never show invented students: an empty list is the honest result of a failed request
+      setStudents([]);
     } finally {
       setLoading(false);
     }

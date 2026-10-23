@@ -8,36 +8,8 @@ const {
   createRequirement,
   getAllRequirements,
   getMyRequirements,
-  updateRequirementItemStatus,
-  debugDatabase
+  updateRequirementItemStatus
 } = require("../controllers/requirement-controller");
-
-/* ================= TEST ENDPOINT ================= */
-router.get(
-  "/test",
-  authMiddleware,
-  (req, res) => {
-    res.json({ 
-      message: 'Requirements API is working!',
-      user: req.user,
-      timestamp: new Date().toISOString()
-    });
-  }
-);
-
-/* ================= TEST PATCH ENDPOINT ================= */
-router.patch(
-  "/:itemId/status-test",
-  authMiddleware,
-  (req, res) => {
-    res.json({ 
-      message: 'PATCH test endpoint working!',
-      itemId: req.params.itemId,
-      body: req.body,
-      timestamp: new Date().toISOString()
-    });
-  }
-);
 
 /* ================= CREATE REQUIREMENT ================= */
 router.post(
@@ -69,14 +41,6 @@ router.patch(
   authMiddleware,
   roleMiddleware(["admin", "storekeeper", "accountant"]),
   updateRequirementItemStatus
-);
-
-/* ================= DEBUG: INSPECT DATABASE ================= */
-router.get(
-  "/debug/database",
-  authMiddleware,
-  roleMiddleware(["admin"]),
-  debugDatabase
 );
 
 module.exports = router;

@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, CheckCircle2, ShieldCheck, Sparkles, Building2, User, Mail, Users, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE } from '../config/api';
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5002/api';
+// API_BASE comes from config/api
 
 const BookDemoModal = ({ isOpen, onClose }) => {
   const [isSubmitted, setIsSubmitted] = useState(false);

@@ -1,61 +1,65 @@
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 const db = require('../config/database-switch');
+const { all, run, withTransaction } = require('../helpers/dbAsync');
+const { authorizeClassroom } = require('../helpers/teachingScope');
 const ExcelJS = require('exceljs');
 
 
 
 /* ================= MARK ATTENDANCE ================= */
+// The values the attendance table accepts
+const ATTENDANCE_STATUSES = ['present', 'absent'];
+
+// One day's register for one classroom. The teacher must work in that classroom and every
+// student named must be in it. The day is replaced inside a single transaction, so a failure
+// cannot leave the register half written (the old version deleted the day first and then
+// inserted row by row without waiting).
 const markAttendance = async (req, res) => {
   try {
-    const { classroomId, date, attendanceData } = req.body;
+    const { classroomId, date, attendanceData } = req.body || {};
+    const day = new Date(date);
 
-    if (!classroomId || !date || !Array.isArray(attendanceData)) {
+    if (!classroomId || !date || Number.isNaN(day.getTime()) || !Array.isArray(attendanceData)) {
       return res.status(400).json({ message: "Invalid attendance data" });
     }
 
-    // Verify user is authorized (class teacher or admin)
-    if (req.user.role !== "mentor" && req.user.role !== "admin") {
-      return res.status(403).json({ message: "Class teacher access only" });
+    if (day.getTime() > Date.now() + 24 * 60 * 60 * 1000) {
+      return res.status(400).json({ message: "Attendance cannot be marked for a future date" });
     }
 
-    const attendanceDate = new Date(date).toISOString().split('T')[0];
+    await authorizeClassroom(req, classroomId);
+
+    const members = new Set(
+      (await all('SELECT studentId FROM student_classroom_assignment WHERE classroomId = ?', [classroomId])).map((row) => String(row.studentId))
+    );
+    const register = new Map();
+    for (const item of attendanceData) {
+      const status = typeof item?.status === 'string' ? item.status.trim().toLowerCase() : '';
+      if (!ATTENDANCE_STATUSES.includes(status)) {
+        return res.status(400).json({ message: "Attendance status must be present or absent" });
+      }
+      if (!members.has(String(item?.studentId))) {
+        return res.status(400).json({ message: "Attendance can only be marked for students of this classroom" });
+      }
+      register.set(String(item.studentId), status); // one entry per student per day
+    }
+
+    const attendanceDate = day.toISOString().split('T')[0];
     const markedBy = req.user.userId;
 
-    // Delete existing attendance for this date and classroom
-    db.run(
-      `DELETE FROM attendance WHERE classroomId = ? AND DATE(date) = ?`,
-      [classroomId, attendanceDate],
-      (err) => {
-        if (err) {
-          console.error("Error deleting existing attendance:", err);
-          return res.status(500).json({ message: "Database error" });
-        }
-
-        // Create new attendance records
-        const stmt = db.prepare(`
-          INSERT INTO attendance (classroomId, studentId, date, status, markedBy)
-          VALUES (?, ?, ?, ?, ?)
-        `);
-
-        attendanceData.forEach((item) => {
-          stmt.run([classroomId, item.studentId, attendanceDate, item.status, markedBy]);
-        });
-
-        stmt.finalize((err) => {
-          if (err) {
-            console.error("Error inserting attendance:", err);
-            return res.status(500).json({ message: "Error saving attendance" });
-          }
-
-          res.json({
-            message: "Attendance marked successfully",
-            count: attendanceData.length,
-          });
-        });
+    await withTransaction(async () => {
+      await run('DELETE FROM attendance WHERE classroomId = ? AND DATE(date) = ?', [classroomId, attendanceDate]);
+      for (const [studentId, status] of register) {
+        await run('INSERT INTO attendance (classroomId, studentId, date, status, markedBy) VALUES (?, ?, ?, ?, ?)', [
+          classroomId, studentId, attendanceDate, status, markedBy,
+        ]);
       }
-    );
+    });
+
+    res.json({ message: "Attendance marked successfully", count: register.size });
   } catch (error) {
-    console.error("Error marking attendance:", error);
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    console.error("Error marking attendance:", error.message);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -95,7 +99,7 @@ const getStudentAttendance = async (req, res) => {
     const studentId = req.user.userId;
 
       db.all(
-        `SELECT a.*, c.name as classroomName, c.grade 
+        `SELECT a.*, c.name as classroomName, c.grade
          FROM attendance a
          LEFT JOIN classrooms c ON a.classroomId = c.id
          WHERE a.studentId = ?
@@ -129,10 +133,10 @@ const downloadAttendanceExcel = async (req, res) => {
     const end = endDate || new Date().toISOString().split('T')[0];
 
     db.all(
-      `SELECT 
+      `SELECT
         a.date,
         u.id as studentId,
-        u.name as studentName, 
+        u.name as studentName,
         u.email as studentEmail,
         a.status,
         c.name as classroomName,
@@ -157,7 +161,7 @@ const downloadAttendanceExcel = async (req, res) => {
         try {
           // Get classroom details
           const classroom = attendance[0];
-          
+
           // Group attendance by date
           const groupedByDate = {};
           attendance.forEach(record => {
@@ -179,14 +183,14 @@ const downloadAttendanceExcel = async (req, res) => {
           titleCell.value = `Attendance Report - ${classroom.classroomName} (Grade ${classroom.grade})`;
           titleCell.font = { bold: true, size: 14 };
           titleCell.alignment = { horizontal: 'center' };
-          
+
           rowNum++;
           worksheet.mergeCells(`A${rowNum}:D${rowNum}`);
           const dateRangeCell = worksheet.getCell(`A${rowNum}`);
           dateRangeCell.value = `From: ${start} To: ${end}`;
           dateRangeCell.font = { italic: true };
           dateRangeCell.alignment = { horizontal: 'center' };
-          
+
           rowNum += 2;
 
           // Add headers
@@ -206,7 +210,7 @@ const downloadAttendanceExcel = async (req, res) => {
                 record.studentEmail,
                 record.status.charAt(0).toUpperCase() + record.status.slice(1)
               ]);
-              
+
               // Style status cell
               const statusCell = dataRow.getCell(4);
               if (record.status.toLowerCase() === 'present') {
@@ -229,7 +233,7 @@ const downloadAttendanceExcel = async (req, res) => {
 
           // Generate buffer and send
           const buffer = await workbook.xlsx.writeBuffer();
-          
+
           res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
           res.setHeader('Content-Disposition', `attachment; filename="attendance-${classroom.classroomName}-${start}.xlsx"`);
           res.send(buffer);

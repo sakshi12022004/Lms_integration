@@ -22,7 +22,7 @@ const { createOnboardingEmailAdapter } = require("../services/onboardingEmailAda
  * JSON rejected by the global body parser) get safe JSON responses.
  * All logic lives in ai-modules/student-onboarding-agent.
  */
-const dbPath = path.join(__dirname, "..", "data", "lms_permanent.db");
+const { DB_PATH: dbPath } = require("../config/dbPath");
 
 const setupService = createStudentSetupService({
   dbPath,

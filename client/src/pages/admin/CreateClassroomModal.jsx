@@ -80,6 +80,11 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
       return toast.error(t('section_required'));
     }
 
+    // every class needs its class teacher (the server refuses one without)
+    if (!classTeacher) {
+      return toast.error(mentors.length ? 'Choose the class teacher.' : 'Add a teacher first (Add Teacher), then create the class.');
+    }
+
     try {
       // Get teacher's name from selected ID
       const selectedTeacher = mentors.find(m => m.id === classTeacher);
@@ -197,21 +202,26 @@ const CreateClassroomModal = ({ open, onClose, onSuccess }) => {
           {/* CLASS TEACHER DROPDOWN */}
           <div>
             <label className="block text-xs uppercase tracking-wider font-semibold text-[#1e1b4b] mb-1.5">
-              {t('assign_class_teacher_optional')}
+              Class Teacher <span className="text-red-500">*</span>
             </label>
             <select
               className="w-full bg-white border border-[#ebdcaa] rounded-none px-3 py-2 text-sm text-[#1e1b4b] focus:outline-none focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652]"
               value={classTeacher}
               onChange={(e) => setClassTeacher(e.target.value)}
               disabled={loadingMentors}
+              required
+              aria-required="true"
             >
-              <option value="">{t('assign_class_teacher_optional')}</option>
+              <option value="">Select Class Teacher *</option>
               {mentors.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name} ({m.email})
                 </option>
               ))}
             </select>
+            {!loadingMentors && mentors.length === 0 && (
+              <p className="text-xs text-amber-700 mt-1">No teachers yet. Add a teacher first, then create the class.</p>
+            )}
           </div>
 
           {/* STUDENT SELECTION */}

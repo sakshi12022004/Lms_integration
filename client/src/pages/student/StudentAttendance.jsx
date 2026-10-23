@@ -144,7 +144,7 @@ const StudentAttendance = () => {
                       {new Date(record.date).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-3.5 text-sm font-medium text-slate-700">
-                      Classroom {record.classroomId}
+                      {record.classroomName || `Classroom ${record.classroomId}`}
                     </td>
                     <td className="px-6 py-3.5 text-sm">
                       <span className={`px-3 py-1 rounded-none text-xs font-semibold uppercase tracking-wider ${
