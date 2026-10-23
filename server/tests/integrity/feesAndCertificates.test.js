@@ -20,10 +20,23 @@ describe('fee payments and certificates', () => {
   describe('online fee payment', () => {
     let gateway;
     let controller;
-    before(() => {
+    before(async () => {
       controller = require(path.resolve(__dirname, '../../controllers/payment-controller'));
       process.env.RAZORPAY_KEY_ID = 'rzp_test_standInOnly';
       process.env.RAZORPAY_KEY_SECRET = KEY_SECRET;
+      // The server only accepts a payment for an order it created (payment_orders), so seed
+      // the fee schedule and the order the stand-in gateway reports as order_fee_1.
+      await ctx.db.run(
+        `INSERT INTO student_fee_schedules (studentId, feeStructureId, planId, planName, totalFee, scheduleSnapshot)
+         SELECT ?, id, 'test-plan', 'Test plan', 5000, '[]' FROM feeStructures ORDER BY id LIMIT 1`,
+        [ids.users.studentA]
+      );
+      await ctx.db.run(
+        `INSERT INTO payment_orders (orderId, studentId, scheduleId, installmentStage, feeStructureId, amount, currency, status)
+         SELECT 'order_fee_1', ?, s.id, 1, s.feeStructureId, 2500, 'INR', 'created'
+         FROM student_fee_schedules s WHERE s.studentId = ? ORDER BY s.id DESC LIMIT 1`,
+        [ids.users.studentA, ids.users.studentA]
+      );
     });
     after(() => {
       controller.setPaymentGatewayForTests(null);
