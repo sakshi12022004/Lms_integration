@@ -33,18 +33,26 @@ const CreateCourseAdmin = () => {
   const fetchData = async () => {
     try {
       setFetching(true);
-      // Fetch Mentors
-      const mentorsRes = await fetch(`${API}/users/mentors-simple`);
-      const mentorsData = await mentorsRes.json();
+      // Fetch Mentors with Auth Header
+      const mentorsRes = await fetch(`${API}/users/mentors-simple`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const mentorsData = mentorsRes.ok ? await mentorsRes.json() : [];
       
-      // Fetch All Users (to filter students)
+      // Fetch All Users (to filter students and fallback mentors)
       const usersRes = await fetch(`${API}/users/all`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const usersData = await usersRes.json();
-      const studentsData = usersData.filter(u => u.role === 'student');
+      const usersData = usersRes.ok ? await usersRes.json() : [];
+      const studentsData = Array.isArray(usersData) ? usersData.filter(u => u.role === 'student') : [];
+      const mentorsFromAll = Array.isArray(usersData) ? usersData.filter(u => u.role === 'mentor') : [];
 
-      if (Array.isArray(mentorsData)) setMentors(mentorsData);
+      if (Array.isArray(mentorsData) && mentorsData.length > 0) {
+        setMentors(mentorsData);
+      } else if (mentorsFromAll.length > 0) {
+        setMentors(mentorsFromAll);
+      }
+
       if (Array.isArray(studentsData)) setStudents(studentsData);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -65,11 +73,13 @@ const CreateCourseAdmin = () => {
   };
 
   const toggleStudent = (studentId) => {
+    if (!studentId) return;
+    const sIdStr = String(studentId);
     const newSelected = new Set(selectedStudents);
-    if (newSelected.has(studentId)) {
-      newSelected.delete(studentId);
+    if (newSelected.has(sIdStr)) {
+      newSelected.delete(sIdStr);
     } else {
-      newSelected.add(studentId);
+      newSelected.add(sIdStr);
     }
     setSelectedStudents(newSelected);
   };
@@ -87,7 +97,7 @@ const CreateCourseAdmin = () => {
     if (photo) submitData.append("photo", photo);
     
     // For arrays in FormData for Express/Multer:
-    const studentIdsArray = Array.from(selectedStudents);
+    const studentIdsArray = Array.from(selectedStudents).filter(Boolean);
     studentIdsArray.forEach((id, index) => {
       submitData.append(`studentIds[${index}]`, id);
     });
@@ -249,9 +259,14 @@ const CreateCourseAdmin = () => {
                 required
               >
                 <option value="">{t('select_a_mentor')}</option>
-                {mentors.map(m => (
-                  <option key={m._id} value={m._id}>{m.name} ({m.email})</option>
-                ))}
+                {mentors.map(m => {
+                  const mId = m.id || m._id;
+                  return (
+                    <option key={mId} value={mId}>
+                      {m.name}{m.email ? ` (${m.email})` : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>
@@ -260,10 +275,10 @@ const CreateCourseAdmin = () => {
           <div className="bg-[#fffdf4] p-6 rounded-none border border-[#ebdcaa] shadow-sm h-fit">
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-[#ebdcaa]">
               <h2 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] flex items-center gap-2">
-                <Users size={20} className="text-[#B99652]" />
-                {t('assign_students')}
+                <Users size={20} className="text-[#B99652] shrink-0" />
+                <span>{t('assign_students_title', 'Assign Students')}</span>
               </h2>
-              <span className="text-xs bg-[#B99652]/20 text-[#1e1b4b] font-bold px-2 py-1 rounded-none border border-[#ebdcaa]">
+              <span className="text-xs bg-[#B99652]/20 text-[#1e1b4b] font-bold px-2 py-1 rounded-none border border-[#ebdcaa] shrink-0">
                 {selectedStudents.size} {t('selected')}
               </span>
             </div>
@@ -282,25 +297,29 @@ const CreateCourseAdmin = () => {
               {filteredStudents.length === 0 ? (
                 <p className="text-gray-500 text-center py-6 text-sm">{t('no_students_found')}</p>
               ) : (
-                filteredStudents.map(student => (
-                  <div 
-                    key={student._id}
-                    onClick={() => toggleStudent(student._id)}
-                    className={`p-3 rounded-none border cursor-pointer transition-all flex items-center justify-between ${
-                      selectedStudents.has(student._id)
-                        ? 'bg-[#B99652]/15 border-[#B99652] text-[#1e1b4b]'
-                        : 'bg-white hover:bg-[#ebdcaa]/15 border-[#ebdcaa]'
-                    }`}
-                  >
-                    <div>
-                      <p className="font-semibold text-sm text-[#1e1b4b]">{student.name}</p>
-                      <p className="text-xs text-gray-500">{student.email}</p>
+                filteredStudents.map(student => {
+                  const sId = String(student.id || student._id);
+                  const isSelected = selectedStudents.has(sId);
+                  return (
+                    <div 
+                      key={sId}
+                      onClick={() => toggleStudent(sId)}
+                      className={`p-3 rounded-none border cursor-pointer transition-all flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-[#B99652]/15 border-[#B99652] text-[#1e1b4b]'
+                          : 'bg-white hover:bg-[#ebdcaa]/15 border-[#ebdcaa]'
+                      }`}
+                    >
+                      <div>
+                        <p className="font-semibold text-sm text-[#1e1b4b]">{student.name}</p>
+                        <p className="text-xs text-gray-500">{student.email}</p>
+                      </div>
+                      {isSelected && (
+                        <Check size={16} className="text-[#B99652] shrink-0" />
+                      )}
                     </div>
-                    {selectedStudents.has(student._id) && (
-                      <Check size={16} className="text-[#B99652]" />
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
