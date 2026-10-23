@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../auth/auth';
 import core5RobotPerfect from '../../assets/core5_robot_perfect.png';
 import core5RobotAvatar from '../../assets/core5_robot_avatar.png';
+import { handleMessage as handleStudentMessage } from './chatbotService';
+import { handleMessage as handleMentorMessage } from './mentorChatbotService';
+import { handleMessage as handleAdminMessage } from './adminChatbotService';
 
 /**
- * Core5 AI Assistant Mascot (Frontend UI Shell).
- * Pure decoupled frontend interface with 3D Mascot & "Hi! Need help?" speech bubble.
- * Old pseudo-backend services decoupled and ready for friend's dedicated AI API integration.
+ * Core5 AI Assistant Mascot (Live Database Connected).
+ * Features 3D Mascot & "Hi! Need help?" speech bubble with real SQLite LMS data queries.
  */
 
 const firstName = (user) => String(user?.name || '').trim().split(/\s+/)[0] || 'there';
@@ -50,12 +52,13 @@ const BotAvatar = () => (
 
 export default function LMSChatbot({ role = 'student' }) {
   const { t, i18n } = useTranslation('chatbot');
-  const { user } = useAuth();
+  const { user, token, API } = useAuth();
   const userId = user?.id ?? user?.userId ?? user?._id;
 
   const modeConfig = {
     student: {
       role: 'student',
+      handler: handleStudentMessage,
       chips: [
         { Icon: Trophy, label: t('chip_my_results', 'My Results'), message: 'How do I check my results?' },
         { Icon: Clock, label: t('chip_attendance', 'Attendance'), message: 'How is attendance recorded?' },
@@ -73,11 +76,12 @@ export default function LMSChatbot({ role = 'student' }) {
     },
     mentor: {
       role: 'mentor',
+      handler: handleMentorMessage,
       chips: [
-        { Icon: School, label: t('chip_my_classrooms', 'My Classrooms'), message: 'Help with classroom management' },
-        { Icon: Users, label: t('chip_my_students', 'My Students'), message: 'Student engagement tips' },
-        { Icon: Trophy, label: t('chip_class_results', 'Class Results'), message: 'Grading and assessment insights' },
-        { Icon: BookOpen, label: t('chip_my_courses', 'My Courses'), message: 'Course curriculum assistance' },
+        { Icon: School, label: t('chip_my_classrooms', 'My Classrooms'), message: 'Show my classrooms' },
+        { Icon: Users, label: t('chip_my_students', 'My Students'), message: 'Show students in my class' },
+        { Icon: Trophy, label: t('chip_class_results', 'Class Results'), message: 'Show class results' },
+        { Icon: BookOpen, label: t('chip_my_courses', 'My Courses'), message: 'Show my courses' },
       ],
       subtitle: t('subtitle_mentor', 'AI Mentor Assistant'),
       badge: t('badge_mentor', 'Mentor'),
@@ -90,11 +94,12 @@ export default function LMSChatbot({ role = 'student' }) {
     },
     admin: {
       role: 'admin',
+      handler: handleAdminMessage,
       chips: [
-        { Icon: LayoutDashboard, label: t('chip_overview', 'Overview'), message: 'Campus administration insights' },
-        { Icon: School, label: t('chip_classrooms', 'Classrooms'), message: 'Classroom allocation guidance' },
-        { Icon: UserCheck, label: t('chip_mentors', 'Mentors'), message: 'Faculty management queries' },
-        { Icon: Users, label: t('chip_students', 'Students'), message: 'Student enrollment guidance' },
+        { Icon: LayoutDashboard, label: t('chip_overview', 'Overview'), message: 'Show campus overview' },
+        { Icon: School, label: t('chip_classrooms', 'Classrooms'), message: 'Show all classrooms' },
+        { Icon: UserCheck, label: t('chip_mentors', 'Mentors'), message: 'Show faculty and mentors' },
+        { Icon: Users, label: t('chip_students', 'Students'), message: 'Show enrolled students' },
       ],
       subtitle: t('subtitle_admin', 'AI Administrative Assistant'),
       badge: t('badge_admin', 'Admin'),
@@ -166,42 +171,34 @@ export default function LMSChatbot({ role = 'student' }) {
     setMessages((prev) => [...prev, { id: newId(), role: 'user', text: tMsg }]);
     setLoading(true);
 
-    // Natural assistant responsiveness delay
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    try {
+      const handler = mode.handler || handleStudentMessage;
+      const ctx = {
+        API: API || 'http://localhost:5002/api',
+        token,
+        user
+      };
 
-    // =========================================================================
-    // 🔗 INTEGRATION POINT FOR YOUR FRIEND'S AI BACKEND:
-    // =========================================================================
-    // When your friend provides the AI API URL, uncomment this block:
-    // try {
-    //   const res = await fetch("YOUR_FRIEND_API_URL/chat", {
-    //     method: "POST",
-    //     headers: { "Content-Type": "application/json" },
-    //     body: JSON.stringify({ message: tMsg, role, userId })
-    //   });
-    //   const data = await res.json();
-    //   html = data.reply || data.answer || data.message;
-    // } catch (err) {
-    //   html = "Error connecting to AI service.";
-    // }
-    // =========================================================================
+      const html = await handler(tMsg, ctx);
 
-    const html = `<div class="p-3 bg-amber-50/90 border border-amber-200/80 rounded-xl text-slate-700 text-xs leading-relaxed shadow-sm">
-      <div class="flex items-center gap-1.5 font-semibold text-[#002366] mb-1">
-        <span>🤖</span>
-        <span>${t('ai_assistant_title', 'Core5 AI Engine')}</span>
-      </div>
-      <p class="text-slate-600 mb-1.5">
-        ${t('ai_connecting_notice', 'Query received! The dedicated AI intelligence backend is currently being integrated and will answer live here shortly.')}
-      </p>
-      <div class="text-[11px] text-amber-900 bg-amber-100/70 p-2 rounded-lg font-mono">
-        Query: "${esc(tMsg)}"
-      </div>
-    </div>`;
-
-    if (!mounted.current) return;
-    setMessages((prev) => [...prev, { id: newId(), role: 'assistant', html }]);
-    setLoading(false);
+      if (!mounted.current) return;
+      setMessages((prev) => [...prev, { id: newId(), role: 'assistant', html: html || 'No response available.' }]);
+    } catch (err) {
+      console.error('Chatbot handler error:', err);
+      if (!mounted.current) return;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: newId(),
+          role: 'assistant',
+          html: `<div class="p-2.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg">
+            ${t('error_general', 'An error occurred while loading your request. Please try again.')}
+          </div>`
+        }
+      ]);
+    } finally {
+      if (mounted.current) setLoading(false);
+    }
   };
 
   const resetChat = () => {

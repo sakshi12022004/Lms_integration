@@ -265,6 +265,15 @@ const milestones = [
       'Core UI Component Localization Immunity: Preserved 4 key feature showcase items in fixed English branding text to prevent translation degradation.',
       'Dynamic Pricing CTA Consistency: Linked solid golden button (bg-[#B99652] text-white shadow-md) dynamically to active center card (isCenter) with arrow (→); inactive cards cleanly adopt gold outline.'
     ]
+  },
+  {
+    title: 'Milestone 25: Chatbot Backend Reconnection & SQLite Live Querying',
+    date: '23 Oct 2026',
+    items: [
+      'Full Backend Services Restored: Reconnected chatbotService, mentorChatbotService, and adminChatbotService to LMSChatbot.',
+      'Live Database Queries: Students, mentors, and administrators can query live SQLite records (results, attendance, classrooms, announcements, rosters).',
+      'Mascot & UI Intact: Retained 3D waving Core5 Robot mascot trigger, speech bubble, and quick suggestion chips.'
+    ]
   }
 ];
 
