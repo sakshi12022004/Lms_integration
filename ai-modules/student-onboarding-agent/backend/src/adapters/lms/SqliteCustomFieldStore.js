@@ -53,19 +53,9 @@ class SqliteCustomFieldStore {
       const existing = this.conn.prepare('SELECT id, field_key, label, data_type, retired_at FROM soa_custom_fields WHERE university_id = ? AND field_key = ?')
         .get(this.actor.universityId, key);
       if (existing) {
+        // A retired key is never revived silently: the school must choose a new key or restore it explicitly.
         if (existing.retired_at !== null && existing.retired_at !== undefined) {
-          // Reactivate the retired field so the school can use it again!
-          const sameType = existing.data_type === dataType;
-          const nextType = sameType ? existing.data_type : dataType;
-          if (!sameType) {
-            const used = this.conn.prepare('SELECT COUNT(*) AS n FROM soa_custom_field_values WHERE field_id = ? AND university_id = ?').get(existing.id, this.actor.universityId).n;
-            if (used > 0) {
-              throw new ValidationError(`This retired field holds values of type "${existing.data_type}". Keep type "${existing.data_type}" or use another key.`, [], { code: 'FIELD_KEY_CONFLICT', statusCode: 409 });
-            }
-          }
-          this.conn.prepare('UPDATE soa_custom_fields SET retired_at = NULL, retired_by = NULL, label = ?, data_type = ?, updated_at = ? WHERE id = ? AND university_id = ?')
-            .run(label.trim(), nextType, this.now(), existing.id, this.actor.universityId);
-          return { field: { id: existing.id, key, label: label.trim(), dataType: nextType }, created: false };
+          throw new ValidationError(`The field "${key}" is retired. Choose another key.`, [], { code: 'FIELD_RETIRED', statusCode: 409 });
         }
         if (existing.data_type !== dataType) {
           throw new ValidationError(`This school already has a field "${key}" of type ${existing.data_type}.`, [], { code: 'FIELD_KEY_CONFLICT', statusCode: 409 });
@@ -117,6 +107,9 @@ class SqliteCustomFieldStore {
     return this.transaction(() => {
       this.verifyActor();
       const row = this.findOwn(key);
+      if (row.retired_at !== null && row.retired_at !== undefined) {
+        throw new ValidationError(`The field "${key}" is retired and cannot be changed.`, [], { code: 'FIELD_RETIRED', statusCode: 409 });
+      }
       if (changes.dataType !== undefined && changes.dataType !== row.data_type) {
         const used = this.conn.prepare('SELECT COUNT(*) AS n FROM soa_custom_field_values WHERE field_id = ? AND university_id = ?').get(row.id, this.actor.universityId).n;
         if (used > 0) {
