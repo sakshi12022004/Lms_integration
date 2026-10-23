@@ -28,14 +28,14 @@ describe('fee payments and certificates', () => {
       // the fee schedule and the order the stand-in gateway reports as order_fee_1.
       await ctx.db.run(
         `INSERT INTO student_fee_schedules (studentId, feeStructureId, planId, planName, totalFee, scheduleSnapshot)
-         SELECT ?, id, 'test-plan', 'Test plan', 5000, '[]' FROM feeStructures ORDER BY id LIMIT 1`,
-        [ids.users.studentA]
+         SELECT ?, id, 'test-plan', 'Test plan', 2500, '[{"stageNumber":1,"label":"Full fee","percentage":100,"expectedAmountPaise":250000,"dueDate":"2026-12-31"}]' FROM feeStructures WHERE id = ?`,
+        [ids.users.studentA2, ids.feeStructureA]
       );
       await ctx.db.run(
         `INSERT INTO payment_orders (orderId, studentId, scheduleId, installmentStage, feeStructureId, amount, currency, status)
          SELECT 'order_fee_1', ?, s.id, 1, s.feeStructureId, 2500, 'INR', 'created'
          FROM student_fee_schedules s WHERE s.studentId = ? ORDER BY s.id DESC LIMIT 1`,
-        [ids.users.studentA, ids.users.studentA]
+        [ids.users.studentA2, ids.users.studentA2]
       );
     });
     after(() => {
@@ -57,34 +57,34 @@ describe('fee payments and certificates', () => {
     const recorded = (paymentId) => ctx.db.all('SELECT studentId, amount, status, type FROM payments WHERE razorpay_payment_id = ?', [paymentId]);
 
     it('is not recorded when the signature is forged, the payment is not captured or belongs to another order', async () => {
-      assert.equal((await verify('studentA', { razorpay_signature: 'f'.repeat(64) })).status, 400);
+      assert.equal((await verify('studentA2', { razorpay_signature: 'f'.repeat(64) })).status, 400);
       gateway.payment.status = 'failed';
-      assert.equal((await verify('studentA')).status, 400);
+      assert.equal((await verify('studentA2')).status, 400);
       gateway.payment.status = 'captured';
       gateway.payment.order_id = 'order_other';
-      assert.equal((await verify('studentA')).status, 400);
+      assert.equal((await verify('studentA2')).status, 400);
       assert.deepEqual(await recorded('pay_fee_1'), []);
     });
 
     it('a verified payment is recorded once, for the paying student, with the amount the gateway captured', async () => {
-      const first = await verify('studentA', { studentId: ids.users.studentA, amount: 1 });
+      const first = await verify('studentA2', { studentId: ids.users.studentA2, amount: 1 });
       assert.equal(first.status, 200, first.text.slice(0, 200));
-      const second = await verify('studentA'); // double click or retry
+      const second = await verify('studentA2'); // double click or retry
       assert.equal(second.status, 200);
-      assert.deepEqual(await recorded('pay_fee_1'), [{ studentId: ids.users.studentA, amount: 2500, status: 'success', type: 'online' }]);
+      assert.deepEqual(await recorded('pay_fee_1'), [{ studentId: ids.users.studentA2, amount: 2500, status: 'success', type: 'online' }]);
     });
 
     it('a student cannot record a payment for someone else; staff cannot record one for another school', async () => {
-      assert.equal((await verify('studentA', { razorpay_payment_id: 'pay_fee_2', studentId: ids.users.studentA2 })).status, 403);
+      assert.equal((await verify('studentA2', { razorpay_payment_id: 'pay_fee_2', studentId: ids.users.studentA })).status, 403);
       assert.equal((await verify('accountantA', { razorpay_payment_id: 'pay_fee_2', studentId: ids.users.studentB })).status, 404);
       assert.deepEqual(await recorded('pay_fee_2'), []);
     });
 
     it('payment history comes from the payments table, limited to the student and the school', async () => {
-      const own = await ctx.api('GET', `/api/payments/transactions/${ids.users.studentA}`, { as: 'studentA' });
+      const own = await ctx.api('GET', `/api/payments/transactions/${ids.users.studentA2}`, { as: 'studentA2' });
       assert.equal(own.status, 200);
       assert.ok(own.body.transactions.some((row) => row.razorpay_payment_id === 'pay_fee_1'));
-      assert.ok(own.body.transactions.every((row) => row.studentId === ids.users.studentA));
+      assert.ok(own.body.transactions.every((row) => row.studentId === ids.users.studentA2));
 
       const school = await ctx.api('GET', '/api/payments/all-transactions', { as: 'accountantA' });
       assert.equal(school.status, 200);
