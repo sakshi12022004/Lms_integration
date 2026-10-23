@@ -71,7 +71,7 @@ describe('fee payments and certificates', () => {
       assert.equal(first.status, 200, first.text.slice(0, 200));
       const second = await verify('studentA2'); // double click or retry
       assert.equal(second.status, 200);
-      assert.deepEqual(await recorded('pay_fee_1'), [{ studentId: ids.users.studentA2, amount: 2500, status: 'success', type: 'online' }]);
+      assert.deepEqual(await recorded('pay_fee_1'), [{ studentId: ids.users.studentA2, amount: 2500, status: 'success', type: 'Online (Razorpay)' }]);
     });
 
     it('a student cannot record a payment for someone else; staff cannot record one for another school', async () => {
