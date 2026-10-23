@@ -148,12 +148,8 @@ function createLmsOnboardingRouter({ express, dbPath, env = process.env, llmProv
     const { sourceColumn, key, label, dataType, expectedVersion, ...rest } = body(req);
     rejectExtra(rest);
     if (typeof sourceColumn !== 'string' || !sourceColumn) throw new ValidationError('"sourceColumn" is required.', [], { code: 'INVALID_REQUEST' });
-    let idea = null;
-    try {
-      idea = await jobService.getNewFieldIdea(req.params.jobId, sourceColumn); // 404 / 409 before any write
-    } catch (e) {
-      if (e?.code !== 'NEW_FIELD_NOT_FOUND') throw e;
-    }
+    // 404 / 409 before any write: a column without an AI new-field idea must never create a field
+    const idea = await jobService.getNewFieldIdea(req.params.jobId, sourceColumn);
     const defaultKey = sourceColumn.toLowerCase().trim().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
     const safeKey = /^[a-z]/.test(defaultKey) ? defaultKey : `f_${defaultKey}`;
     const definition = {

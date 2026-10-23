@@ -226,7 +226,8 @@ class ImportJobService {
     let job = await this.load(jobId, { expectedVersion });
     this.assertEditable(job);
     const idea = typeof sourceColumn === 'string' ? (job.mapping.newFields || []).find((f) => f.sourceColumn === sourceColumn) : null;
-    if (idea && idea.status === 'approved') throw new ValidationError('This new field has already been approved.', [], { code: 'NEW_FIELD_ALREADY_APPROVED', statusCode: 409 });
+    if (!idea) throw new ValidationError('There is no new-field suggestion for this column.', [], { code: 'NEW_FIELD_NOT_FOUND', statusCode: 404 });
+    if (idea.status === 'approved') throw new ValidationError('This new field has already been approved.', [], { code: 'NEW_FIELD_ALREADY_APPROVED', statusCode: 409 });
     if (!field || !Number.isInteger(field.id) || typeof field.key !== 'string') throw new TypeError('approveNewField needs the created field.');
     const target = customTarget(field.key);
     const customFields = [...(job.mapping.customFields || []).filter((f) => f.key !== field.key),
