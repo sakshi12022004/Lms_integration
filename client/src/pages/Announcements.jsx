@@ -1,26 +1,43 @@
 import { useEffect, useState } from "react";
-import { useUniversalPersistence } from "../hooks/useUniversalPersistenceSimple";
-import { useTranslation } from "../context/TranslationContext";
 import { useAuth } from "../auth/auth";
+import { useTranslation } from "../context/TranslationContext";
 
+// Notices for the signed-in user. They come from the announcements endpoint, which returns
+// only this school's notices meant for this user's role (and notices addressed to the user).
 const Announcements = () => {
   const { t } = useTranslation();
   const { API, token } = useAuth();
-  // Use universal persistence for announcements
-  const { data: announcements, loading, error } = useUniversalPersistence('announcements');
+  const [announcements, setAnnouncements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/announcements`, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+        const list = Array.isArray(data) ? data : data?.announcements || data?.data || [];
+        if (!cancelled) setAnnouncements(list);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [API, token]);
 
   // Same per-user read receipt the AnnouncementBell uses. Never PUT the
   // announcement record itself: that would edit it for every recipient.
   const markAsRead = async (id) => {
     if (id === undefined || id === null) return;
     try {
-      await fetch(`${API}/announcements/${id}/read`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-    } catch (error) {
-      console.error('Error marking announcement as read:', error);
+      await fetch(`${API}/announcements/${id}/read`, { method: "PUT", headers: { Authorization: `Bearer ${token}` } });
+    } catch (err) {
+      console.error('Error marking announcement as read:', err);
     }
   };
 

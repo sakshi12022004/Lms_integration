@@ -101,6 +101,16 @@ const TEMPLATES = {
     ai: false,
     message: (d) => `Attendance for ${d.title} has not been marked today.`,
   },
+  LIVE_CLASS_STARTED: {
+    title: 'Live Class Started',
+    ai: false,
+    message: (d) => `${d.teacherName || 'Your teacher'} has started '${d.title}'. Open this notification to join.`,
+  },
+  LIVE_CLASS_SCHEDULED: {
+    title: 'Live Class Scheduled',
+    ai: false,
+    message: (d) => `'${d.title}' is scheduled for ${d.date}. You can join from Your Lectures when it starts.`,
+  },
   MENTOR_PENDING_APPROVAL: {
     title: 'Teacher Awaiting Approval',
     ai: false,

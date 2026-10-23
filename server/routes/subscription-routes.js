@@ -6,10 +6,14 @@ const {
   verifySubscriptionPayment,
   activateFreeTrial,
   cancelSubscription,
-  checkFeatureAccess,
-  testUpgradeSubscription
+  checkFeatureAccess
 } = require('../controllers/subscription-controller');
 const authMiddleware = require('../middleware/authMiddleware');
+const { rateLimiters } = require('../middleware/rateLimiter');
+
+// Every subscription route needs a signed-in account; the plan always belongs to
+// the caller. Which roles may change a plan is set in config/accessPolicy.js.
+router.use(authMiddleware);
 
 // Get current subscription
 router.get('/current', getCurrentSubscription);
@@ -18,18 +22,18 @@ router.get('/current', getCurrentSubscription);
 router.get('/check-feature-access', authMiddleware, checkFeatureAccess);
 
 // Create subscription order
-router.post('/create-order', createSubscriptionOrder);
+router.post('/create-order', rateLimiters.createOrder, createSubscriptionOrder);
 
 // Verify subscription payment and activate
-router.post('/verify-payment', verifySubscriptionPayment);
+router.post('/verify-payment', rateLimiters.verifyPayment, verifySubscriptionPayment);
 
 // Activate free trial
-router.post('/activate-free-trial', activateFreeTrial);
+router.post('/activate-free-trial', rateLimiters.sensitive, activateFreeTrial);
 
 // Cancel subscription
 router.post('/cancel', cancelSubscription);
 
-// Test upgrade subscription (for demonstration)
-router.post('/test-upgrade', testUpgradeSubscription);
+// The former "test-upgrade" (a paid plan without paying) and "debug-feature-access"
+// routes are intentionally not registered.
 
 module.exports = router;

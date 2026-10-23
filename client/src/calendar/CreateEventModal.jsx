@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import ClassSectionCoursePicker from "../components/ClassSectionCoursePicker";
+import { API_ORIGIN } from "../config/api";
 
 const CreateEventModal = ({ role, onClose, onSuccess }) => {
   const [title, setTitle] = useState("");
@@ -35,7 +36,7 @@ const CreateEventModal = ({ role, onClose, onSuccess }) => {
     }
     setSuggesting(true);
     try {
-      const apiUrl = import.meta.env.VITE_BACKEND_URL || "https://core5.io";
+      const apiUrl = API_ORIGIN;
       const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
       const res = await axios.post(
         `${baseUrl}/api/announcements/suggest-text`,
@@ -93,7 +94,7 @@ const CreateEventModal = ({ role, onClose, onSuccess }) => {
         if (notifyMessage.trim()) payload.notifyMessage = notifyMessage.trim();
       }
 
-      const apiUrl = import.meta.env.VITE_BACKEND_URL || "https://core5.io";
+      const apiUrl = API_ORIGIN;
       // Ensure we don't double the /api prefix
       const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
       

@@ -1,3 +1,4 @@
+const { isWebUrl, isEmptyOrWebUrl } = require('../helpers/safeUrl');
 const LiveClass = require("../models/LiveClass");
 const Course = require("../models/Course");
 const tenantConnectionManager = require('../config/tenant-connection-manager');
@@ -29,6 +30,9 @@ exports.createLiveClass = async (req, res) => {
 
     if (!courseId || !title || !scheduledStartTime || !scheduledEndTime) {
       return res.status(400).json({ message: "Missing required fields" });
+    }
+    if (!isEmptyOrWebUrl(meetingLink)) {
+      return res.status(400).json({ message: "The meeting link must be a web address starting with http:// or https://" });
     }
 
     // Verify course exists and user is mentor/owner (SQLite)
@@ -441,9 +445,9 @@ exports.joinLiveClass = async (req, res) => {
     // Record attendance: create or update live_class_attendees
     await new Promise((resolve) => {
       db.run(
-        `INSERT INTO live_class_attendees (liveClassId, studentId, joinedAt) 
+        `INSERT INTO live_class_attendees (liveClassId, studentId, joinedAt)
          VALUES (?, ?, datetime('now'))
-         ON CONFLICT(liveClassId, studentId) DO UPDATE SET 
+         ON CONFLICT(liveClassId, studentId) DO UPDATE SET
          joinedAt = datetime('now')`,
         [liveClassId, studentId],
         function (err) {

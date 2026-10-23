@@ -8,7 +8,7 @@ import GlobalLanguageSelector from "../../components/GlobalLanguageSelector";
 const SuperAdminLogin = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { loginUser } = useAuth();
+  const { loginUser, API } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +21,8 @@ const SuperAdminLogin = () => {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/auth/login", {
+      // The server checks the password and signs the session; nothing is decided in the browser.
+      const res = await fetch(`${API}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

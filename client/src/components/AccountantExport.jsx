@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/auth';
 import { Download, Database, FileSpreadsheet, RefreshCw, Eye, AlertCircle, CheckCircle, DollarSign, Receipt, Package, TrendingUp } from 'lucide-react';
+import { downloadWithSession } from '../config/download';
 
 const AccountantExport = () => {
   const { token, API } = useAuth();
@@ -105,7 +106,7 @@ const AccountantExport = () => {
 
   const downloadTableExcel = (tableName) => {
     setExportStatus({ type: 'info', message: `Downloading ${tableName} data...` });
-    window.open(`${API}/accountant-export/table/${tableName}/excel?token=${token}`, '_blank');
+    downloadWithSession(`${API}/accountant-export/table/${tableName}/excel`).catch((err) => alert(err.message));
     setTimeout(() => {
       setExportStatus({ type: 'success', message: `${tableName} export completed!` });
     }, 2000);
@@ -113,7 +114,7 @@ const AccountantExport = () => {
 
   const downloadFullDatabase = () => {
     setExportStatus({ type: 'info', message: 'Downloading finance database...' });
-    window.open(`${API}/accountant-export/database/excel?token=${token}`, '_blank');
+    downloadWithSession(`${API}/accountant-export/database/excel`).catch((err) => alert(err.message));
     setTimeout(() => {
       setExportStatus({ type: 'success', message: 'Finance database export completed!' });
     }, 3000);
@@ -198,7 +199,7 @@ const AccountantExport = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
-            onClick={() => window.open(`${API}/accountant-export/database/excel?token=${token}`, '_blank')}
+            onClick={() => downloadWithSession(`${API}/accountant-export/database/excel`).catch((err) => alert(err.message))}
             className="flex items-center justify-center gap-3 p-6 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
             <Database size={24} />
@@ -224,7 +225,7 @@ const AccountantExport = () => {
             {tables.map((table) => (
               <button
                 key={table}
-                onClick={() => window.open(`${API}/accountant-export/table/${table}/excel?token=${token}`, '_blank')}
+                onClick={() => downloadWithSession(`${API}/accountant-export/table/${table}/excel`).catch((err) => alert(err.message))}
                 className="p-3 rounded-lg border-2 border-gray-200 hover:border-green-500 text-gray-700 hover:text-green-700 flex items-center gap-2"
               >
                 {getTableIcon(table)}

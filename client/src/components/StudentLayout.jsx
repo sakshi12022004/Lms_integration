@@ -12,13 +12,16 @@ import {
   FileCheck,
   Calendar,
   CreditCard,
-  Bell
+  Bell,
+  Video
 } from 'lucide-react';
 import { useAuth } from "../auth/auth";
 import QuotaLimitModal from './QuotaLimitModal';
 import { useTranslation } from "../context/TranslationContext";
 import LMSChatbot from './Chatbot/LMSChatbot';
 import whiteLogo from '../assets/core5-final-rbg.png';
+import AnnouncementBell from './AnnouncementBell';
+import LiveNowBanner from './lectures/LiveNowBanner';
 import UniversalLanguageSelector from './UniversalLanguageSelector';
 
 const StudentLayout = ({ children }) => {
@@ -83,6 +86,14 @@ const StudentLayout = ({ children }) => {
       icon: <Trophy size={20} />,
       descKey: 'navigation:nav_desc_academic_results',
       tourId: 'nav-results'
+    },
+    {
+      path: '/student/lectures',
+      nameKey: 'nav_lectures',
+      icon: <Video size={20} />,
+      label: 'Your Lectures',
+      description: 'Live classes and history',
+      tourId: 'nav-lectures'
     },
     {
       path: '/student/attendance',
@@ -375,6 +386,9 @@ const StudentLayout = ({ children }) => {
           flex-1 overflow-y-auto
         `}
       >
+
+        {/* A lecture of the student's that is live or about to start: Join from any page */}
+        <LiveNowBanner API={API} token={token} />
 
         {/* ================= MOBILE MENU TRIGGER & TOPBAR ================= */}
         <div className="md:hidden p-3 flex items-center justify-between bg-white border-b border-gray-100 sticky top-0 z-20">

@@ -5,6 +5,7 @@ import { useTranslation } from "../../context/TranslationContext";
 import MentorLayout from "../../components/MentorLayout";
 import { toast } from "react-toastify";
 import { Plus, Trash2, FileText, Film, Link as LinkIcon, Download, ArrowLeft } from "lucide-react";
+import { fileLink } from "../../config/api";
 
 const CourseMaterialsUpload = () => {
   const { courseId } = useParams();
@@ -379,7 +380,7 @@ const CourseMaterialsUpload = () => {
                   {material.fileUrl && (
                     <div className="mb-4">
                       <a
-                        href={material.fileUrl}
+                        href={fileLink(material.fileUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-semibold"

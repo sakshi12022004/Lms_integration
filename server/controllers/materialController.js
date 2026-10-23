@@ -1,3 +1,4 @@
+const { isWebUrl, isEmptyOrWebUrl } = require('../helpers/safeUrl');
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 const db = require('../config/database-switch');
 const path = require("path");
@@ -50,6 +51,9 @@ exports.uploadMaterial = async (req, res) => {
       else if (type === "video_link" || type === "pdf_link") {
         if (!linkUrl) {
           return res.status(400).json({ message: "Link URL is required for link type" });
+        }
+        if (!isWebUrl(linkUrl)) {
+          return res.status(400).json({ message: "The link must be a web address starting with http:// or https://" });
         }
         linkUrlValue = linkUrl;
       } else {

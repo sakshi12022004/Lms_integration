@@ -29,6 +29,10 @@ export const notificationTarget = (notification, role) => {
       return "/teacher/assessments";
     case "ATTENDANCE_PENDING":
       return id ? `/mentor/attendance?classroomId=${id}` : "/mentor/attendance";
+    case "LIVE_CLASS_STARTED":
+      return id ? `/live/${id}` : "/student/lectures";
+    case "LIVE_CLASS_SCHEDULED":
+      return "/student/lectures";
     case "MENTOR_PENDING_APPROVAL":
       return "/admin/mentors";
     default:

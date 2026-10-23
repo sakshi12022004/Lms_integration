@@ -131,6 +131,17 @@ const globalErrorHandler = (error, req, res, next) => {
     return next(error);
   }
 
+  // Client mistakes reported by Express itself: malformed JSON, a body that is too large,
+  // a badly encoded URL. They are the caller's error (4xx), not a server failure.
+  const clientStatus = error.status || error.statusCode;
+  if (Number.isInteger(clientStatus) && clientStatus >= 400 && clientStatus < 500) {
+    return res.status(clientStatus).json({
+      success: false,
+      error: 'bad_request',
+      message: clientStatus === 413 ? 'The request body is too large' : 'The request could not be understood'
+    });
+  }
+
   let errorResponse;
 
   // Handle different types of errors
@@ -156,14 +167,7 @@ const globalErrorHandler = (error, req, res, next) => {
     };
   }
 
-  // In development, include more details
-  if (process.env.NODE_ENV === 'development') {
-    errorResponse.debug = {
-      message: error.message,
-      stack: error.stack,
-      code: error.code
-    };
-  }
+  // Stack traces and raw error text stay in the server log; they are never sent to a client.
 
   // Send error response
   res.status(500).json(errorResponse);

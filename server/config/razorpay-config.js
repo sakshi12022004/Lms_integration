@@ -1,29 +1,20 @@
-// Razorpay Configuration
-// Update these with your actual Razorpay credentials
+// Razorpay configuration.
+//
+// Keys come from the environment only (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET).
+// Keys must never be written in source files: anyone who can read the
+// repository could then confirm payments that were never made.
 
-const RAZORPAY_CONFIG = {
-  // Test Mode (for development)
-  TEST: {
-    KEY_ID: 'rzp_test_YourKeyHere',
-    KEY_SECRET: 'YourSecretKey'
-  },
-  
-  // Live Mode (for production)
-  LIVE: {
-    KEY_ID: 'rzp_live_YourLiveKey',
-    KEY_SECRET: 'YourLiveSecret'
-  },
-  
-  // Current mode (change to 'LIVE' for production)
-  CURRENT_MODE: 'TEST'
-};
+const getCurrentConfig = () => ({
+  KEY_ID: process.env.RAZORPAY_KEY_ID || '',
+  KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || ''
+});
 
-// Get current configuration
-const getCurrentConfig = () => {
-  return RAZORPAY_CONFIG[RAZORPAY_CONFIG.CURRENT_MODE];
+const isConfigured = () => {
+  const { KEY_ID, KEY_SECRET } = getCurrentConfig();
+  return Boolean(KEY_ID && KEY_SECRET);
 };
 
 module.exports = {
-  RAZORPAY_CONFIG,
-  getCurrentConfig
+  getCurrentConfig,
+  isConfigured
 };

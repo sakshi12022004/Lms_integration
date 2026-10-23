@@ -1,8 +1,9 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
-// Database file path - use permanent database
-const DB_PATH = path.join(__dirname, '../data/lms_permanent.db');
+// Database file path (LMS_SQLITE_PATH overrides it for tests and staging copies)
+const { DB_PATH } = require('./dbPath');
 
 // Initialize database connection
 const db = new sqlite3.Database(DB_PATH, (err) => {
@@ -14,6 +15,11 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
   } else {
     console.log('✅ SQLite Connected to:', DB_PATH);
     global.isDbConnected = true;
+    // SQLite ignores foreign keys unless asked per connection. Enforcement is opt-in
+    // because existing databases may hold orphaned rows that must be reconciled first.
+    if (process.env.LMS_ENFORCE_FOREIGN_KEYS === 'true') {
+      db.run('PRAGMA foreign_keys = ON');
+    }
     initializeTables();
   }
 });
@@ -41,28 +47,38 @@ function initializeTables() {
       return;
     }
     console.log('✅ Users table created');
-    
+
+    // Columns the controllers rely on that a database created from the statement above
+    // does not have (older databases already do). Adding a column never changes existing rows.
+    ['created_at DATETIME', 'updated_at DATETIME', 'created_by INTEGER', 'sessions_valid_from INTEGER'].forEach((column) => {
+      db.run(`ALTER TABLE users ADD COLUMN ${column}`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+          console.warn(`Could not add ${column} column to users:`, err.message);
+        }
+      });
+    });
+
     // Add classroom_id column if it doesn't exist (for existing tables)
     db.run(`ALTER TABLE users ADD COLUMN classroom_id INTEGER`, (err) => {
       if (err && !err.message.includes('duplicate column name')) {
         // Column might already exist, which is fine
       }
     });
-    
+
     // Fix column name from is_approved to isApproved if needed
     db.run(`ALTER TABLE users RENAME COLUMN is_approved TO isApproved`, (err) => {
       if (err && !err.message.includes('no such column')) {
         // Column might not exist or already renamed, which is fine
       }
     });
-    
+
     // Add university_id column if it doesn't exist (for existing tables)
     db.run(`ALTER TABLE users ADD COLUMN university_id INTEGER DEFAULT 1`, (err) => {
       if (err && !err.message.includes('duplicate column name')) {
         // Column might already exist, which is fine
       }
     });
-    
+
     // Add subscriptionPlan column if it doesn't exist (for existing tables)
     db.run(`ALTER TABLE users ADD COLUMN subscriptionPlan TEXT DEFAULT 'free'`, (err) => {
       if (err && !err.message.includes('duplicate column name')) {
@@ -91,7 +107,7 @@ function initializeTables() {
       return;
     }
     console.log('✅ Universities table created');
-    
+
     // Add subscriptionPlan column if it doesn't exist (for existing tables)
     db.run(`ALTER TABLE universities ADD COLUMN subscriptionPlan TEXT DEFAULT 'free'`, (err) => {
       if (err && !err.message.includes('duplicate column name')) {
@@ -124,7 +140,7 @@ function initializeTables() {
       return;
     }
     console.log('✅ Courses table created');
-    
+
     // Add classroomId column if it doesn't exist (for existing tables)
     db.run(`ALTER TABLE courses ADD COLUMN classroomId INTEGER`, (err) => {
       if (err && !err.message.includes('duplicate column name')) {
@@ -216,13 +232,41 @@ function initializeTables() {
       }
     });
 
-    // Add targetUserId column if it doesn't exist
-    db.run(`ALTER TABLE announcements ADD COLUMN targetUserId INTEGER`, (altErr) => {
-      if (altErr && !altErr.message.includes('duplicate column name')) {
-        console.warn('Could not add targetUserId column to announcements:', altErr.message);
-      } else {
-        console.log('✅ Added targetUserId to announcements table');
-      }
+    // Targeted notifications reuse this table: recipientUserId = the ONE user who may see the row
+    // (NULL = an ordinary announcement), type/entityType/entityId = what it is about (used for
+    // click routing), dedupeKey = one notification per event per recipient.
+    const notificationColumns = [
+      'recipientUserId INTEGER',
+      'type TEXT',
+      'entityType TEXT',
+      'entityId INTEGER',
+      'dedupeKey TEXT',
+      'classroomId INTEGER', // class/section a teacher's announcement is for
+      'targetUserId INTEGER', // the one student a personal fee reminder is for (routes/classroomRoutes.js)
+    ];
+    let pendingColumns = notificationColumns.length;
+    notificationColumns.forEach((column) => {
+      db.run(`ALTER TABLE announcements ADD COLUMN ${column}`, (altErr) => {
+        if (altErr && !altErr.message.includes('duplicate column name')) {
+          console.warn(`Could not add ${column} column to announcements:`, altErr.message);
+        }
+        pendingColumns--;
+        if (pendingColumns > 0) return;
+
+        db.run(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_announcements_dedupe
+          ON announcements (dedupeKey)
+          WHERE dedupeKey IS NOT NULL
+        `, (idxErr) => {
+          if (idxErr) console.error('Error creating announcements dedupe index:', idxErr);
+        });
+        db.run(`
+          CREATE INDEX IF NOT EXISTS idx_announcements_recipient
+          ON announcements (recipientUserId)
+        `, (idxErr) => {
+          if (idxErr) console.error('Error creating announcements recipient index:', idxErr);
+        });
+      });
     });
   });
 
@@ -343,7 +387,7 @@ function initializeTables() {
       return;
     }
     console.log('✅ Classrooms table created');
-    
+
     // Add classTeacherId column if it doesn't exist
     db.run(`ALTER TABLE classrooms ADD COLUMN classTeacherId INTEGER`, (altErr) => {
       if (altErr && !altErr.message.includes('duplicate column name')) {
@@ -394,7 +438,7 @@ function initializeTables() {
       return;
     }
     console.log('✅ Fee structures table created');
-    
+
     // Add university_id column if it doesn't exist
     db.run(`ALTER TABLE feeStructures ADD COLUMN university_id INTEGER NOT NULL DEFAULT 1`, (altErr) => {
       if (altErr && !altErr.message.includes('duplicate column name')) {
@@ -434,7 +478,7 @@ function initializeTables() {
       return;
     }
     console.log('✅ Students table created');
-    
+
     // Add studentId column if it doesn't exist (for existing tables)
     db.run(`ALTER TABLE students ADD COLUMN studentId TEXT`, (err) => {
       if (err && !err.message.includes('duplicate column name')) {
@@ -959,7 +1003,7 @@ function initializeTables() {
     initializeTranslationsTable();
     initializeUserLanguageTable();
     initializeDemoRequestsTable();
-    
+
     // Insert demo data after all tables are created
     setTimeout(insertDemoData, 1000);
   });
@@ -1035,17 +1079,36 @@ function initializeDemoRequestsTable() {
   });
 }
 
+// Demo accounts and default fee structures are development seed data. They are
+// inserted only when SEED_DEMO_DATA=true and never in production: the demo
+// accounts share one publicly known password, and re-creating "default" fee
+// structures would undo an admin who deliberately removed theirs.
+const demoSeedEnabled = () =>
+  process.env.SEED_DEMO_DATA === 'true' && process.env.NODE_ENV !== 'production';
+
+// insertDemoData is scheduled twice during start-up (the first call can arrive before the
+// tables exist). Each part runs once, after its table could actually be read.
+let demoUsersChecked = false;
+let demoFeesChecked = false;
+
 // Insert demo data if tables are empty
 function insertDemoData() {
+  if (!demoSeedEnabled()) return;
+
   // Check if users table is empty
   db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
     if (err) {
       console.error('Error checking users table:', err);
       return;
     }
+    if (demoUsersChecked) return;
+    demoUsersChecked = true;
 
     if (row.count === 0) {
       console.log('📝 Inserting demo data...');
+
+      // The demo accounts belong to school 1, so that school has to exist
+      db.run("INSERT INTO universities (name, area) SELECT 'Demo School', 'Demo' WHERE NOT EXISTS (SELECT 1 FROM universities)");
 
       // Insert demo users
       const demoUsers = [
@@ -1100,6 +1163,8 @@ function insertDemoData() {
       console.error('Error checking fee structures:', err);
       return;
     }
+    if (demoFeesChecked) return;
+    demoFeesChecked = true;
 
     // Only add default fee structures if table is empty
     if (result && result.count === 0) {
@@ -1109,7 +1174,7 @@ function insertDemoData() {
       ];
 
       const feeStmt = db.prepare(
-        `INSERT INTO feeStructures (category, grade, tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee, totalFee, dueDate) 
+        `INSERT INTO feeStructures (category, grade, tuitionFee, transportFee, computerLabFee, libraryFee, sportsFee, examinationFee, miscellaneousFee, totalFee, dueDate)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       );
 
@@ -1204,12 +1269,278 @@ function initializeTranslationsTable() {
 
 const { runInstallmentMigrations } = require('./migration-runner');
 
+// School ownership for procurement tables that were created without it. Adding a nullable
+// column changes no existing row. Rows from before this column have no school yet: they are
+// hidden from school accounts until the operator assigns them with
+// scripts/security/reconcile-school-ownership.js (nothing is guessed at start-up).
+// Runs `work` once `table` exists. Tables are created one after another at start-up, which on
+// a brand-new database takes longer than the fixed delays used elsewhere in this file.
+function afterTableExists(table, work, attemptsLeft = 120) {
+  db.get("SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?", [table], (err, row) => {
+    if (row) return work();
+    if (attemptsLeft > 0) setTimeout(() => afterTableExists(table, work, attemptsLeft - 1), 250);
+  });
+}
+
+// Indexes for the lookups every request makes (school, class membership, enrolment,
+// course content). Without them each lookup reads the whole table. CREATE INDEX IF NOT
+// EXISTS changes no data and is skipped when the index is already there.
+const LOOKUP_INDEXES = {
+  users: ['university_id, role'],
+  classrooms: ['university_id', 'classTeacherId'],
+  classroomAssignments: ['teacherId', 'classroomId'],
+  student_classroom_assignment: ['classroomId'],
+  courses: ['university_id', 'classroomId', 'mentorId'],
+  course_students: ['courseId', 'studentId'],
+  weeks: ['courseId'],
+  chapters: ['courseId'],
+  course_materials: ['courseId'],
+  assessments: ['courseId'],
+  assessment_questions: ['assessmentId'],
+  results: ['classroomId', 'studentId'],
+  attendance: ['studentId'],
+  payments: ['studentId'],
+  progress: ['studentId, courseId'],
+  certificates: ['studentId'],
+  live_classes: ['courseId'],
+  announcements: ['university_id'],
+  calendar_events: ['university_id'],
+  feeStructures: ['university_id'],
+};
+
+function addLookupIndexes() {
+  for (const [table, columnSets] of Object.entries(LOOKUP_INDEXES)) {
+    afterTableExists(table, () => {
+      columnSets.forEach((columns) => {
+        const name = `idx_${table}_${columns.replace(/[^A-Za-z0-9]+/g, '_')}`;
+        db.run(`CREATE INDEX IF NOT EXISTS ${name} ON ${table}(${columns})`, (err) => {
+          if (err) console.warn(`Could not create index ${name}:`, err.message);
+        });
+      });
+    });
+  }
+  // One attempt per student per assessment, also when two submissions arrive together.
+  afterTableExists('assessment_attempts', () => {
+    db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_assessment_attempts_one_per_student ON assessment_attempts(assessmentId, studentId)', (err) => {
+      if (err) console.warn('One-attempt rule could not be enforced yet (duplicate attempts exist):', err.message);
+    });
+  });
+}
+
+// Columns the controllers write that a database created from this file does not have
+// (older databases already do). Adding a column never changes existing rows.
+const MISSING_COLUMNS = {
+  chapters: ['imageUrl TEXT', 'videoUrl TEXT', 'fileUrl TEXT'],
+};
+
+// Stock requests, templates and vendor quotes. Their definitions live in
+// database/stock_requests_schema.sql, a set-up script that also drops tables and inserts
+// sample rows. Only its CREATE TABLE / CREATE INDEX statements are used here, as
+// "IF NOT EXISTS", so an existing database is never changed and a new one gets the tables.
+function createStockRequestTables() {
+  let sql;
+  try {
+    sql = require('fs').readFileSync(path.join(__dirname, '..', 'database', 'stock_requests_schema.sql'), 'utf8');
+  } catch (err) {
+    console.warn('Stock request schema file not found:', err.message);
+    return;
+  }
+  const statements = sql
+    .replace(/--[^\n]*/g, '')
+    .split(';')
+    .map((statement) => statement.trim())
+    .filter((statement) => /^CREATE\s+(TABLE|INDEX)\s/i.test(statement))
+    .map((statement) => statement.replace(/^CREATE\s+(TABLE|INDEX)\s+(?!IF\s+NOT\s+EXISTS)/i, 'CREATE $1 IF NOT EXISTS '));
+  afterTableExists('vendors', () => {
+    db.serialize(() => {
+      statements.forEach((statement) => {
+        db.run(statement, (err) => {
+          if (err) console.warn('Stock request schema statement skipped:', err.message);
+        });
+      });
+    });
+  });
+}
+
+function addSchoolOwnershipColumns() {
+  for (const [table, columns] of Object.entries(MISSING_COLUMNS)) {
+    afterTableExists(table, () => {
+      columns.forEach((column) => {
+        db.run(`ALTER TABLE ${table} ADD COLUMN ${column}`, (err) => {
+          if (err && !err.message.includes('duplicate column name')) {
+            console.warn(`Could not add ${column} to ${table}:`, err.message);
+          }
+        });
+      });
+    });
+  }
+  ['expenses', 'orders', 'inventory', 'vendors'].forEach((table) => {
+    afterTableExists(table, () => {
+      db.run(`ALTER TABLE ${table} ADD COLUMN university_id INTEGER`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+          console.warn(`Could not add university_id column to ${table}:`, err.message);
+        }
+      });
+    });
+  });
+  // One attendance row per student per classroom per day. Skipped with a warning when an
+  // older database still holds duplicates, which then need to be reconciled first.
+  afterTableExists('attendance', () => {
+    db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_one_per_day ON attendance(classroomId, studentId, date)', (err) => {
+      if (err) {
+        console.warn('Attendance uniqueness could not be enforced yet (duplicate rows exist):', err.message);
+      }
+    });
+  });
+}
+
+// Courses and classes.
+//   course_classrooms  the classes a course is taught to (its home class courses.classroomId
+//                      included), with enrollAll: 1 = every student of the class takes the course
+//                      (students who join later too), 0 = only the students the admin selected.
+//   course_students    the enrolment, and the only thing that decides who takes a course.
+//                      enrolledViaClassroomId = the class assignment that enrolled the student
+//                      (NULL = enrolled individually), so removing a class removes only those.
+const EXPLICIT_ENROLMENT_VERSION = 1; // PRAGMA user_version once the migration below has run
+
+// One-time migration to explicit enrolment. Before it, a member of a course's home class or of a
+// class assigned to the course took the course without a course_students row. Those students are
+// enrolled now, so nobody loses a course, and every home class is recorded as an "all students"
+// class of its course. Only adds rows; a copy of the database file is kept first when there is
+// anything to convert. Runs once (PRAGMA user_version), so a restart afterwards changes nothing.
+function migrateToExplicitEnrolment() {
+  db.get('PRAGMA user_version', (err, row) => {
+    if (err || !row || row.user_version >= EXPLICIT_ENROLMENT_VERSION) return;
+    db.get('SELECT COUNT(*) AS n FROM courses WHERE classroomId IS NOT NULL', (countErr, courses) => {
+      if (countErr) return console.warn('Explicit enrolment migration skipped:', countErr.message);
+      if (courses.n > 0 && db.filename && db.filename !== ':memory:' && fs.existsSync(db.filename)) {
+        try {
+          const dir = path.join(path.dirname(db.filename), 'backups');
+          fs.mkdirSync(dir, { recursive: true });
+          fs.copyFileSync(db.filename, path.join(dir, `${path.basename(db.filename)}.pre-explicit-enrolment.${new Date().toISOString().replace(/[:.]/g, '-')}.bak`));
+        } catch (backupErr) {
+          return console.error('Explicit enrolment migration not run: the backup failed:', backupErr.message);
+        }
+      }
+      db.serialize(() => {
+        db.run(`INSERT OR IGNORE INTO course_classrooms (courseId, classroomId, enrollAll)
+                SELECT id, classroomId, 1 FROM courses WHERE classroomId IS NOT NULL`);
+        db.run(`INSERT OR IGNORE INTO course_students (courseId, studentId, enrolledViaClassroomId)
+                SELECT cc.courseId, sca.studentId, cc.classroomId FROM course_classrooms cc
+                JOIN student_classroom_assignment sca ON sca.classroomId = cc.classroomId
+                JOIN users u ON u.id = sca.studentId AND u.role = 'student'
+                WHERE cc.enrollAll = 1`, function (insertErr) {
+          if (insertErr) return console.error('Explicit enrolment migration failed (it will be retried at the next start):', insertErr.message);
+          if (this.changes > 0) console.log(`Explicit enrolment: ${this.changes} class member(s) enrolled in their class courses`);
+          db.run(`PRAGMA user_version = ${EXPLICIT_ENROLMENT_VERSION}`);
+        });
+      });
+    });
+  });
+}
+
+function createCourseClassrooms() {
+  afterTableExists('courses', () => {
+    db.serialize(() => {
+      db.run(`CREATE TABLE IF NOT EXISTS course_classrooms (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        courseId INTEGER NOT NULL,
+        classroomId INTEGER NOT NULL,
+        assignedBy INTEGER,
+        enrollAll INTEGER NOT NULL DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(courseId, classroomId),
+        FOREIGN KEY(courseId) REFERENCES courses(id),
+        FOREIGN KEY(classroomId) REFERENCES classrooms(id)
+      )`, (err) => { if (err) console.error('Error creating course_classrooms table:', err.message); });
+      // databases created before the column existed
+      db.run('ALTER TABLE course_classrooms ADD COLUMN enrollAll INTEGER NOT NULL DEFAULT 1', (err) => {
+        if (err && !err.message.includes('duplicate column name')) console.warn('Could not add enrollAll to course_classrooms:', err.message);
+      });
+      db.run('CREATE INDEX IF NOT EXISTS idx_course_classrooms_classroomId ON course_classrooms(classroomId)');
+    });
+    afterTableExists('course_students', () => {
+      db.run('ALTER TABLE course_students ADD COLUMN enrolledViaClassroomId INTEGER', (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+          console.warn('Could not add enrolledViaClassroomId to course_students:', err.message);
+        }
+        afterTableExists('student_classroom_assignment', migrateToExplicitEnrolment);
+      });
+    });
+  });
+}
+
+// Live lectures (helpers/lectures.js).
+//   live_classes             one lecture: class, course, teacher, schedule, status, provider room.
+//                            Older rows keep working; the columns below are added (no data changes).
+//   live_class_events        raw join / leave / heartbeat events, provider webhooks and the
+//                            in-meeting page; dedupKey makes a repeated delivery count once.
+//   live_class_attendance    one row per student per lecture, recomputed from the events:
+//                            attended seconds, first join, last leave, status.
+// Times written by the lecture code are UTC ISO-8601 strings.
+const LECTURE_COLUMNS = [
+  'classroomId INTEGER', 'university_id INTEGER', 'provider TEXT', 'providerRoom TEXT', 'requestKey TEXT',
+  'cancelledAt DATETIME', 'cancelledBy INTEGER', 'failureReason TEXT', 'endedBy TEXT', 'attendanceState TEXT',
+];
+
+function createLectureTables() {
+  afterTableExists('live_classes', () => {
+    db.serialize(() => {
+      LECTURE_COLUMNS.forEach((column) => {
+        db.run(`ALTER TABLE live_classes ADD COLUMN ${column}`, (err) => {
+          if (err && !err.message.includes('duplicate column name')) console.warn(`Could not add ${column} to live_classes:`, err.message);
+        });
+      });
+      db.run('CREATE INDEX IF NOT EXISTS idx_live_classes_classroom_time ON live_classes(classroomId, scheduledStartTime)');
+      db.run('CREATE INDEX IF NOT EXISTS idx_live_classes_instructor ON live_classes(instructorId, scheduledStartTime)');
+      db.run('CREATE INDEX IF NOT EXISTS idx_live_classes_school ON live_classes(university_id, scheduledStartTime)');
+      db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_live_classes_room ON live_classes(providerRoom) WHERE providerRoom IS NOT NULL');
+      // the same "Start class" request sent twice creates one lecture
+      db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_live_classes_request ON live_classes(instructorId, requestKey) WHERE requestKey IS NOT NULL');
+      db.run(`CREATE TABLE IF NOT EXISTS live_class_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        liveClassId INTEGER NOT NULL,
+        userId INTEGER NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('join', 'leave', 'beat')),
+        source TEXT NOT NULL CHECK (source IN ('provider', 'client')),
+        at TEXT NOT NULL,
+        dedupKey TEXT NOT NULL UNIQUE,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(liveClassId) REFERENCES live_classes(id),
+        FOREIGN KEY(userId) REFERENCES users(id)
+      )`, (err) => { if (err) console.error('Error creating live_class_events table:', err.message); });
+      db.run('CREATE INDEX IF NOT EXISTS idx_live_class_events_lecture ON live_class_events(liveClassId, userId, at)');
+      db.run(`CREATE TABLE IF NOT EXISTS live_class_attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        liveClassId INTEGER NOT NULL,
+        studentId INTEGER NOT NULL,
+        firstJoinedAt TEXT,
+        lastLeftAt TEXT,
+        attendedSeconds INTEGER NOT NULL DEFAULT 0,
+        intervals INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'attended', 'missed', 'unknown')),
+        source TEXT,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(liveClassId, studentId),
+        FOREIGN KEY(liveClassId) REFERENCES live_classes(id),
+        FOREIGN KEY(studentId) REFERENCES users(id)
+      )`, (err) => { if (err) console.error('Error creating live_class_attendance table:', err.message); });
+      db.run('CREATE INDEX IF NOT EXISTS idx_live_class_attendance_student ON live_class_attendance(studentId)');
+    });
+  });
+}
+
 // Call the initialization in initializeTables
 // Add this to the end of initializeTables function
 setTimeout(() => {
+  createCourseClassrooms();
+  createLectureTables();
   initializeCalendarTable();
   initializeTranslationsTable();
   initializeUserLanguageTable();
+  addSchoolOwnershipColumns();
+  createStockRequestTables();
+  addLookupIndexes();
   insertDemoData();
   runInstallmentMigrations(db)
     .then((res) => {

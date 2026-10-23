@@ -22,6 +22,11 @@ const { checkTeacherQuota, checkMentorQuota, checkStudentQuota } = require("../m
 
 const router = express.Router();
 
+// Ids in the URL must name a record the caller may work with: same school, and for
+// students and teachers their own classes, courses and records (helpers/schoolScope.js).
+const { guardParams } = require("../helpers/schoolScope");
+guardParams(router, { userId: "user" });
+
 /* ================= ADMIN ROUTES ================= */
 router.get(
   "/all",

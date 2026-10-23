@@ -22,6 +22,11 @@ const gatewayNotConfigured = (res) => res.status(503).json({
   message: 'Online payment gateway is not configured'
 });
 
+// Tests replace the gateway with a stand-in; production code never calls this.
+let gatewayStandIn = null;
+exports.setPaymentGatewayForTests = (client) => { gatewayStandIn = client; };
+
+// Create order
 const crypto = require('crypto');
 
 function safeTimingEqual(a, b) {
@@ -47,7 +52,7 @@ function getDatabaseFromRequest(req) {
 // Create secure server-side order
 exports.createOrder = async (req, res) => {
   try {
-    const razorpay = getRazorpay();
+    const razorpay = getRazorpay() && (gatewayStandIn || getRazorpay());
     if (!razorpay) return gatewayNotConfigured(res);
 
     const db = getDatabaseFromRequest(req);
@@ -143,7 +148,7 @@ exports.createOrder = async (req, res) => {
 // Verify payment and reconcile installment atomically
 exports.verifyPayment = async (req, res) => {
   try {
-    const razorpay = getRazorpay();
+    const razorpay = getRazorpay() && (gatewayStandIn || getRazorpay());
     if (!razorpay) return gatewayNotConfigured(res);
 
     const db = getDatabaseFromRequest(req);
@@ -177,6 +182,12 @@ exports.verifyPayment = async (req, res) => {
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(body)
       .digest('hex');
+    const given = String(razorpay_signature);
+    const isAuthentic =
+      expectedSignature.length === given.length && crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(given));
+    if (!isAuthentic) {
+      return res.status(400).json({ success: false, message: 'Payment verification failed' });
+    }
 
     if (!safeTimingEqual(expectedSignature, signature)) {
       return res.status(400).json({
@@ -633,53 +644,45 @@ exports.generateInvoice = async (req, res) => {
   }
 };
 
-// Get transaction history for a student
+// Payment history is read from the payments table (the same table the fee pages write).
+// These two handlers used a MongoDB model that this application never connects to.
+const PAYMENT_COLUMNS = `p.id, p.studentId, p.amount, p.type, p.status, p.transactionId, p.razorpay_payment_id,
+  p.razorpay_order_id, p.description, p.createdAt, u.name AS studentName, u.email AS studentEmail`;
+
+const paymentRows = (req, where, params) =>
+  new Promise((resolve, reject) => {
+    const db = req.tenant?.database || require('../config/database-switch');
+    db.all(
+      `SELECT ${PAYMENT_COLUMNS} FROM payments p JOIN users u ON u.id = p.studentId
+       WHERE ${where} ORDER BY p.createdAt DESC, p.id DESC`,
+      params,
+      (err, rows) => (err ? reject(err) : resolve(rows || []))
+    );
+  });
+
+// One student's payments. The route has already checked that a student asks only for
+// their own id and that the student belongs to the caller's school.
 exports.getTransactionHistory = async (req, res) => {
   try {
-    const Transaction = require('../models/Transaction');
     const studentId = req.params.studentId;
-    
-    let transactions;
-    if (studentId && studentId !== 'demo') {
-      // Fetch transactions for specific student
-      transactions = await Transaction.find({ studentId })
-        .sort({ createdAt: -1 });
-    } else {
-      // Fetch all transactions for demo
-      transactions = await Transaction.find({})
-        .sort({ createdAt: -1 });
+    if (!/^\d+$/.test(String(studentId))) {
+      return res.status(400).json({ success: false, message: 'A valid student ID is required.' });
     }
-    
-    res.status(200).json({
-      success: true,
-      transactions
-    });
+    const transactions = await paymentRows(req, 'p.studentId = ? AND u.university_id = ?', [studentId, req.user.universityId]);
+    res.status(200).json({ success: true, transactions });
   } catch (error) {
-    console.error('Error fetching transactions:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching transactions'
-    });
+    console.error('Error fetching transactions:', error.message);
+    res.status(500).json({ success: false, message: 'Error fetching transactions' });
   }
 };
 
-// Get all transactions for accountant portal
+// All payments of the caller's school, for the accountant portal
 exports.getAllTransactions = async (req, res) => {
   try {
-    const Transaction = require('../models/Transaction');
-    
-    const transactions = await Transaction.find({})
-      .sort({ createdAt: -1 });
-    
-    res.status(200).json({
-      success: true,
-      transactions
-    });
+    const transactions = await paymentRows(req, 'u.university_id = ?', [req.user.universityId]);
+    res.status(200).json({ success: true, transactions });
   } catch (error) {
-    console.error('Error fetching all transactions:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching transactions'
-    });
+    console.error('Error fetching all transactions:', error.message);
+    res.status(500).json({ success: false, message: 'Error fetching transactions' });
   }
 };

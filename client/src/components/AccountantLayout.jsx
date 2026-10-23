@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../auth/auth';
 import { useTranslation } from '../context/TranslationContext';
 import AnnouncementBell from './AnnouncementBell';
+import ChatbotButton from './ChatbotButton';
 import QuotaLimitModal from './QuotaLimitModal';
 import LoginFooter from './LoginFooter';
 import whiteLogo from '../assets/core5-final-rbg.png';
@@ -304,6 +305,7 @@ const AccountantLayout = ({ children }) => {
 
             <div className="flex items-center gap-4">
               <UniversalLanguageSelector variant="compact" />
+              <ChatbotButton />
             </div>
           </div>
         </header>

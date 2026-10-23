@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const { isEmail } = require("../helpers/validators");
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 const db = require('../config/database-switch');
 const {
@@ -59,6 +60,10 @@ exports.createStudent = async (req, res) => {
       });
     }
 
+    if (!isEmail(email)) {
+      return res.status(400).json({ message: "Enter a valid email address" });
+    }
+
     if (phone && !/^[0-9]{10}$/.test(String(phone).replace(/\D/g, ''))) {
       return res.status(400).json({
         message: "Phone number must be exactly 10 digits",
@@ -66,7 +71,7 @@ exports.createStudent = async (req, res) => {
     }
 
     // Get admin's university for tenant isolation
-    const universityId = req.user.universityId || 1;
+    const universityId = req.user.universityId;
 
     // Class + Section must resolve to an existing classroom BEFORE the student is created
     const selection = await resolveClassroomSelection({ classroomId, className, section, universityId });
@@ -101,7 +106,7 @@ exports.createStudent = async (req, res) => {
           }
 
           // AUTO PASSWORD (SAME LOGIC)
-          const rawPassword = Math.random().toString(36).slice(-8);
+          const rawPassword = require('../utils/passwordUtils').generatePassword(12);
           const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
           // Generate unique 10-digit student ID with 2026 prefix
@@ -214,7 +219,7 @@ const getStudentMemberships = (studentId, universityId) =>
 
 exports.getStudentClassrooms = async (req, res) => {
   try {
-    const universityId = req.user.universityId || 1;
+    const universityId = req.user.universityId;
     const student = await findStudentInUniversity(req.params.studentId, universityId);
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
@@ -233,7 +238,7 @@ exports.getStudentClassrooms = async (req, res) => {
 // progress are keyed by classroom + student and are never deleted here.
 exports.changeStudentClassroom = async (req, res) => {
   try {
-    const universityId = req.user.universityId || 1;
+    const universityId = req.user.universityId;
     const { classroomId, className, section, fromClassroomId } = req.body;
 
     const student = await findStudentInUniversity(req.params.studentId, universityId);
@@ -339,7 +344,7 @@ exports.deleteUser = async (req, res) => {
       }
 
       // Ensure admin can only delete users in their university
-      const adminUniversityId = req.user?.universityId || 1;
+      const adminUniversityId = req.user?.universityId;
       if (user.university_id && Number(user.university_id) !== Number(adminUniversityId)) {
         return res.status(403).json({ message: "Cannot delete users from another university" });
       }
@@ -402,6 +407,10 @@ exports.createTeacher = async (req, res) => {
       });
     }
 
+    if (!isEmail(email)) {
+      return res.status(400).json({ message: "Enter a valid email address" });
+    }
+
     if (phone && !/^[0-9]{10}$/.test(String(phone).replace(/\D/g, ''))) {
       return res.status(400).json({
         message: "Phone number must be exactly 10 digits",
@@ -409,7 +418,7 @@ exports.createTeacher = async (req, res) => {
     }
 
     // Get admin's university for tenant isolation
-    const universityId = req.user.universityId || 1;
+    const universityId = req.user.universityId;
 
     // Check quota synchronously first
     countUsersByRoleInUniversity(universityId, 'mentor').then(async (currentMentorCount) => {
@@ -437,7 +446,7 @@ exports.createTeacher = async (req, res) => {
           }
 
           // 🔐 SAME AUTO PASSWORD LOGIC AS STUDENT
-          const rawPassword = Math.random().toString(36).slice(-8);
+          const rawPassword = require('../utils/passwordUtils').generatePassword(12);
           const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
           // Create teacher WITH university_id
@@ -490,7 +499,7 @@ exports.getMentors = async (req, res) => {
     }
 
     // Get all mentors from SQLite
-    const adminUniversityId = req.user?.universityId || 1;
+    const adminUniversityId = req.user?.universityId;
     db.all("SELECT id, name, email FROM users WHERE role = ? AND university_id = ? ORDER BY name", ["mentor", adminUniversityId], (err, mentors) => {
       if (err) {
         console.error("Database error:", err);

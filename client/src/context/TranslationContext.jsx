@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import i18n from '../i18n';
 import { normalizeLanguageCode, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } from '../i18n/languageRegistry';
 import { useAuth } from '../auth/auth';
+import { API_BASE, API_ORIGIN } from '../config/api';
 
 // directTranslator DOM-mutation disabled in favor of i18next Virtual DOM translation
 const directTranslator = null;
@@ -278,6 +279,7 @@ const EN_TRANSLATIONS = {
   'login_password': 'Login Password',
   'temporary_password': 'Temporary Password',
   'generatedPassword': 'Temporary Password',
+  'nav_lectures': 'Your Lectures',
   'create_course_title': 'Create Course',
   'assign_mentor_students': 'Assign a mentor and students',
   'back': 'Back',
@@ -4027,7 +4029,8 @@ const TranslationProvider = ({ children }) => {
   // so the saved preference is restored right after login, not only on reload.
   const auth = useAuth();
   const authToken = auth?.token || null;
-  const API = import.meta.env.VITE_BACKEND_URL || '/api';
+  const API = API_BASE;
+  const SOCKET_URL = API_ORIGIN;
   const supportedLanguages = Object.keys(SUPPORTED_LANGUAGES);
   const isRTL = SUPPORTED_LANGUAGES[currentLanguage]?.dir === 'rtl';
 
@@ -4134,8 +4137,10 @@ const TranslationProvider = ({ children }) => {
       return EN_TRANSLATIONS[key];
     }
 
-    // 3. Graceful fallback to key
-    return key;
+    // 3. A key with no text yet is shown as words ("chapter_completed" -> "Chapter completed"), not as the raw key
+    if (typeof key !== 'string' || !/^[a-z0-9]+(_[a-z0-9]+)+$/.test(key)) return key;
+    const words = key.replace(/_/g, ' ');
+    return words.charAt(0).toUpperCase() + words.slice(1);
   }, []);
 
   const value = {

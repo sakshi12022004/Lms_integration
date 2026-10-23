@@ -1,4 +1,7 @@
+// The handlers below use the shared LMS database connection.
+const db = require('../config/database-switch');
 const express = require('express');
+const { belongsToCallerSchool } = require('../helpers/schoolScope');
 const router = express.Router();
 const translationService = require('../services/translationService');
 
@@ -42,8 +45,17 @@ router.post('/translate-content', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
+    const content = TRANSLATABLE_CONTENT[contentType];
+    if (!content || !content.fields.includes(contentField)) {
+      return res.status(400).json({ error: 'Unsupported content type or field' });
+    }
+    // Only content of the caller's own school
+    if (!(await belongsToCallerSchool(req, content.recordType, contentId))) {
+      return res.status(404).json({ error: 'Original content not found' });
+    }
+
     // Get original content
-    const originalContent = await getOriginalContent(contentId, contentType, contentField);
+    const originalContent = await getOriginalContent(contentId, content, contentField);
     if (!originalContent) {
       return res.status(404).json({ error: 'Original content not found' });
     }
@@ -64,23 +76,42 @@ router.post('/translate-content', async (req, res) => {
   }
 });
 
+// Content that can be translated: a fixed list of tables and text columns.
+// The table and column in the SQL below always come from this list, never from the URL.
+const TRANSLATABLE_CONTENT = {
+  course: { table: 'courses', recordType: 'course', fields: ['title', 'description'] },
+  week: { table: 'weeks', recordType: 'week', fields: ['title', 'description'] },
+  course_material: { table: 'course_materials', recordType: 'material', fields: ['title', 'description'] },
+  assessment: { table: 'assessments', recordType: 'assessment', fields: ['title', 'description'] },
+  assessment_question: { table: 'assessment_questions', recordType: 'assessmentQuestion', fields: ['questionText'] },
+};
+
 // Get translated content
 router.get('/content/:contentId/:contentType/:contentField/:lang', async (req, res) => {
   try {
     const { contentId, contentType, contentField, lang } = req.params;
-    
+
+    const content = TRANSLATABLE_CONTENT[contentType];
+    if (!content || !content.fields.includes(contentField)) {
+      return res.status(400).json({ error: 'Unsupported content type or field' });
+    }
+    // Only content of the caller's own school
+    if (!(await belongsToCallerSchool(req, content.recordType, contentId))) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
+
     // Try to get translated content first
     const translation = await getTranslation(contentId, contentType, contentField, lang);
     if (translation) {
       return res.json({ content: translation.translated_text, isTranslated: true });
     }
-    
+
     // Fallback to original content
-    const originalContent = await getOriginalContent(contentId, contentType, contentField);
+    const originalContent = await getOriginalContent(contentId, content, contentField);
     if (originalContent) {
       return res.json({ content: originalContent, isTranslated: false });
     }
-    
+
     res.status(404).json({ error: 'Content not found' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch content' });
@@ -88,32 +119,10 @@ router.get('/content/:contentId/:contentType/:contentField/:lang', async (req, r
 });
 
 // Helper functions
-async function getOriginalContent(contentId, contentType, contentField) {
+// `content` is an entry of TRANSLATABLE_CONTENT and `contentField` one of its fields.
+async function getOriginalContent(contentId, content, contentField) {
   return new Promise((resolve, reject) => {
-    let query = '';
-    let params = [contentId];
-    
-    switch (contentType) {
-      case 'course':
-        query = `SELECT ${contentField} FROM courses WHERE id = ?`;
-        break;
-      case 'week':
-        query = `SELECT ${contentField} FROM weeks WHERE id = ?`;
-        break;
-      case 'course_material':
-        query = `SELECT ${contentField} FROM course_materials WHERE id = ?`;
-        break;
-      case 'assessment':
-        query = `SELECT ${contentField} FROM assessments WHERE id = ?`;
-        break;
-      case 'assessment_question':
-        query = `SELECT ${contentField} FROM assessment_questions WHERE id = ?`;
-        break;
-      default:
-        return resolve(null);
-    }
-    
-    db.get(query, params, (err, row) => {
+    db.get(`SELECT ${contentField} FROM ${content.table} WHERE id = ?`, [contentId], (err, row) => {
       if (err) {
         reject(err);
       } else {

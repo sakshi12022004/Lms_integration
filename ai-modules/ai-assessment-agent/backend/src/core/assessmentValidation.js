@@ -24,7 +24,7 @@ const LIMITS = Object.freeze({
   questionsPerAssessment: 200,
 });
 
-const ASSESSMENT_FIELDS = Object.freeze(['title', 'description', 'subject', 'classroomId', 'durationMinutes', 'opensAt', 'closesAt']);
+const ASSESSMENT_FIELDS = Object.freeze(['title', 'description', 'subject', 'classroomId', 'courseId', 'durationMinutes', 'opensAt', 'closesAt']);
 // Step 5: an explicit timezone is required so the server never guesses local time.
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 const QUESTION_FIELDS = Object.freeze(['type', 'text', 'options', 'numericAnswer', 'explanation', 'difficulty', 'imageKey']);
@@ -119,6 +119,8 @@ function validateAssessmentInput(input, { partial = false } = {}) {
   }
   if (has('classroomId')) out.classroomId = optionalId(input.classroomId, 'classroomId', details);
   else if (!partial) out.classroomId = null;
+  // The course of the class (migration 010). Sent only when chosen; the service decides whether it is required.
+  if (has('courseId')) out.courseId = optionalId(input.courseId, 'courseId', details);
   if (has('durationMinutes')) out.durationMinutes = optionalDuration(input.durationMinutes, details);
   else if (!partial) out.durationMinutes = null;
   // Step 5 window fields appear in the output only when sent (absent = no window; stored as NULL).

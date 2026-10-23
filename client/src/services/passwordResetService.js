@@ -1,5 +1,6 @@
+import { API_BASE as LMS_API } from '../config/api';
 // Password Reset Service
-const API_BASE = import.meta.env.VITE_BACKEND_URL ? `${import.meta.env.VITE_BACKEND_URL}/password-reset` : 'https://core5.io/api/password-reset';
+const API_BASE = `${LMS_API}/password-reset`;
 
 class PasswordResetService {
   // Send OTP to email

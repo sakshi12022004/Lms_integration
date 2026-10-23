@@ -1,5 +1,10 @@
 const express = require('express');
 const router = express.Router();
+
+// Ids in the URL must name a record the caller may work with: same school, and for
+// students and teachers their own classes, courses and records (helpers/schoolScope.js).
+const { guardParams } = require("../helpers/schoolScope");
+guardParams(router, { studentId: "user" });
 const { requirePaymentAuth, requireRoles, resolveStudentScope, STAFF_ROLES } = require('../middleware/paymentAuth');
 const { parseRupeesToPaise, MAX_PAYMENT_PAISE } = require('../services/money');
 
@@ -145,9 +150,11 @@ exports.getPaymentStats = (req, res) => {
       SUM(CASE WHEN p.status = 'success' THEN p.amount ELSE 0 END) as totalRevenue,
       COUNT(CASE WHEN DATE(p.createdAt) = DATE('now') THEN 1 END) as todayPayments
     FROM payments p
+    JOIN users u ON u.id = p.studentId
+    WHERE u.university_id = ?
   `;
 
-  getDatabaseFromRequest(req).get(query, (err, row) => {
+  getDatabaseFromRequest(req).get(query, [req.user.universityId], (err, row) => {
     if (err) {
       console.error('Error fetching payment stats:', err);
       return res.status(500).json({ success: false, message: 'Failed to fetch payment stats' });
@@ -232,8 +239,6 @@ router.get('/', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, res) => {
       p.status,
       p.transactionId,
       p.razorpay_payment_id,
-      p.razorpay_order_id,
-      p.razorpay_signature,
       p.description,
       p.createdAt,
       u.name as studentName,
@@ -243,12 +248,14 @@ router.get('/', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, res) => {
       s.feesPaid,
       s.totalFees
     FROM payments p
-    LEFT JOIN users u ON p.studentId = u.id
+    JOIN users u ON p.studentId = u.id
     LEFT JOIN students s ON p.studentId = s.userId
+    WHERE u.university_id = ?
     ORDER BY p.createdAt DESC
   `;
 
-  getDatabaseFromRequest(req).all(query, (err, rows) => {
+  // Payments belong to the school of the student who made them
+  getDatabaseFromRequest(req).all(query, [req.user.universityId], (err, rows) => {
     if (err) {
       console.error('Error fetching transactions:', err);
       return res.status(500).json({ success: false, message: 'Failed to fetch transactions' });
@@ -346,6 +353,8 @@ router.get('/student/:studentId', requirePaymentAuth, requireRoles(TRANSACTION_R
   `;
 
   getDatabaseFromRequest(req).all(query, [studentId], (err, rows) => {
+    // The gateway's signature is a server-side verification value, never sent to a browser
+    (rows || []).forEach((row) => { delete row.razorpay_signature; });
     if (err) {
       console.error('Error fetching student transactions:', err);
       return res.status(500).json({ success: false, message: 'Failed to fetch student transactions' });

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../auth/auth';
 import AdminLayout from '../../components/AdminLayout';
 import { toast } from 'react-toastify';
+import { showPasswordNotice } from '../../components/admin/PasswordNotice';
 import { useTranslation } from '../../context/TranslationContext';
 import {
   UserCheck,
@@ -125,7 +126,7 @@ const MentorApproval = () => {
       setMentorList([...mentorList, data]);
       setShowForm(false);
       setFormData({ name: '', email: '', password: '' });
-      toast.success(t('mentor_added_successfully'));
+      showPasswordNotice({ message: t('mentor_added_successfully'), label: t('temporary_password'), password: data.generatedPassword });
 
     } catch (error) {
       toast.error(t('could_not_add_mentor'));

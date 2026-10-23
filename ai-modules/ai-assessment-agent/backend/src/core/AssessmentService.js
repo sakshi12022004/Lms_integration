@@ -22,6 +22,10 @@ const { studentQuestionView } = require('./questionTypes');
  *   - Migration 008: a test may be published to SELECTED students of its class
  *     (publish body { recipientIds }). No recipients stored = the whole class,
  *     exactly as before; a non-recipient sees nothing ("not found").
+ *   - Migration 010: a new test belongs to a class AND a course the teacher mentors that is
+ *     taught to that class. Its audience is the class's students ENROLLED in the course (all of
+ *     them, or selected ones). Tests from before have no course: they are marked legacy and keep
+ *     their old audience; no course is guessed for them.
  */
 const MAX_RECIPIENTS = 500;
 class AssessmentService {
@@ -54,10 +58,15 @@ class AssessmentService {
   }
 
   /** "Assign to" picker: the students of one class in the teacher's school (id + name only). */
-  listClassroomStudents(actor, classroomId) {
+  listClassroomStudents(actor, classroomId, courseId) {
     requireTeacher(actor);
     const id = toId(classroomId);
     if (!id || !this.lms.getTeacherClassroom(actor.universityId, actor.userId, id)) throw notFound();
+    if (courseId !== undefined && courseId !== null && courseId !== '' && this.courseLinkAvailable()) {
+      const cid = toId(courseId);
+      if (!cid || !this.lms.getTeacherCourseForClassroom(actor.universityId, actor.userId, cid, id)) throw notFound();
+      return this.lms.listCourseStudentsInClassroom(actor.universityId, cid, id).map((s) => ({ id: s.id, name: s.name }));
+    }
     return this.lms.listClassroomStudents(actor.universityId, id).map((s) => ({ id: s.id, name: s.name }));
   }
 
@@ -66,6 +75,7 @@ class AssessmentService {
     const fields = validateAssessmentInput(input);
     return this.lms.transaction(() => {
       this.checkClassroom(actor, fields.classroomId);
+      this.checkCourseForNewTest(actor, fields, 'courseId');
       const id = this.lms.insertAssessment({ ...fields, universityId: actor.universityId, teacherId: actor.userId });
       return this.detail(actor, this.lms.findAssessment(actor.universityId, id));
     });
@@ -111,6 +121,7 @@ class AssessmentService {
 
     return this.lms.transaction(() => {
       this.checkClassroom(actor, fields.classroomId);
+      this.checkCourseForNewTest(actor, fields, 'assessment.courseId');
       const id = this.lms.insertAssessment({ ...fields, universityId: actor.universityId, teacherId: actor.userId });
       for (const q of questions) this.lms.insertQuestion(id, q);
       return this.detail(actor, this.lms.findAssessment(actor.universityId, id)); // status: 'draft'
@@ -148,6 +159,16 @@ class AssessmentService {
     return this.lms.transaction(() => {
       const row = this.findOwnDraft(actor, assessmentId);
       if (fields.classroomId !== undefined) this.checkClassroom(actor, fields.classroomId);
+      if (fields.courseId !== undefined && !this.courseLinkAvailable()) delete fields.courseId; // before migration 010: ignored, as before
+      if (this.courseLinkAvailable()) {
+        // the course must belong to the (possibly new) class; a legacy test may be given a course
+        const classroomId = fields.classroomId !== undefined ? fields.classroomId : row.classroomId;
+        const courseId = fields.courseId !== undefined ? fields.courseId : row.courseId;
+        if (courseId !== null && courseId !== undefined) this.checkCourse(actor, classroomId, courseId, 'courseId');
+        else if (fields.courseId === null && row.courseId) {
+          throw new AssessmentError('VALIDATION_FAILED', 'Choose the course for this test.', { details: [{ field: 'courseId', code: 'REQUIRED' }] });
+        }
+      }
       // Step 5: the window must stay ordered after merging with the stored values.
       const opensAt = fields.opensAt !== undefined ? fields.opensAt : row.opensAt;
       const closesAt = fields.closesAt !== undefined ? fields.closesAt : row.closesAt;
@@ -215,6 +236,7 @@ class AssessmentService {
       const problems = [];
       if (row.classroomId === null) problems.push({ field: 'classroomId', code: 'REQUIRED' });
       else if (!this.lms.getTeacherClassroom(actor.universityId, actor.userId, row.classroomId)) problems.push({ field: 'classroomId', code: 'CLASSROOM_NOT_FOUND' });
+      else if (row.courseId && !this.lms.getTeacherCourseForClassroom(actor.universityId, actor.userId, row.courseId, row.classroomId)) problems.push({ field: 'courseId', code: 'COURSE_NOT_FOUND' });
       const questions = this.lms.listQuestions(row.id);
       if (questions.length === 0) problems.push({ field: 'questions', code: 'NO_QUESTIONS' });
       if (row.closesAt && Date.parse(row.closesAt) <= this.now()) problems.push({ field: 'closesAt', code: 'CLOSES_IN_PAST' }); // Step 5
@@ -230,10 +252,11 @@ class AssessmentService {
       if (problems.length > 0) throw new AssessmentError('NOT_PUBLISHABLE', 'This assessment cannot be published yet.', { statusCode: 409, details: problems });
       let stored = [];
       if (recipientIds) {
-        const roster = new Set(this.lms.listClassroomStudents(actor.universityId, row.classroomId).map((st) => st.id));
+        const roster = new Set(this.eligibleStudents(actor, row).map((st) => st.id));
         const outside = recipientIds.filter((sid) => !roster.has(sid));
         if (outside.length > 0) {
-          throw new AssessmentError('VALIDATION_FAILED', 'Some selected students are not in this class.', { details: outside.map(() => ({ field: 'recipientIds', code: 'NOT_IN_CLASS' })) });
+          const code = row.courseId ? 'NOT_IN_COURSE' : 'NOT_IN_CLASS';
+          throw new AssessmentError('VALIDATION_FAILED', row.courseId ? 'Some selected students are not enrolled in this course in this class.' : 'Some selected students are not in this class.', { details: outside.map(() => ({ field: 'recipientIds', code })) });
         }
         stored = recipientIds.length === roster.size ? [] : recipientIds; // everyone selected = whole class
       }
@@ -289,7 +312,41 @@ class AssessmentService {
 
   /** Migration 008: whole-class test, or the student is one of its selected recipients. */
   isRecipient(actor, row) {
+    if (row.courseId && this.courseLinkAvailable() && !this.lms.isStudentInCourse(actor.universityId, actor.userId, row.courseId)) return false;
     return typeof this.lms.isAssessmentRecipient !== 'function' || this.lms.isAssessmentRecipient(actor.universityId, row.id, actor.userId);
+  }
+
+  /** Migration 010 applied and the LMS has enrolments. */
+  courseLinkAvailable() {
+    return typeof this.lms.supportsCourseLink === 'function' && this.lms.supportsCourseLink();
+  }
+
+  /** Who may be given this test: the class, or for a course test the class's students enrolled in the course. */
+  eligibleStudents(actor, row) {
+    if (row.courseId && this.courseLinkAvailable()) return this.lms.listCourseStudentsInClassroom(actor.universityId, row.courseId, row.classroomId);
+    return this.lms.listClassroomStudents(actor.universityId, row.classroomId);
+  }
+
+  /** A new test needs its class and a course of that class the teacher mentors (once migration 010 is applied). */
+  checkCourseForNewTest(actor, fields, field) {
+    if (!this.courseLinkAvailable()) {
+      delete fields.courseId; // before migration 010 a test has no course
+      return;
+    }
+    const prefix = field.startsWith('assessment.') ? 'assessment.' : '';
+    if (fields.classroomId === null || fields.classroomId === undefined) {
+      throw new AssessmentError('VALIDATION_FAILED', 'Choose the class for this test.', { details: [{ field: `${prefix}classroomId`, code: 'REQUIRED' }] });
+    }
+    if (fields.courseId === null || fields.courseId === undefined) {
+      throw new AssessmentError('VALIDATION_FAILED', 'Choose the course for this test.', { details: [{ field, code: 'REQUIRED' }] });
+    }
+    this.checkCourse(actor, fields.classroomId, fields.courseId, field);
+  }
+
+  checkCourse(actor, classroomId, courseId, field = 'courseId') {
+    if (!this.lms.getTeacherCourseForClassroom(actor.universityId, actor.userId, courseId, classroomId)) {
+      throw new AssessmentError('VALIDATION_FAILED', 'Choose one of your courses taught to this class.', { details: [{ field, code: 'COURSE_NOT_FOUND' }] });
+    }
   }
 
   /** Teacher view of who the test is assigned to. */
@@ -328,6 +385,7 @@ class AssessmentService {
       subject: row.subject,
       classroomId: row.classroomId,
       classroom: row.classroomId === null ? null : classroomView(this.lms.getClassroom(actor.universityId, row.classroomId)),
+      ...this.courseView(actor, row),
       durationMinutes: row.durationMinutes,
       status: row.status,
       questionCount: row.questionCount,
@@ -350,6 +408,14 @@ class AssessmentService {
     return question.imageKey;
   }
 
+  /** { courseId, course, legacy }: legacy = made before tests belonged to a course. */
+  courseView(actor, row) {
+    if (!this.courseLinkAvailable()) return {};
+    const courseId = row.courseId ?? null;
+    const course = courseId ? this.lms.getCourse(actor.universityId, courseId) : null;
+    return { courseId, course: course ? { id: course.id, title: course.title } : null, legacy: courseId === null };
+  }
+
   detail(actor, row) {
     return { ...this.summary(actor, row), questions: this.lms.listQuestions(row.id) };
   }
@@ -361,6 +427,7 @@ class AssessmentService {
       description: row.description,
       subject: row.subject,
       classroom: classroomView(this.lms.getClassroom(actor.universityId, row.classroomId)),
+      ...this.courseView(actor, row),
       durationMinutes: row.durationMinutes,
       questionCount: row.questionCount,
       publishedAt: row.publishedAt,

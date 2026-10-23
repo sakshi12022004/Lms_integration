@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
 import { useAuth } from "../../auth/auth";
 import { toast } from "react-toastify";
-import { ArrowLeft, Users, BookOpen, Plus, UserPlus, X, Search, CheckCircle } from "lucide-react";
+import { ArrowLeft, Users, BookOpen, Plus, UserPlus, X, Search, CheckCircle, Video } from "lucide-react";
+import LecturesTable from "../../components/lectures/LecturesTable";
 import { useTranslation } from "../../context/TranslationContext";
 
 const ClassroomDetails = () => {
@@ -236,6 +237,17 @@ const ClassroomDetails = () => {
             <Users className="w-4 h-4" />
             Students ({students.length})
           </button>
+          <button
+            onClick={() => setActiveTab("lectures")}
+            className={`pb-3 text-sm font-semibold uppercase tracking-wider flex items-center gap-2 border-b-2 transition-colors ${
+              activeTab === "lectures"
+                ? "border-[#B99652] text-[#1e1b4b]"
+                : "border-transparent text-slate-500 hover:text-[#1e1b4b]"
+            }`}
+          >
+            <Video className="w-4 h-4" />
+            Lectures
+          </button>
         </div>
 
         {/* COURSES TAB */}
@@ -338,6 +350,11 @@ const ClassroomDetails = () => {
               </div>
             )}
           </div>
+        )}
+
+        {/* LECTURES TAB: the class's lecture history, all teachers */}
+        {activeTab === "lectures" && (
+          <LecturesTable API={API} token={token} mode="admin" classroomId={classroomId} title="Lectures of this class" />
         )}
 
       </div>

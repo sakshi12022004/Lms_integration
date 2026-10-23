@@ -3,8 +3,12 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 
+// All SQLite files live beside the main LMS database, so pointing LMS_SQLITE_PATH
+// at a test file moves these too.
+const DATA_DIR = path.dirname(require('./dbPath').DB_PATH);
+
 // Base directory for tenant databases
-const TENANT_DB_DIR = path.join(__dirname, '..', 'data', 'tenants');
+const TENANT_DB_DIR = path.join(DATA_DIR, 'tenants');
 
 // Ensure tenant directory exists
 if (!fs.existsSync(TENANT_DB_DIR)) {
@@ -12,7 +16,7 @@ if (!fs.existsSync(TENANT_DB_DIR)) {
 }
 
 // Main database for superadmin management ONLY
-const MAIN_DB_PATH = path.join(__dirname, '..', 'data', 'lms-main.sqlite');
+const MAIN_DB_PATH = path.join(DATA_DIR, 'lms-main.sqlite');
 const mainDb = new sqlite3.Database(MAIN_DB_PATH);
 
 // Cache for tenant database connections

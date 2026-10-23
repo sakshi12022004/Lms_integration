@@ -1,5 +1,8 @@
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 const BilingualDataService = require("../services/BilingualDataService");
+const { generateText, NOTIFICATION_TYPES } = require("../services/notificationText");
+const { HttpError, authorizeClassroom, authorizeCourse, listClassrooms } = require("../helpers/teachingScope");
+const { run } = require("../helpers/dbAsync");
 
 function getDb(req) {
   return req?.tenant?.database || require("../config/database-switch");
@@ -15,7 +18,7 @@ const createAnnouncement = async (req, res) => {
     const { title, message, publishFor, courseId, classroomId, allClasses } = req.body;
     const userId = req.user.userId;
     const role = req.user.role;
-    const universityId = req.user?.universityId || req.user?.university_id || 1;
+    const universityId = req.user?.universityId || req.user?.university_id;
 
     if (!title || !message) {
       return res.status(400).json({ message: "Title and message required" });
@@ -105,6 +108,12 @@ const createAnnouncement = async (req, res) => {
       values.push(announcementData.courseId);
     }
 
+    // Class/section the announcement is for (general class announcement when there is no course)
+    if (announcementData.classroomId) {
+      columns.push('classroomId');
+      values.push(announcementData.classroomId);
+    }
+
     // Add targetUserId for direct personal user announcements
     if (announcementData.targetUserId) {
       columns.push('targetUserId');
@@ -147,7 +156,7 @@ const getAllAnnouncements = async (req, res) => {
   try {
     const role = req.user.role;
     const userId = req.user.userId;
-    const universityId = req.user?.universityId || req.user?.university_id || 1;
+    const universityId = req.user?.universityId || req.user?.university_id;
 
     let query = `
       SELECT a.*, u.name as createdByUserName
@@ -157,22 +166,23 @@ const getAllAnnouncements = async (req, res) => {
     `;
 
     // Filter based on role (ordinary announcements only)
-    let audience = "1 = 1"; // admin and other staff roles: every announcement of their university
+    let audience = "1 = 1"; // admin: every announcement of their university
+    const roleParams = [];
     if (role === "student") {
       // Students see:
-      // 1. Personalized targeted announcements matching current student's userId
-      // 2. General announcements for students (where targetUserId IS NULL and not a fee reminder)
-      // 3. Legacy reminders matching student's name
-      // 4. Announcements created by mentors for courses the student is enrolled in
+      // 1. Announcements for 'students' or 'both': a personal one (targetUserId, e.g. a fee reminder) only when it
+      //    is theirs; general ones only when they are not a fee reminder meant for someone else
+      // 2. Announcements created by mentors for courses the student is enrolled in
+      // 3. General class announcements (no course) for a classroom the student belongs to
       audience = `(
         (a.publishFor IN ('students', 'both') AND (
-          (a.targetUserId IS NOT NULL AND a.targetUserId = ?)
+          a.targetUserId = ?
           OR (a.targetUserId IS NULL AND a.title NOT LIKE '%Fee Payment Reminder%')
-          OR (a.targetUserId IS NULL AND a.title LIKE '%Fee Payment Reminder%' AND a.content LIKE ('Dear ' || (SELECT name FROM users WHERE id = ?) || ',%'))
         ))
         OR (a.createdByRole = 'mentor' AND a.courseId IN (SELECT courseId FROM course_students WHERE studentId = ?))
         OR (a.courseId IS NULL AND a.classroomId IN (SELECT classroomId FROM student_classroom_assignment WHERE studentId = ?))
       )`;
+      roleParams.push(userId, userId, userId);
     } else if (role === "mentor" || role === "teacher" || role === "faculty") {
       // Mentors see:
       // 1. Announcements published for 'mentors' or 'both'
@@ -183,14 +193,10 @@ const getAllAnnouncements = async (req, res) => {
         OR (a.courseId IN (SELECT id FROM courses WHERE mentorId = ?))
         OR a.createdByUser = ?
       )`;
-    } else if (role === "admin") {
-      // Admin can see all announcements from their university
-      // query already filtered by university_id
-    } else {
-      // Any other role (accountant, storekeeper, superadmin, ...) only sees
-      // broadcasts to everyone, never announcements targeted at a specific
-      // user or student fee reminders. Unknown roles must not fall through to
-      // the unfiltered admin view.
+      roleParams.push(userId, userId);
+    } else if (role !== "admin") {
+      // Any other role (accountant, storekeeper, ...) only sees broadcasts to everyone, never announcements
+      // targeted at a specific user or student fee reminders.
       audience = `(
         a.publishFor = 'both'
         AND a.targetUserId IS NULL
@@ -206,11 +212,9 @@ const getAllAnnouncements = async (req, res) => {
 
     query += ` ORDER BY a.createdAt DESC, a.id DESC`;
 
-    // Prepare query params: universityId, the user (targeted rows), then userId for the role subquery
-    let params = [universityId, userId];
-    if (role === 'student') params.push(userId, userId, userId, userId);
-    else if (role === "mentor" || role === "teacher" || role === "faculty") params.push(userId, userId);
-    
+    // universityId, the user (targeted rows), then the role's own parameters in the order they appear
+    const params = [universityId, userId, ...roleParams];
+
     getDb(req).all(query, params, (err, announcements) => {
       if (err) {
         console.error("Error fetching announcements:", err);
@@ -244,7 +248,7 @@ const deleteAnnouncement = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.userId;
     const role = req.user.role;
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
 
     // Check if announcement exists and user has permission
     getDb(req).get("SELECT * FROM announcements WHERE id = ? AND university_id = ?", [id, universityId], (err, announcement) => {
@@ -287,7 +291,6 @@ const markAsRead = async (req, res) => {
     // Extract userId from req.user (handle both userId and id properties)
     const userId = req.user?.userId || req.user?.id;
 
-    console.log(`📢 Mark as read: announcement ${id}, user ${userId}, req.user:`, req.user);
 
     if (!userId) {
       console.warn(`⚠️ No userId for announcement ${id}, skipping mark as read`);
@@ -359,7 +362,7 @@ const markAsRead = async (req, res) => {
 const getAnnouncement = async (req, res) => {
   try {
     const userId = req.user?.userId;
-    const universityId = req.user?.universityId || req.user?.university_id || 1;
+    const universityId = req.user?.universityId || req.user?.university_id;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     db.get(

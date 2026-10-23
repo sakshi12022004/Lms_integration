@@ -1,34 +1,11 @@
+// The handlers below use the shared LMS database connection.
+const db = require('../config/database-switch');
 const express = require('express');
 const router = express.Router();
 const planInheritance = require('../controllers/plan-inheritance-controller');
 
-// Middleware to check authentication
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Access token required'
-    });
-  }
-
-  // Simple token verification (in production, use proper JWT verification)
-  const jwt = require('jsonwebtoken');
-  const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({
-        success: false,
-        message: 'Invalid or expired token'
-      });
-    }
-    req.user = user;
-    next();
-  });
-};
+// One session check for the whole API (signed token, account re-read from the database)
+const authenticateToken = require('../middleware/authMiddleware');
 
 // Get effective user plan (inherits from SuperAdmin)
 router.get('/effective-plan', authenticateToken, async (req, res) => {

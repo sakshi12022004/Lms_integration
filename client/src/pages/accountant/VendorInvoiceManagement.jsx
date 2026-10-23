@@ -116,7 +116,7 @@ const VendorInvoiceManagement = () => {
 
       script.onload = () => {
         const options = {
-          key: 'rzp_test_S7aUmYSaQyE0h6', // Same key as student portal
+          key: (import.meta.env.VITE_RAZORPAY_KEY_ID || ''), // Same key as student portal
           amount: invoice.amount * 100, // Convert to paise
           currency: 'INR',
           name: 'Vendor Payment',

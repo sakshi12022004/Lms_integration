@@ -1,3 +1,5 @@
+// The handlers below use the shared LMS database connection.
+const db = require('../config/database-switch');
 const tenantConnectionManager = require('../config/tenant-connection-manager');
 
 
@@ -30,9 +32,12 @@ const getStudentDashboard = async (req, res) => {
                u.name as mentorName
         FROM courses c
         LEFT JOIN users u ON c.mentorId = u.id
+        WHERE c.university_id = ? AND (
+          EXISTS (SELECT 1 FROM course_students cs WHERE cs.courseId = c.id AND cs.studentId = ?)
+        )
         ORDER BY c.createdAt DESC
         LIMIT 5
-      `, (err, courses) => {
+      `, [req.user.universityId, userId], (err, courses) => {
         if (err) {
           console.error("Database error:", err);
           return res.status(500).json({ message: "Database error" });
@@ -78,14 +83,17 @@ const getStudentDashboard = async (req, res) => {
 /* ================= GET STUDENT COURSES ================= */
 const getStudentCourses = async (req, res) => {
   try {
-    // Get all available courses
+    // The student's own courses (enrolled, or taught to their classroom)
     db.all(`
       SELECT c.id, c.title, c.description, c.category, c.duration, c.price, c.createdAt,
              u.name as mentorName, u.email as mentorEmail
       FROM courses c
       LEFT JOIN users u ON c.mentorId = u.id
+      WHERE c.university_id = ? AND (
+        EXISTS (SELECT 1 FROM course_students cs WHERE cs.courseId = c.id AND cs.studentId = ?)
+      )
       ORDER BY c.createdAt DESC
-    `, (err, courses) => {
+    `, [req.user.universityId, req.user.userId], (err, courses) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({ message: "Database error" });
@@ -148,7 +156,7 @@ const getStudentClassroom = (req, res) => {
     }
 
     db.get(`
-      SELECT c.id, c.name, c.grade, c.description, c.capacity
+      SELECT c.id, c.name, c.grade, c.section
       FROM classrooms c
       INNER JOIN student_classroom_assignment sca ON c.id = sca.classroomId
       WHERE sca.studentId = ?

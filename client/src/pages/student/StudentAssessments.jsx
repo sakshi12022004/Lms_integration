@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useTranslation } from '../../context/TranslationContext';
+import { API_ORIGIN } from '../../config/api';
 
 export default function StudentAssessments({ courseId }) {
   const { t } = useTranslation();
@@ -8,7 +9,7 @@ export default function StudentAssessments({ courseId }) {
 
   useEffect(() => {
     axios
-      .get(`${import.meta.env.VITE_BACKEND_URL || 'https://core5.io'}/api/assessments/course/${courseId}`, {
+      .get(`${API_ORIGIN}/api/assessments/course/${courseId}`, {
         withCredentials: true
       })
       .then(res => setAssessments(res.data))

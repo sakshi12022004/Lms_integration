@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { onPayment } from '../accountant/mockSocket';
+import { API_ORIGIN } from '../config/api';
 
 const TransactionHistory = ({ studentId }) => {
   const [transactions, setTransactions] = useState([]);
@@ -13,7 +14,7 @@ const TransactionHistory = ({ studentId }) => {
   const fetchTransactions = async () => {
     try {
       // For demo, fetch all transactions
-      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'https://core5.io'}/api/payments/transactions/demo`);
+      const response = await axios.get(`${API_ORIGIN}/api/payments/transactions/demo`);
       if (response.data.success) {
         setTransactions(response.data.transactions);
       }
@@ -44,7 +45,7 @@ const TransactionHistory = ({ studentId }) => {
 
   const downloadInvoice = async (transaction) => {
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'https://core5.io'}/api/payments/generate-invoice`, {
+      const response = await axios.post(`${API_ORIGIN}/api/payments/generate-invoice`, {
         transaction: transaction,
         student: { name: transaction.studentName, id: transaction.studentId },
         paymentOption: transaction.paymentOption || 'installment',

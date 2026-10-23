@@ -1,15 +1,14 @@
 const express = require('express');
-const { register, login, getProfile } = require('../controllers/auth-controller');
-const authMiddleware = require('../middleware/authMiddleware');
+const { register, login, logout } = require('../controllers/auth-controller');
 const { rateLimiters } = require('../middleware/rateLimiter');
-const { loginRateLimiter } = require('../middleware/loginRateLimiter');
 
 const router = express.Router();
 
-// Public routes with rate limiting (50 requests per minute)
+// Public routes (listed in config/accessPolicy.js), each with its own guessing limit
 router.post('/register', rateLimiters.register, register);
+router.post('/login', rateLimiters.login, login);
 
-// Login route with brute-force protection
-router.post('/login', loginRateLimiter, login);
+// Signed-in only (config/accessPolicy.js): ends all sessions of the caller
+router.post('/logout', logout);
 
 module.exports = router;

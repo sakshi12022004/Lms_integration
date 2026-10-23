@@ -15,13 +15,6 @@ function getDatabaseFromRequest(req) {
 }
 
 
-// Initialize Razorpay with current configuration
-const razorpayConfig = getCurrentConfig();
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || razorpayConfig.KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET || razorpayConfig.KEY_SECRET
-});
-
 /**
  * GET /api/accountant/dashboard
  * Get accountant dashboard data for their university
@@ -35,7 +28,7 @@ router.get('/dashboard', requirePaymentAuth, requireRoles(STAFF_ROLES), (req, re
     }
 
     // Get accountant's university_id from users table
-    getDatabaseFromRequest(req).get('SELECT university_id FROM users WHERE id = ? AND role = "accountant"', [userId], (err, user) => {
+    getDatabaseFromRequest(req).get('SELECT university_id FROM users WHERE id = ?', [userId], (err, user) => {
       if (err) {
         console.error('Get accountant university error:', err);
         return res.status(500).json({ success: false, message: 'Database error' });
@@ -226,7 +219,7 @@ router.get('/vendor-invoices', authMiddleware, (req, res) => {
     }
 
     // Get accountant's university_id from users table
-    getDatabaseFromRequest(req).get('SELECT university_id FROM users WHERE id = ? AND role = "accountant"', [userId], (err, user) => {
+    getDatabaseFromRequest(req).get('SELECT university_id FROM users WHERE id = ?', [userId], (err, user) => {
       if (err) {
         console.error('Get accountant university error:', err);
         if (!res.headersSent) {
@@ -293,7 +286,7 @@ router.post('/pay-invoice/:invoiceId', requirePaymentAuth, requireRoles(STAFF_RO
         return res.status(500).json({ success: false, message: 'Database error' });
       }
 
-      if (!invoice) {
+      if (!invoice || String(invoice.university_id) !== String(req.user.universityId)) {
         return res.status(404).json({ success: false, message: 'Invoice not found' });
       }
 
@@ -359,11 +352,13 @@ router.post('/pay-invoice/:invoiceId', requirePaymentAuth, requireRoles(STAFF_RO
 router.post('/download-invoice', authMiddleware, async (req, res) => {
   try {
     console.log('🧾 Invoice download request received');
-    console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
     console.log('👤 User ID:', req.user?.userId);
-    console.log('🔍 Headers:', Object.keys(req.headers));
     
-    const { paymentId, studentName, amount, paymentDate, paymentMethod } = req.body;
+    const escapeHtml = (value) =>
+      String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const [paymentId, studentName, amount, paymentDate, paymentMethod] = [
+      req.body.paymentId, req.body.studentName, req.body.amount, req.body.paymentDate, req.body.paymentMethod
+    ].map((value) => (value === undefined || value === null || value === '' ? value : escapeHtml(value)));
     const userId = req.user?.userId;
     
     if (!userId) {
@@ -380,7 +375,6 @@ router.post('/download-invoice', authMiddleware, async (req, res) => {
     }
 
     console.log('✅ Validation passed, generating invoice...');
-    console.log('📄 Invoice details:', { paymentId, studentName, amount, paymentDate, paymentMethod });
 
     // Generate simple HTML invoice directly (avoiding dependency issues)
     try {
@@ -541,7 +535,7 @@ router.post('/download-invoice', authMiddleware, async (req, res) => {
       console.error('❌ Error stack:', invoiceError.stack);
       res.status(500).json({ 
         success: false, 
-        message: 'Failed to generate invoice: ' + invoiceError.message 
+        message: 'Failed to generate invoice'
       });
     }
 
@@ -558,72 +552,52 @@ router.post('/download-invoice', authMiddleware, async (req, res) => {
  * GET /api/accountant/fees-stats
  * Get fee collection statistics
  */
-router.get('/fees-stats', requirePaymentAuth, requireRoles(STAFF_ROLES), requireTenant, (req, res) => {
+router.get('/fees-stats', requirePaymentAuth, requireRoles(STAFF_ROLES), requireTenant, async (req, res) => {
   try {
-    // University comes from the caller's users row (loaded by requireRoles); there is no default tenant
-    fetchFeesStats(req, req.user.universityId, res);
+    const db = getDatabaseFromRequest(req);
+    const universityId = req.user.universityId;
+    const query = (sql, params) =>
+      new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows || [])));
+      });
+
+    // payments.studentId is the student's users.id, which carries the school
+    const paidInSchool = "FROM payments p JOIN users u ON u.id = p.studentId WHERE p.status IN ('paid', 'success') AND u.university_id = ?";
+
+    const [fees] = await query(`SELECT SUM(p.amount) AS totalFeesCollected ${paidInSchool}`, [universityId]);
+    const [students] = await query(
+      "SELECT COUNT(*) AS totalStudents FROM users WHERE role = 'student' AND university_id = ?",
+      [universityId]
+    );
+    const recent = await query(
+      `SELECT p.amount, p.createdAt, p.type, p.transactionId, p.id, u.name AS studentName
+       ${paidInSchool} ORDER BY p.createdAt DESC LIMIT 10`,
+      [universityId]
+    );
+
+    const totalFeesCollected = fees?.totalFeesCollected || 0;
+    const totalStudents = students?.totalStudents || 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalFeesCollected,
+        totalStudents,
+        averageFeesPerStudent: totalStudents > 0 ? Math.round(totalFeesCollected / totalStudents) : 0,
+        recentPayments: recent.map((payment) => ({
+          studentName: payment.studentName || 'Unknown Student',
+          amount: payment.amount || 0,
+          paymentDate: payment.createdAt,
+          paymentMethod: payment.type || 'Online',
+          transactionId: payment.transactionId || payment.id
+        }))
+      }
+    });
   } catch (error) {
-    console.error('Accountant fees stats error:', error);
+    console.error('Accountant fees stats error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to load fee statistics' });
   }
 });
-
-function fetchFeesStats(req, universityId, res) {
-  // Get fee collection statistics from database
-  const stats = {
-    totalFeesCollected: 0,
-    totalStudents: 0,
-    averageFeesPerStudent: 0
-  };
-
-  // payments has no university column: a payment's tenant is its student's users.university_id
-  getDatabaseFromRequest(req).all(`SELECT SUM(p.amount) as totalFeesCollected FROM payments p JOIN users u ON u.id = p.studentId WHERE p.status = 'success' AND u.university_id = ?`, [universityId], (err, feesResult) => {
-    if (err) {
-      console.error('Get paid fees error:', err);
-    } else {
-      stats.totalFeesCollected = feesResult[0]?.totalFeesCollected || 0;
-    }
-
-    // Get total students count for this university
-    getDatabaseFromRequest(req).all(`SELECT COUNT(*) as totalStudents FROM users WHERE role = 'student' AND university_id = ?`, [universityId], (err, studentResult) => {
-      if (err) {
-        console.error('Get student count error:', err);
-        stats.totalStudents = 0;
-      } else {
-        stats.totalStudents = studentResult[0]?.totalStudents || 0;
-      }
-      calculateAverageAndRespond();
-    });
-
-    function calculateAverageAndRespond() {
-      // Calculate average fees per student
-      stats.averageFeesPerStudent = stats.totalStudents > 0 ? Math.round(stats.totalFeesCollected / stats.totalStudents) : 0;
-
-      // Get recent payments from payments table
-      getDatabaseFromRequest(req).all(`SELECT p.*, 'Student ' || p.studentId as studentName, 'student@demo.com' as studentEmail FROM payments p JOIN users u ON u.id = p.studentId WHERE p.status = 'success' AND u.university_id = ? ORDER BY p.createdAt DESC LIMIT 10`, [universityId], (err, paymentsResult) => {
-        if (err) {
-          console.error('Get recent payments error:', err);
-          stats.recentPayments = [];
-        } else {
-          stats.recentPayments = paymentsResult.map(payment => ({
-            studentName: payment.studentName || 'Unknown Student',
-            amount: payment.amount || 0,
-            paymentDate: payment.createdAt,
-            paymentMethod: payment.type || 'Online',
-            transactionId: payment.transactionId || payment.id
-          }));
-        }
-
-        console.log(' Accountant Fees Stats:', stats);
-
-        res.status(200).json({ 
-          success: true, 
-          data: stats
-        });
-      });
-    }
-  });
-}
 
 /**
  * GET /api/accountant/students

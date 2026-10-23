@@ -1,7 +1,7 @@
 // Email Service for OTP
 const nodemailer = require('nodemailer');
+// Environment variables are loaded once, by server.js.
 const { buildFeeReminderEmail } = require('./feeReminderEmail');
-require('dotenv').config(); // Load environment variables
 
 class EmailService {
   constructor() {
@@ -41,6 +41,20 @@ class EmailService {
 
   // Initialize email transporter
   async initializeTransporter() {
+    // Tests and local checks: keep every message in memory, never contact a mail server.
+    if (process.env.EMAIL_TRANSPORT === 'mock') {
+      this.outbox = [];
+      this.transporter = {
+        verify: async () => true,
+        sendMail: async (mailOptions) => {
+          this.outbox.push(mailOptions);
+          return { messageId: `mock-${this.outbox.length}` };
+        }
+      };
+      this.isInitialized = true;
+      return;
+    }
+
     try {
       // Check if we have real email credentials
       if (this.config.EMAIL_USER && this.config.EMAIL_PASS && 
@@ -136,7 +150,13 @@ class EmailService {
         console.log('🔒 Credentials loaded from secure .env file');
         
       } else {
-        // Fallback to Ethereal for development
+        // Ethereal is a public test mailbox run by a third party. It is acceptable on a
+        // developer machine only: real reset codes must never be sent there.
+        if (process.env.NODE_ENV !== 'development') {
+          console.warn('⚠️  No email credentials configured: emails will not be sent.');
+          this.isInitialized = false;
+          return;
+        }
         console.log('⚠️  No email credentials found in .env, using test service');
         const account = await nodemailer.createTestAccount();
         
@@ -188,7 +208,7 @@ class EmailService {
               <span style="font-size: 42px; font-weight: bold; color: #667eea; letter-spacing: 8px; font-family: monospace;">${otp}</span>
             </div>
             <p style="color: #666; text-align: center; margin-top: 20px; font-size: 16px;">
-              This OTP will expire in <strong style="color: #e74c3c;">1 minute</strong>
+              This OTP will expire in <strong style="color: #e74c3c;">10 minutes</strong>
             </p>
             <p style="color: #999; text-align: center; margin-top: 10px; font-size: 14px;">
               Requested at: ${new Date().toLocaleString()}
@@ -236,7 +256,6 @@ class EmailService {
         console.log('⚠️  This is a test email service');
       }
       
-      console.log(`🔢 OTP: ${otp}`);
       console.log('========================');
 
       return {
@@ -244,14 +263,11 @@ class EmailService {
         message: 'OTP sent successfully',
         messageId: info.messageId,
         previewUrl: this.config.EMAIL_USER !== 'noreply@core5academy.com' ? null : nodemailer.getTestMessageUrl(info),
-        emailService: this.config.EMAIL_USER !== 'noreply@core5academy.com' ? this.config.EMAIL_SERVICE : 'test-ethereal',
-        // In development, also return the OTP for testing
-        developmentOTP: otp
+        emailService: this.config.EMAIL_USER !== 'noreply@core5academy.com' ? this.config.EMAIL_SERVICE : 'test-ethereal'
       };
 
     } catch (error) {
-      console.error('❌ Error sending email:', error);
-      // Fallback to mock service
+      console.error('❌ Error sending email:', error.message);
       return this.sendMockOTPEmail(email, otp);
     }
   }
@@ -262,8 +278,12 @@ class EmailService {
       console.log('📧 ===== MOCK OTP EMAIL SENT =====');
       console.log(`📬 To: ${email}`);
       console.log(`📋 Subject: Password Reset OTP`);
+      if (process.env.NODE_ENV !== 'development') {
+        console.error('❌ No working mail server is configured: the password reset code was NOT delivered.');
+        return { success: false, message: 'Failed to send OTP' };
+      }
       console.log(`📝 Message: Your OTP code is: ${otp}`);
-      console.log(`⏰ This OTP will expire in 1 minute.`);
+      console.log(`⏰ This OTP will expire in 10 minutes.`);
       console.log('==================================');
 
       // Mock email sending delay
@@ -272,9 +292,7 @@ class EmailService {
       return {
         success: true,
         message: 'OTP sent successfully (mock service)',
-        emailService: 'mock',
-        // In development, return the OTP for testing
-        developmentOTP: otp
+        emailService: 'mock'
       };
     } catch (error) {
       console.error('❌ Error sending mock email:', error);

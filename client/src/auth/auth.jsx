@@ -1,24 +1,12 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
+import { API_BASE } from '../config/api';
 import { getStorageItem, setStorageItem, removeStorageItem, getBrowserInfo } from '../utils/browserCompatibility';
 import { isTokenExpired, msUntilExpiry } from '../utils/jwtExpiry';
 
 const AuthContext = createContext();
 
-const getBackendUrl = () => {
-  if (import.meta.env.VITE_BACKEND_URL) {
-    return import.meta.env.VITE_BACKEND_URL;
-  }
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:5002/api';
-    }
-  }
-  return 'https://core5.io/api';
-};
-
-const API = getBackendUrl();
+const API = API_BASE;
 
 // Derive socket URL (strip trailing /api if present)
 const SOCKET_URL = API.replace(/\/api\/?$/, '');
@@ -92,13 +80,15 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Initialize socket once
+  // The socket identifies itself with the session token: the server only delivers
+  // realtime events to sockets that have proved who they are (their own school's events).
   const [socket, setSocket] = useState(null);
   useEffect(() => {
     try {
       // The URL must be the first argument: io({ url }) ignores `url` and
       // connects to the page origin (the Vite dev server), which never answers.
       const s = io(SOCKET_URL, {
+        auth: { token: token || undefined },
         transports: ['websocket', 'polling'],
         timeout: 20000,
         forceNew: true
@@ -113,7 +103,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Socket initialization error:', error);
     }
-  }, []);
+  }, [token]);
 
   const loginUser = (newToken, newUser) => {
     console.log('🔍 AuthContext loginUser called');
@@ -137,8 +127,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logoutUser = () => {
+    // Tell the server too, so the token stops working everywhere (not just in this browser)
+    if (token) {
+      fetch(`${API}/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    }
     setToken(null);
     setUser(null);
+    window.dispatchEvent(new CustomEvent('rag-chat:reset')); // close the help assistant and clear its conversation
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };

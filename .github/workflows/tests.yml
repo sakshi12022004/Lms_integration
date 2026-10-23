@@ -1,0 +1,55 @@
+# Runs on every push and pull request: nothing merges without the security, integrity and
+# module suites passing and the client building. The tests create their own temporary
+# database and use no real credentials (see server/tests/helpers/testApp.js).
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # The server loads both AI modules, so their dependencies are needed too
+      - run: npm ci
+        working-directory: server
+      - run: npm ci
+        working-directory: ai-modules/ai-assessment-agent
+      - run: npm ci
+        working-directory: ai-modules/student-onboarding-agent
+      - run: npm test
+        working-directory: server
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: server
+        continue-on-error: true # reported, not yet blocking: review the first results, then make it blocking
+
+  ai-modules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+        working-directory: server
+      - run: npm ci && npm test
+        working-directory: ai-modules/ai-assessment-agent
+      - run: npm ci && npm test
+        working-directory: ai-modules/student-onboarding-agent
+
+  client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+        working-directory: client
+      - run: npm run build
+        working-directory: client

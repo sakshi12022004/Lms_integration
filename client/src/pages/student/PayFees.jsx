@@ -252,6 +252,8 @@ const PayFees = () => {
     setPaymentLoading(true);
     setPaymentError('');
 
+    const authHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+
     try {
       // 1. Ensure Razorpay SDK script is loaded
       if (!window.Razorpay) {
@@ -302,9 +304,9 @@ const PayFees = () => {
         order_id: orderData.orderId,
         image: '/core5-final-rbg.png',
         prefill: {
-          name: user?.name || 'Student',
-          email: user?.email || 'student@core5.co.in',
-          contact: user?.phone || '9876543210'
+          name: user?.name || '',
+          email: user?.email || '',
+          contact: user?.phone || ''
         },
         theme: {
           color: '#002366'

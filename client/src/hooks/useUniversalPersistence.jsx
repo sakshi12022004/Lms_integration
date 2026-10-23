@@ -3,8 +3,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { API_BASE } from '../config/api';
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://core5.io/api';
+const API_BASE_URL = API_BASE;
 
 // Universal persistence hook for any data type
 export function useUniversalPersistence(entityType, initialData = []) {

@@ -3,8 +3,8 @@ const router = express.Router();
 const passwordResetController = require('../controllers/passwordResetController');
 const { rateLimiters } = require('../middleware/rateLimiter');
 
-// Apply rate limiting to all password reset endpoints (50 requests per minute)
-router.use(rateLimiters.sensitive);
+// Guessing limit per IP and email address, on every step of the flow
+router.use(rateLimiters.passwordReset);
 
 // Step 1: Send OTP to email
 router.post('/send-otp', passwordResetController.sendOTP);

@@ -4,6 +4,7 @@ import AdminLayout from '../../components/AdminLayout';
 import { useAuth } from '../../auth/auth';
 import { useTranslation } from '../../context/TranslationContext';
 import { toast } from 'react-toastify';
+import ClassEnrollmentScope from '../../components/admin/ClassEnrollmentScope';
 import { ArrowLeft, Upload, Users, BookOpen, Check } from 'lucide-react';
 
 const CreateCourseAdmin = () => {
@@ -22,6 +23,9 @@ const CreateCourseAdmin = () => {
   const [mentors, setMentors] = useState([]);
   const [students, setStudents] = useState([]);
   const [selectedStudents, setSelectedStudents] = useState(new Set());
+  const [classrooms, setClassrooms] = useState([]);
+  const [selectedClasses, setSelectedClasses] = useState(new Set());
+  const [scope, setScope] = useState("all");
   const [searchStudent, setSearchStudent] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -53,6 +57,12 @@ const CreateCourseAdmin = () => {
         setMentors(mentorsFromAll);
       }
 
+      // Classes the course can be taught to (whole classes are enrolled after it is created)
+      const classesRes = await fetch(`${API}/classrooms`, { headers: { Authorization: `Bearer ${token}` } });
+      const classesData = await classesRes.json();
+      setClassrooms(Array.isArray(classesData) ? classesData : classesData.data || classesData.classrooms || []);
+
+      if (Array.isArray(mentorsData)) setMentors(mentorsData);
       if (Array.isArray(studentsData)) setStudents(studentsData);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -70,6 +80,12 @@ const CreateCourseAdmin = () => {
     if (e.target.files && e.target.files[0]) {
       setPhoto(e.target.files[0]);
     }
+  };
+
+  const toggleClass = (classroomId) => {
+    const next = new Set(selectedClasses);
+    next.has(classroomId) ? next.delete(classroomId) : next.add(classroomId);
+    setSelectedClasses(next);
   };
 
   const toggleStudent = (studentId) => {
@@ -90,25 +106,32 @@ const CreateCourseAdmin = () => {
       toast.error(t('title_and_mentor_required'));
       return;
     }
+    // Class first: a course is created for one or more existing classes
+    if (selectedClasses.size === 0) {
+      toast.error("Choose at least one class for this course.");
+      return;
+    }
+    if (scope === "selected" && selectedStudents.size === 0) {
+      toast.error("Tick at least one student, or choose All students.");
+      return;
+    }
 
     setLoading(true);
-    const submitData = new FormData();
-    Object.keys(formData).forEach(key => submitData.append(key, formData[key]));
-    if (photo) submitData.append("photo", photo);
-    
-    // For arrays in FormData for Express/Multer:
-    const studentIdsArray = Array.from(selectedStudents).filter(Boolean);
-    studentIdsArray.forEach((id, index) => {
-      submitData.append(`studentIds[${index}]`, id);
-    });
+    // One request: the server saves the course, its classes and the students (all of each class,
+    // or the ticked ones) together, or nothing at all.
+    const classIds = Array.from(selectedClasses);
+    // only ticked students of classes that are still chosen
+    const studentIds = Array.from(selectedStudents);
+    const submitData = { ...formData, classroomIds: classIds, scope, ...(scope === "selected" ? { studentIds } : {}) };
 
     try {
       const response = await fetch(`${API}/courses/create-course`, {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: submitData
+        body: JSON.stringify(submitData)
       });
 
       const result = await response.json();
@@ -117,8 +140,8 @@ const CreateCourseAdmin = () => {
         throw new Error(result.message || "Failed to create course");
       }
 
-      toast.success(t('course_created_successfully'));
-      navigate("/admin/dashboard");
+      toast.success(`${t('course_created_successfully')} (${result.course?.totalStudents ?? 0} student(s) enrolled)`);
+      navigate("/admin/courses");
     } catch (error) {
       console.error(error);
       toast.error(error.message);
@@ -218,29 +241,6 @@ const CreateCourseAdmin = () => {
                     placeholder={t('description_placeholder')}
                   />
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">{t('course_cover_image')}</label>
-                  <div className="border-2 border-dashed border-[#ebdcaa] rounded-none p-6 text-center hover:bg-[#ebdcaa]/10 transition-colors cursor-pointer relative bg-white">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoChange}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                    {photo ? (
-                      <div className="flex items-center justify-center gap-2 text-emerald-700">
-                        <Check size={20} />
-                        <span className="font-semibold text-sm">{photo.name}</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center text-gray-500">
-                        <Upload size={24} className="mb-2 text-[#B99652]" />
-                        <span className="text-sm font-medium">{t('click_to_upload_image')}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -269,59 +269,50 @@ const CreateCourseAdmin = () => {
                 })}
               </select>
             </div>
+
+          {/* CLASSES (required: class first) */}
+          <div className="bg-[#fffdf4] p-6 rounded-none border border-[#ebdcaa] shadow-sm h-fit">
+            <h2 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1 pb-2 border-b border-[#ebdcaa] flex items-center gap-2">
+              <Users size={20} className="text-[#B99652]" />
+              Classes *
+            </h2>
+            {classrooms.length === 0 ? (
+              <p className="text-sm text-amber-700">
+                No classes yet. <button type="button" className="underline" onClick={() => navigate("/admin/classrooms")}>Create a class first</button>, then its courses.
+              </p>
+            ) : (
+              <div className="max-h-[300px] overflow-y-auto space-y-1">
+                {classrooms.map((c) => (
+                  <label key={c.id} className="flex items-center gap-2 text-sm px-2 py-1.5 bg-white border border-[#ebdcaa] cursor-pointer">
+                    <input type="checkbox" checked={selectedClasses.has(c.id)} onChange={() => toggleClass(c.id)} />
+                    <span className="flex-1">{c.grade && c.section ? `${c.grade}-${c.section}` : c.name}</span>
+                    <span className="text-xs text-gray-500">{c.studentCount ?? 0}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
           </div>
 
-          {/* RIGHT COLUMN: Student Selection */}
+          {/* RIGHT COLUMN: which students of the chosen classes take the course */}
           <div className="bg-[#fffdf4] p-6 rounded-none border border-[#ebdcaa] shadow-sm h-fit">
-            <div className="flex justify-between items-center mb-4 pb-2 border-b border-[#ebdcaa]">
-              <h2 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] flex items-center gap-2">
-                <Users size={20} className="text-[#B99652] shrink-0" />
-                <span>{t('assign_students_title', 'Assign Students')}</span>
-              </h2>
-              <span className="text-xs bg-[#B99652]/20 text-[#1e1b4b] font-bold px-2 py-1 rounded-none border border-[#ebdcaa] shrink-0">
-                {selectedStudents.size} {t('selected')}
-              </span>
-            </div>
-
-            <div className="mb-4">
-              <input 
-                type="text" 
-                placeholder={t('search_students')} 
-                value={searchStudent}
-                onChange={(e) => setSearchStudent(e.target.value)}
-                className="w-full bg-white border border-[#ebdcaa] rounded-none px-3 py-2 text-sm focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none"
+            <h2 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-3 pb-2 border-b border-[#ebdcaa] flex items-center gap-2">
+              <Users size={20} className="text-[#B99652]" />
+              {t('assign_students')}
+            </h2>
+            {selectedClasses.size === 0 ? (
+              <p className="text-sm text-gray-500">Choose the class(es) first.</p>
+            ) : (
+              <ClassEnrollmentScope
+                API={API}
+                token={token}
+                classes={classrooms.filter((c) => selectedClasses.has(c.id)).map((c) => ({ id: c.id, label: c.grade && c.section ? `${c.grade}-${c.section}` : c.name }))}
+                scope={scope}
+                onScope={setScope}
+                selected={selectedStudents}
+                onSelected={setSelectedStudents}
               />
-            </div>
-
-            <div className="max-h-[460px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-              {filteredStudents.length === 0 ? (
-                <p className="text-gray-500 text-center py-6 text-sm">{t('no_students_found')}</p>
-              ) : (
-                filteredStudents.map(student => {
-                  const sId = String(student.id || student._id);
-                  const isSelected = selectedStudents.has(sId);
-                  return (
-                    <div 
-                      key={sId}
-                      onClick={() => toggleStudent(sId)}
-                      className={`p-3 rounded-none border cursor-pointer transition-all flex items-center justify-between ${
-                        isSelected
-                          ? 'bg-[#B99652]/15 border-[#B99652] text-[#1e1b4b]'
-                          : 'bg-white hover:bg-[#ebdcaa]/15 border-[#ebdcaa]'
-                      }`}
-                    >
-                      <div>
-                        <p className="font-semibold text-sm text-[#1e1b4b]">{student.name}</p>
-                        <p className="text-xs text-gray-500">{student.email}</p>
-                      </div>
-                      {isSelected && (
-                        <Check size={16} className="text-[#B99652] shrink-0" />
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
+            )}
           </div>
 
           {/* SUBMIT BUTTON */}

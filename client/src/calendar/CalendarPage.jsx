@@ -12,6 +12,7 @@ import EditEventModal from "./EditEventModal";
 import QuotaLimitModal from "../components/QuotaLimitModal";
 import { useNavigate } from 'react-router-dom';
 import "./calendar.css";
+import { API_ORIGIN } from '../config/api';
 import { useTranslation } from "../context/TranslationContext";
 
 const CalendarPage = ({ role }) => {
@@ -35,7 +36,7 @@ const CalendarPage = ({ role }) => {
         return;
       }
 
-      const apiUrl = import.meta.env.VITE_BACKEND_URL || "https://core5.io";
+      const apiUrl = API_ORIGIN;
       // Ensure we don't double the /api prefix
       const baseUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
       

@@ -13,9 +13,8 @@ class MasterDatabase {
       return this.pool;
     }
 
-    // If USE_POSTGRES is false, use SQLite directly
-    if (process.env.USE_POSTGRES === 'false') {
-      console.log('📄 Using SQLite for master database (USE_POSTGRES=false)');
+    // SQLite unless PostgreSQL was asked for explicitly
+    if (process.env.USE_POSTGRES !== 'true') {
       this.useSQLite = true;
       this.isConnected = true;
       return sqliteDb;
@@ -70,12 +69,12 @@ class MasterDatabase {
       // Use SQLite interface
       return new Promise((resolve, reject) => {
         if (sql.trim().startsWith('SELECT') || sql.trim().startsWith('select')) {
-          db.all(sql, params, (err, rows) => {
+          sqliteDb.all(sql, params, (err, rows) => {
             if (err) reject(err);
             else resolve({ rows });
           });
         } else {
-          db.run(sql, params, function(err) {
+          sqliteDb.run(sql, params, function(err) {
             if (err) reject(err);
             else resolve({ rows: [], rowCount: this.changes });
           });

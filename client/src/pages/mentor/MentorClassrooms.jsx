@@ -252,7 +252,7 @@ const MentorClassrooms = () => {
                       
                       <div className="relative z-10 mt-3">
                         <span className="inline-block text-[10px] uppercase tracking-wider font-bold bg-[#59cfbd] text-[#002366] px-2.5 py-0.5 rounded-none shadow-xs">
-                          Class teacher
+                          {classroom.role === 'class_teacher' ? 'Class teacher' : 'Course teacher'}
                         </span>
                       </div>
 
@@ -275,16 +275,6 @@ const MentorClassrooms = () => {
 
                       {/* Student Avatars Stack & Count */}
                       <div className="flex items-center gap-2.5">
-                        <div className="flex -space-x-1 overflow-hidden">
-                          <div className="w-6 h-6 rounded-none bg-[#002366] text-white text-[9px] font-bold flex items-center justify-center border border-white">AK</div>
-                          <div className="w-6 h-6 rounded-none bg-[#B99652] text-white text-[9px] font-bold flex items-center justify-center border border-white">PR</div>
-                          <div className="w-6 h-6 rounded-none bg-[#59cfbd] text-[#002366] text-[9px] font-bold flex items-center justify-center border border-white">NS</div>
-                          {(classroom.studentCount || 0) > 3 && (
-                            <div className="w-6 h-6 rounded-none bg-slate-700 text-white text-[9px] font-bold flex items-center justify-center border border-white">
-                              +{(classroom.studentCount || 0) - 3}
-                            </div>
-                          )}
-                        </div>
                         <span className="text-xs text-slate-600 font-medium">
                           {classroom.studentCount || 0} students
                         </span>

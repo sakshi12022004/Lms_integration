@@ -22,7 +22,7 @@ const code = (fn) => { try { fn(); } catch (e) { return e.code; } return 'ok'; }
 const dumpAll = (db) => Object.fromEntries(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all()
   .map((t) => [t.name, JSON.stringify(db.prepare(`SELECT * FROM ${t.name}`).all())]));
 // 006 adds question columns + aia_attempt_responses and drops only uq_aia_options_one_correct (by design).
-const schemaOf = (db) => db.prepare("SELECT name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND name NOT LIKE '%aia_assignment%' AND name NOT IN ('aia_attempt_responses', 'aia_questions', 'uq_aia_options_one_correct') ORDER BY name").all().map((r) => ({ ...r }));
+const schemaOf = (db) => db.prepare("SELECT name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND name NOT LIKE '%aia_assignment%' AND name NOT IN ('aia_attempt_responses', 'aia_questions', 'aia_assessments', 'uq_aia_options_one_correct') ORDER BY name").all().map((r) => ({ ...r }));
 
 describe('live readiness: exact 001-005 state (no 006, no 007)', () => {
   const liveBefore = liveMtime();
@@ -58,6 +58,10 @@ describe('live readiness: exact 001-005 state (no 006, no 007)', () => {
           const cols = db.prepare('SELECT id, assessment_id, position, text, created_at, updated_at, explanation, difficulty FROM aia_questions').all();
           assert.equal(JSON.stringify(cols), rows);
           assert.deepEqual(db.prepare('SELECT DISTINCT question_type, numeric_answer FROM aia_questions').all().map((r) => ({ ...r })), [{ question_type: 'single_mcq', numeric_answer: null }]);
+        } else if (table === 'aia_assessments') { // 010 adds course_id: old values identical, new one NULL (no course is guessed)
+          const cols = db.prepare('SELECT id, university_id, teacher_id, title, description, subject, classroom_id, duration_minutes, status, source, created_at, updated_at, published_at, opens_at, closes_at, closed_at FROM aia_assessments').all();
+          assert.equal(JSON.stringify(cols), rows);
+          assert.deepEqual(db.prepare('SELECT DISTINCT course_id FROM aia_assessments').all().map((r) => ({ ...r })), [{ course_id: null }]);
         } else assert.equal(after[table], rows, table);
       }
       assert.deepEqual(schemaOf(db), before.schema);

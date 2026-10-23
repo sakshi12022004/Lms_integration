@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MentorLayout from "../../components/MentorLayout";
+import LecturesTable from "../../components/lectures/LecturesTable";
+import StartClassModal from "../../components/lectures/StartClassModal";
 import { useAuth } from "../../auth/auth";
 import { useTranslation } from "../../context/TranslationContext";
 import { toast } from "react-toastify";
@@ -24,6 +26,7 @@ import {
   Sparkles,
   BookMarked,
   Search,
+  Video,
 } from "lucide-react";
 import StudentAnalyticsDrawer from "../../components/mentor/StudentAnalyticsDrawer";
 
@@ -40,6 +43,9 @@ const ClassroomDetail = () => {
   const [allStudents, setAllStudents] = useState([]); // All students for assignment dropdown
   const [studentSearch, setStudentSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isClassTeacher, setIsClassTeacher] = useState(false);
+  const [showStartClass, setShowStartClass] = useState(false);
+  const [lecturesVersion, setLecturesVersion] = useState(0);
   const [selectedAnalyticsStudent, setSelectedAnalyticsStudent] = useState(null);
 
   // Modal states
@@ -107,6 +113,15 @@ const ClassroomDetail = () => {
           classroomStudents = classroomStudentsData;
         }
         setStudents(Array.isArray(classroomStudents) ? classroomStudents : []);
+
+        // Class teacher or course teacher of this class? A course teacher gets only the students
+        // of their own courses (the server filters) and does not add or remove class members.
+        const mineRes = await fetch(`${API}/classrooms/mentor/me`, { headers: { Authorization: `Bearer ${token}` } });
+        if (mineRes.ok) {
+          const mine = unwrapResponse(await mineRes.json());
+          const entry = (Array.isArray(mine) ? mine : []).find((c) => String(c.id) === String(classroomId));
+          setIsClassTeacher(entry?.role === "class_teacher");
+        }
 
         // Fetch mentors for course creation dropdown
         const mentorsRes = await fetch(`${API}/users/mentors`, {
@@ -311,6 +326,12 @@ const ClassroomDetail = () => {
           </div>
 
           <div className="flex items-center gap-3 self-end md:self-center">
+            <button
+              onClick={() => setShowStartClass(true)}
+              className="flex items-center gap-2 px-4 py-3 bg-red-700 hover:bg-red-800 text-white rounded-none text-sm font-semibold shadow-sm"
+            >
+              <Video size={16} /> Start Class
+            </button>
             <div className="bg-white border border-[#ebdcaa] px-4 py-2 text-right rounded-none shadow-sm">
               <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold block">Total Students</span>
               <span className="text-xl font-bold text-[#002366]">{students.length}</span>
@@ -340,8 +361,8 @@ const ClassroomDetail = () => {
             </div>
           </button>
 
-          {/* Assign Students */}
-          <button
+          {/* Assign Students (class teacher only) */}
+          {isClassTeacher && <button
             onClick={() => setShowAssignStudentsModal(true)}
             className="bg-white border border-[#ebdcaa] border-l-4 border-l-[#B99652] p-5 rounded-none shadow-sm hover:shadow-md hover:border-[#B99652] transition-all duration-200 group text-left"
           >
@@ -354,7 +375,7 @@ const ClassroomDetail = () => {
                 <p className="text-xs text-slate-500 mt-0.5">Manage enrollment</p>
               </div>
             </div>
-          </button>
+          </button>}
 
           {/* Attendance */}
           <button
@@ -502,6 +523,11 @@ const ClassroomDetail = () => {
           )}
         </div>
 
+        {/* Your Lectures: this teacher's lectures in this class */}
+        <div className="mb-8">
+          <LecturesTable API={API} token={token} mode="teacher" classroomId={classroomId} refreshKey={lecturesVersion} />
+        </div>
+
         {/* Class Students Section - Sharp Square & Golden Theme */}
         <div className="bg-white rounded-none shadow-sm border border-[#ebdcaa] p-6 sm:p-8 border-t-4 border-t-[#B99652]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#ebdcaa]/60">
@@ -511,20 +537,20 @@ const ClassroomDetail = () => {
               </div>
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-[#1e1b4b] font-['DM_Serif_Display',serif]">
-                  Class Students
+                  {isClassTeacher ? "Class Students" : "My Course Students"}
                 </h2>
                 <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
-                  Total: <span className="font-bold text-[#9a7837]">{students.length}</span> students assigned
+                  Total: <span className="font-bold text-[#9a7837]">{students.length}</span> {isClassTeacher ? "students assigned" : "students of this class enrolled in your courses"}
                 </p>
               </div>
             </div>
-            <button
+            {isClassTeacher && <button
               data-tour="classroom-assign-students-btn"
               onClick={() => setShowAssignStudentsModal(true)}
               className="px-5 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none text-xs sm:text-sm font-semibold transition flex items-center gap-2 shadow-sm self-start sm:self-auto"
             >
               <UserPlus size={16} /> Assign Students
-            </button>
+            </button>}
           </div>
           
           {students.length === 0 ? (
@@ -534,12 +560,12 @@ const ClassroomDetail = () => {
               </div>
               <p className="text-[#1e1b4b] text-base font-bold">No Students Assigned</p>
               <p className="text-slate-500 text-xs sm:text-sm mt-1">Add students to this classroom to get started</p>
-              <button
+              {isClassTeacher && <button
                 onClick={() => setShowAssignStudentsModal(true)}
                 className="mt-5 px-5 py-2.5 bg-[#B99652] hover:bg-[#a38241] text-white rounded-none text-xs sm:text-sm font-semibold shadow-sm transition"
               >
                 Assign First Student
-              </button>
+              </button>}
             </div>
           ) : (
             <div className="overflow-x-auto border border-[#ebdcaa]">
@@ -572,7 +598,7 @@ const ClassroomDetail = () => {
                           >
                             <BarChart3 size={13} className="text-[#B99652]" /> Performance
                           </button>
-                          <button
+                          {isClassTeacher && <button
                             onClick={() => {
                               if (window.confirm(`${t('remove')} ${student.name} ${t('from_classroom')}?`)) {
                                 toast.info(t('student_removal_coming_soon'));
@@ -582,7 +608,7 @@ const ClassroomDetail = () => {
                             title="Remove Student"
                           >
                             <UserMinus size={13} /> Remove
-                          </button>
+                          </button>}
                         </div>
                       </td>
                     </tr>
@@ -593,6 +619,17 @@ const ClassroomDetail = () => {
           )}
         </div>
       </div>
+
+      {showStartClass && (
+        <StartClassModal
+          API={API}
+          token={token}
+          classroomId={Number(classroomId)}
+          classLabel={classroom?.name}
+          onClose={() => setShowStartClass(false)}
+          onScheduled={() => setLecturesVersion((v) => v + 1)}
+        />
+      )}
 
       {/* Create Course Modal - Sharp Square & Golden Theme */}
       {showCreateCourseModal && (

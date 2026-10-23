@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/auth';
 import { Download, Table, Database, FileText, Json, RefreshCw, Eye } from 'lucide-react';
+import { downloadWithSession } from '../config/download';
 
 const DataExport = () => {
   const { token, API } = useAuth();
@@ -75,15 +76,15 @@ const DataExport = () => {
   };
 
   const downloadCSV = (tableName) => {
-    window.open(`${API}/export/table/${tableName}/csv?token=${token}`, '_blank');
+    downloadWithSession(`${API}/export/table/${tableName}/csv`).catch((err) => alert(err.message));
   };
 
   const downloadJSON = (tableName) => {
-    window.open(`${API}/export/table/${tableName}/json?token=${token}`, '_blank');
+    downloadWithSession(`${API}/export/table/${tableName}/json`).catch((err) => alert(err.message));
   };
 
   const downloadFullDatabase = () => {
-    window.open(`${API}/export/database/json?token=${token}`, '_blank');
+    downloadWithSession(`${API}/export/database/json`).catch((err) => alert(err.message));
   };
 
   const refreshData = () => {

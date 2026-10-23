@@ -1,13 +1,13 @@
 # Email Configuration for Real Email Delivery
 EMAIL_SERVICE=gmail
 EMAIL_USER=support@core5.co.in
-EMAIL_PASS=Core5support@8800
+EMAIL_PASS=replace-with-your-mailbox-app-password
 EMAIL_FROM=Core5 Academy <support@core5.co.in>
 
 # Copy these to main .env file
 EMAIL_SERVICE=gmail
 EMAIL_USER=support@core5.co.in
-EMAIL_PASS=Core5support@8800
+EMAIL_PASS=replace-with-your-mailbox-app-password
 EMAIL_FROM=Core5 Academy <support@core5.co.in>
 
 # Instructions:

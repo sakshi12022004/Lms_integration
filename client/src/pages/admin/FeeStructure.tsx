@@ -177,9 +177,16 @@ const FeeStructure = () => {
     });
   };
 
+  // Class first: fees are charged to students of classes (the server refuses a save without one)
+  const [classCount, setClassCount] = useState<number | null>(null);
+
   // Fetch existing fee structures on component mount
   useEffect(() => {
     fetchFeeStructures();
+    fetch(`${API}/classrooms`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setClassCount((Array.isArray(data) ? data : data.data || data.classrooms || []).length); })
+      .catch(() => {});
   }, []);
 
   const fetchFeeStructures = async () => {
@@ -573,6 +580,12 @@ const FeeStructure = () => {
           </h1>
           <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold mt-1">{t('fee_structure_description')}</p>
         </div>
+
+        {classCount === 0 && (
+          <div className="bg-amber-50 border border-amber-300 text-amber-800 p-4 text-sm" role="alert">
+            Create a class first (Classrooms). Fee structures apply to the students of your classes.
+          </div>
+        )}
 
         {/* Progress Indicator */}
         <div className="bg-[#fffdf4] rounded-none border border-[#ebdcaa] p-5 shadow-xs">

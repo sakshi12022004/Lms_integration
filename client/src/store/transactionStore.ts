@@ -1,8 +1,9 @@
 // Global transaction store for real-time updates with database persistence
 import React from 'react';
 import { io } from 'socket.io-client';
+import { API_BASE, API_ORIGIN } from '../config/api';
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://core5.io/api';
+const API_BASE_URL = API_BASE;
 
 export interface Transaction {
   id: string;
@@ -248,9 +249,11 @@ export const useRealTimeTransactions = () => {
     if (w.__transactionSocketInitialized) return;
     w.__transactionSocketInitialized = true;
 
-const socket = io((import.meta.env.VITE_BACKEND_URL || 'https://core5.io').replace('/api', ''), {
+const socket = io((API_ORIGIN).replace('/api', ''), {
       transports: ['websocket'],
-      autoConnect: true
+      autoConnect: true,
+      // the server only sends realtime events to sockets that carry a valid session
+      auth: { token: localStorage.getItem('token') || undefined }
     });
 
     socket.on('connect', () => {

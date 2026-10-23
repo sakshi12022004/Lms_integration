@@ -2,6 +2,9 @@ import { useEffect, useState, useRef } from "react";
 import { Bell } from "lucide-react";
 import { useAuth } from "../auth/auth";
 import { io } from "socket.io-client";
+import { useNavigate } from "react-router-dom";
+import { notificationTarget } from "../utils/notificationRoutes";
+import ChatbotButton from "./ChatbotButton";
 import { useTranslation } from "react-i18next";
 
 const AnnouncementBell = () => {
@@ -318,6 +321,8 @@ const AnnouncementBell = () => {
   }, []);
 
   return (
+    <div className="flex items-center gap-4">
+    <ChatbotButton />
     <div className="relative" ref={ref}>
       {/* 🔔 BELL ICON (UI UNCHANGED) */}
       <button onClick={toggleBell} className="relative" aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}>
@@ -399,6 +404,7 @@ const AnnouncementBell = () => {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };

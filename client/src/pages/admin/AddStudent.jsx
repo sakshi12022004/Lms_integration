@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/auth";
 import { useTranslation } from "../../context/TranslationContext";
 import { toast } from "react-toastify";
 import ClassSectionSelect from "../../components/admin/ClassSectionSelect";
+import { showPasswordNotice } from "../../components/admin/PasswordNotice";
 
 const AddStudent = () => {
   const { token, API } = useAuth();
@@ -81,10 +82,11 @@ const AddStudent = () => {
         return toast.error(data.message || t('failed_to_create_student'));
       }
 
-      toast.success(
-        `${t('student_created_successfully')}\n${t('added_to_class')}: ${data.student.classroom?.name || ''}\n${t('login_password')}: ${data.student.password}`,
-        { autoClose: false }
-      );
+      showPasswordNotice({
+        message: `${t('student_created_successfully')}\n${t('added_to_class')}: ${data.student.classroom?.name || ''}`,
+        label: t('login_password'),
+        password: data.student.password,
+      });
 
       // reset form
       setForm({

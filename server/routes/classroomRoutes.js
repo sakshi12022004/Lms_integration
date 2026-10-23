@@ -1,5 +1,14 @@
 const express = require("express");
 const router = express.Router();
+const { schoolParam, guardParams, callerMayAccess } = require("../helpers/schoolScope");
+
+// Ids in the URL must name a record the caller may work with (helpers/schoolScope.js).
+guardParams(router, { classroomId: "classroom", mentorId: "user" });
+const feeStructureParam = schoolParam("feeStructure");
+const classroomParam = schoolParam("classroom");
+router.param("id", (req, res, next, id) =>
+  (String(req.route?.path || "").startsWith("/fee-structures") ? feeStructureParam : classroomParam)(req, res, next, id)
+);
 
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
@@ -21,12 +30,10 @@ const {
   getAllFeeStructures,
   getSingleClassroom,
   getAssignedClassrooms,
-  createTestAssignment,
   assignStudentToClassroom,
   getClassroomFeeStructure,
   getStudentClassrooms,
   getClassroomStudents,
-  testStudentAssignment,
   getTeachingScopeTree
 } = require("../controllers/classroomController");
 
@@ -71,11 +78,7 @@ router.get(
   getStudentClassrooms
 );
 
-router.get(
-  "/test-assignment",
-  authMiddleware,
-  testStudentAssignment
-);
+
 
 router.get(
   "/analytics",
@@ -112,6 +115,14 @@ router.put(
 );
 
 /* ================= MENTOR-SPECIFIC ROUTES ================= */
+// The attendance pages ask for "the signed-in teacher's classes" with the word "me".
+// It must be declared before /mentor/:mentorId, whose id check answers 404 for a non-number.
+router.get(
+  "/mentor/me",
+  authMiddleware,
+  getAssignedClassrooms
+);
+
 router.get(
   "/mentor/:mentorId",
   authMiddleware,
@@ -135,14 +146,6 @@ router.get(
   "/:id",
   authMiddleware,
   getSingleClassroom
-);
-
-/* ================= DEBUG: CREATE TEST ASSIGNMENT ================= */
-router.post(
-  "/debug/create-test-assignment",
-  authMiddleware,
-  roleMiddleware(["mentor", "admin"]),
-  createTestAssignment
 );
 
 router.put(
@@ -277,7 +280,7 @@ router.get("/teacher/students-fees", requirePaymentAuth, requireRoles(FEE_MONITO
       }
     });
   } catch (error) {
-    console.error("Error in /teacher/students-fees:", error);
+    console.error("Error in /teacher/students-fees:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });

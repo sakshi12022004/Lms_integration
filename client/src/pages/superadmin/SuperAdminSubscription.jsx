@@ -208,39 +208,28 @@ const SuperAdminSubscription = () => {
         return
       }
 
-      // Standard / Professional direct upgrade
-      const upgradeRes = await fetch(`${API}/subscriptions/test-upgrade`, {
+      // Standard / Professional: the server creates the order at its own price; the plan
+      // is activated only after the payment is verified (see activateSubscription).
+      const orderRes = await fetch(`${API}/subscriptions/create-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({
-          planId: plan.id,
-          planName: plan.name,
-          durationDays: 365
-        })
+        body: JSON.stringify({ planId: plan.id })
       })
+      const orderData = await orderRes.json().catch(() => ({}))
 
-      const upgradeData = await upgradeRes.json()
-
-      if (upgradeData && upgradeData.success) {
-        localStorage.removeItem('superadminTimerExpired')
-        localStorage.setItem('superadminPlanName', plan.name)
-        localStorage.setItem('superadminSubscriptionStatus', 'active')
-        
-        window.dispatchEvent(new CustomEvent('subscription-refresh'))
-        if (window.refreshSubscription) {
-          window.refreshSubscription()
-        }
-
-        alert(`🎉 Congratulations! You have successfully upgraded to the ${plan.name} Plan (Active for 1 Year)!`)
-        setTimeout(() => {
-          window.location.href = '/superadmin/dashboard'
-        }, 800)
-      } else {
-        throw new Error(upgradeData.message || 'Failed to upgrade plan')
+      if (orderRes.status === 503) {
+        alert('Online payment is not available yet. Please contact Core5 support to upgrade your plan.')
+        return
       }
+      if (!orderRes.ok || !orderData.success || !orderData.order) {
+        throw new Error(orderData.message || 'Could not start the payment')
+      }
+
+      await loadRazorpayScript()
+      openRazorpayCheckout(plan, orderData.order)
     } catch (error) {
       console.error('Subscription error:', error)
       alert(`Upgrade failed: ${error.message}`)
@@ -276,7 +265,7 @@ const SuperAdminSubscription = () => {
       }
 
       const options = {
-        key: 'rzp_test_S7aUmYSaQyE0h6',
+        key: (import.meta.env.VITE_RAZORPAY_KEY_ID || ''),
         order_id: order.id,
         amount: order.amount,
         currency: order.currency,
@@ -315,35 +304,7 @@ const SuperAdminSubscription = () => {
 
       const rzp = new window.Razorpay(options)
 
-      rzp.on('payment.failed', async function (response) {
-        console.warn('Razorpay test payment failed, falling back to development upgrade:', response);
-        try {
-          const testRes = await fetch(`${API}/subscriptions/test-upgrade`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-              planId: plan.id,
-              planName: plan.name,
-              durationDays: 30
-            })
-          });
-          const testData = await testRes.json();
-          if (testData && testData.success) {
-            localStorage.setItem('superadminPlanName', plan.name);
-            localStorage.setItem('superadminSubscriptionStatus', 'active');
-            window.dispatchEvent(new CustomEvent('subscription-refresh'));
-            alert(`🎉 Successfully upgraded to ${plan.name} Plan! (30 Days Active)`);
-            setTimeout(() => {
-              window.location.href = '/superadmin/dashboard';
-            }, 500);
-            return;
-          }
-        } catch (e) {
-          console.error('Fallback error:', e);
-        }
+      rzp.on('payment.failed', function (response) {
         const errorMessage = response.error?.description || 'Payment failed';
         alert(`Payment failed: ${errorMessage}`);
         setLoading(false);

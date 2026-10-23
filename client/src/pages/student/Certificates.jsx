@@ -89,11 +89,11 @@ const Certificates = () => {
 
         setCertificates(certificatesResponse.data || []);
 
-        const coursesResponse = await axios.get(`${API}/courses/student-courses`, {
+        const coursesResponse = await axios.get(`${API}/courses/student`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        const enrolledCourses = coursesResponse.data || [];
+        const enrolledCourses = Array.isArray(coursesResponse.data) ? coursesResponse.data : (coursesResponse.data?.courses || []);
         
         const completedCourses = certificatesResponse.data?.length || 0;
         const totalProgress = enrolledCourses.length > 0 
@@ -132,7 +132,7 @@ const Certificates = () => {
       if (!certificate.certificateUrl) {
         showToast.info('Generating your certificate...');
         await axios.post(
-          `${API}/certificates/generate/${certificate.courseId}`,
+          `${API}/certificates/generate/${certificate.courseId?._id || certificate.courseId}`,
           null,
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -191,8 +191,20 @@ const Certificates = () => {
     }
   };
 
-  const handleViewExternal = (certificateId) => {
-    window.open(`${API}/certificates/view/${certificateId}?token=${token}`, '_blank');
+  // The session token is sent in a header, never in the address: an address ends up in
+  // browser history and server logs.
+  const handleViewExternal = async (certificateId) => {
+    try {
+      const response = await axios.get(`${API}/certificates/view/${certificateId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      showToast.error(t('unable_download_certificate'));
+    }
   };
 
   const formatDate = (dateString) => {
@@ -537,7 +549,7 @@ const Certificates = () => {
                         
                         <button
                           onClick={() => handleDownload(certificate)}
-                          disabled={downloading === certificate._id || status !== 'generated'}
+                          disabled={downloading === certificate._id}
                           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors ${
                             status === 'generated'
                               ? 'bg-success text-white hover:bg-success/90'

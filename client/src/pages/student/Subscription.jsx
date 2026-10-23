@@ -3,6 +3,7 @@ import { CreditCard, Calendar, Check, X, AlertCircle, Star } from 'lucide-react'
 import { useAuth } from '../../auth/auth';
 import { useTranslation } from '../../context/TranslationContext';
 import { toast } from 'react-toastify';
+import { API_ORIGIN } from '../../config/api';
 
 const Subscription = () => {
   const { user } = useAuth();
@@ -12,7 +13,7 @@ const Subscription = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://core5.io';
+  const API_BASE = API_ORIGIN;
 
   // Fetch subscription data on mount
   useEffect(() => {
@@ -220,39 +221,6 @@ const Subscription = () => {
               Upgrade Plan
             </button>
           )}
-          
-          {/* Test button for demonstration */}
-          <button
-            onClick={async () => {
-              // Simulate upgrading to standard plan for testing
-              try {
-                const response = await fetch(`${API_BASE}/api/subscriptions/test-upgrade`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                  },
-                  body: JSON.stringify({
-                    planId: 'standard',
-                    planName: 'Standard Plan',
-                    durationDays: 30
-                  })
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                  window.location.reload();
-                } else {
-                  alert('Test upgrade failed: ' + (data.message || 'Unknown error'));
-                }
-              } catch (error) {
-                alert('Test upgrade failed: ' + error.message);
-              }
-            }}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold shadow-lg"
-          >
-            Test Upgrade (Demo)
-          </button>
           
           {isExpired && (
             <button

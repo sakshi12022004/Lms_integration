@@ -10,7 +10,6 @@ function tenantDatabaseIsolation(req, res, next) {
     console.log(`
 === STRICT Tenant Database Isolation ===`);
     console.log(`Request: ${req.method} ${req.originalUrl}`);
-    console.log(`User from req.user:`, user);
     console.log(`User exists:`, !!user);
     console.log(`User role:`, user?.role);
     console.log(`User email:`, user?.email);

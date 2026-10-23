@@ -1,45 +1,78 @@
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+
+const BCRYPT_ROUNDS = 10;
+const BCRYPT_PREFIX = /^\$2[aby]\$/;
+const SHA256_HEX = /^[a-f0-9]{64}$/i;
 
 /**
  * Generate a random password for vendors
- * @param {number} length - Length of the password (default: 8)
+ * @param {number} length - Length of the password (default: 12)
  * @returns {string} Generated password
  */
-function generateVendorPassword(length = 8) {
-  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&';
-  let password = '';
-  
-  // Ensure at least one uppercase, one lowercase, one number, and one special character
+function generateVendorPassword(length = 12) {
   const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const lowercase = 'abcdefghijklmnopqrstuvwxyz';
   const numbers = '0123456789';
   const special = '!@#$%&';
-  
-  password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
-  password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
-  password += numbers.charAt(Math.floor(Math.random() * numbers.length));
-  password += special.charAt(Math.floor(Math.random() * special.length));
-  
-  // Fill the rest with random characters from the full charset
-  for (let i = 4; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length));
+  const charset = uppercase + lowercase + numbers + special;
+  const pick = (alphabet) => alphabet.charAt(crypto.randomInt(alphabet.length));
+
+  // At least one character of each kind, the rest from the full set
+  const characters = [pick(uppercase), pick(lowercase), pick(numbers), pick(special)];
+  while (characters.length < length) characters.push(pick(charset));
+
+  // Shuffle so the guaranteed characters are not always in front
+  for (let i = characters.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(i + 1);
+    [characters[i], characters[j]] = [characters[j], characters[i]];
   }
-  
-  // Shuffle the password to avoid predictable patterns
-  return password.split('').sort(() => Math.random() - 0.5).join('');
+  return characters.join('');
 }
 
 /**
- * Hash a password using bcrypt (if available) or a simple hash
+ * Hash a password for storage (bcrypt, salted).
  * @param {string} password - Plain text password
  * @returns {string} Hashed password
  */
 function hashPassword(password) {
-  // For now, use a simple hash. In production, use bcrypt
-  return crypto.createHash('sha256').update(password).digest('hex');
+  return bcrypt.hashSync(String(password), BCRYPT_ROUNDS);
+}
+
+const constantTimeEquals = (a, b) => {
+  const left = Buffer.from(String(a));
+  const right = Buffer.from(String(b));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+};
+
+/**
+ * Checks a password against a stored value.
+ *
+ * Accounts created by older code may still hold an unsalted SHA-256 digest or
+ * the plain password. Those still sign in, and `needsUpgrade` tells the caller
+ * to replace the stored value with a bcrypt hash straight away.
+ *
+ * @returns {Promise<{ valid: boolean, needsUpgrade: boolean }>}
+ */
+async function verifyPassword(plain, stored) {
+  if (typeof plain !== 'string' || plain === '' || typeof stored !== 'string' || stored === '') {
+    return { valid: false, needsUpgrade: false };
+  }
+  if (BCRYPT_PREFIX.test(stored)) {
+    return { valid: await bcrypt.compare(plain, stored), needsUpgrade: false };
+  }
+  if (SHA256_HEX.test(stored)) {
+    const digest = crypto.createHash('sha256').update(plain).digest('hex');
+    const valid = constantTimeEquals(digest, stored.toLowerCase());
+    return { valid, needsUpgrade: valid };
+  }
+  const valid = constantTimeEquals(plain, stored);
+  return { valid, needsUpgrade: valid };
 }
 
 module.exports = {
+  generatePassword: generateVendorPassword, // same generator for every first password
   generateVendorPassword,
-  hashPassword
+  hashPassword,
+  verifyPassword
 };

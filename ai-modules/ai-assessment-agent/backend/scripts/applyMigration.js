@@ -3,8 +3,8 @@
  * Deliberately explicit: the database path and --yes are required, nothing
  * runs automatically at server start, and it prints the aia_* state after.
  *
- *   node backend/scripts/applyMigration.js --db <absolute path to .db> --yes          # 001 ... 009
- *   node backend/scripts/applyMigration.js --db <absolute path to .db> --down --yes   # 009 ... 001 down
+ *   node backend/scripts/applyMigration.js --db <absolute path to .db> --yes          # 001 ... 010
+ *   node backend/scripts/applyMigration.js --db <absolute path to .db> --down --yes   # 010 ... 001 down
  *   add --only 006 / --only 007 / --only 008 to apply/roll back just that one migration (the earlier ones must be in place)
  *
  * Already-applied migrations are skipped. Everything runs in one transaction.
@@ -27,6 +27,7 @@ const MIGRATIONS = [
   { name: '007_aia_assignments', isApplied: (db) => hasTable(db, 'aia_assignments') && hasTable(db, 'aia_assignment_questions') && hasTable(db, 'aia_assignment_submissions') },
   { name: '008_aia_recipients_reports', isApplied: (db) => hasTable(db, 'aia_assessment_recipients') && hasTable(db, 'aia_performance_reports') },
   { name: '009_aia_question_images', isApplied: (db) => hasColumn(db, 'aia_questions', 'image_key') && hasColumn(db, 'aia_assignment_questions', 'image_key') },
+  { name: '010_aia_assessment_course', isApplied: (db) => hasColumn(db, 'aia_assessments', 'course_id') },
 ];
 
 const args = process.argv.slice(2);

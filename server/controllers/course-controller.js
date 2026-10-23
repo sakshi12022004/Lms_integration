@@ -5,8 +5,9 @@ const {
   getSuperadminSubscription,
   checkMentorCourseQuotaPerClass
 } = require("../helpers/quotaHelper");
-const { get } = require("../helpers/dbAsync");
+const { get, all, run, withTransaction } = require("../helpers/dbAsync");
 const { HttpError, authorizeClassroom, authorizeCourse } = require("../helpers/teachingScope");
+const { createCourseWithClasses } = require("../helpers/courseClasses");
 
 // Sends the response for an access error and returns true; false for any other error
 const sendAccessError = (err, res) => {
@@ -32,7 +33,7 @@ const mapCourses = (courses) => {
 const getAllCourses = async (req, res) => {
   try {
     // Filter by university_id for tenant isolation
-    const universityId = req.user?.universityId || 1;
+    const universityId = req.user?.universityId;
     const role = req.user?.role;
     const userId = req.user?.userId;
     let query;
@@ -72,10 +73,40 @@ const getAllCourses = async (req, res) => {
 // Create course
 const createCourse = async (req, res) => {
   try {
-    const { title, title_en, title_ar, description, description_en, description_ar, category, duration, mentorId, price, classroomId, studentIds } = req.body;
+    const { title, title_en, title_ar, description, description_en, description_ar, category, duration, mentorId, price, classroomId, studentIds, enrollScope } = req.body;
 
     if (!title) {
       return res.status(400).json({ message: "Course title is required" });
+    }
+    // An admin creating a course for its classes (classroomIds, with scope "all" or "selected"):
+    // the course, its classes and its enrolments are saved in one transaction.
+    if (req.user.role === "admin" && Array.isArray(req.body.classroomIds)) {
+      try {
+        const subscription = await getSuperadminSubscription("superadmin-1");
+        // counted as the single-class form counts it: the teacher's courses with this home class
+        // (the first class chosen becomes the new course's home class)
+        const homeId = Number(req.body.classroomIds[0]);
+        if (homeId) {
+          const row = await get("SELECT COUNT(*) AS count FROM courses WHERE mentorId = ? AND classroomId = ?", [mentorId, homeId]);
+          const quota = checkMentorCourseQuotaPerClass(subscription.planType, row ? row.count : 0);
+          if (!quota.allowed) return res.status(400).json({ message: quota.message });
+        }
+        const created = await createCourseWithClasses(req, { ...req.body, scope: req.body.scope });
+        const course = BilingualDataService.formatCourse({ ...created.course, totalStudents: created.totalStudents }, req.language || "en");
+        return res.status(201).json({ message: "Course created successfully", course, classes: created.classes });
+      } catch (err) {
+        if (sendAccessError(err, res)) return;
+        throw err;
+      }
+    }
+    // Class first: an admin creates a course for a class that already exists
+    if (req.user.role === "admin" && !classroomId) {
+      return res.status(400).json({ message: "Choose a class for this course. Create the class under Classrooms first." });
+    }
+    // enrollScope "none": the course is created for the class without enrolling anyone yet; the
+    // caller then enrols all or selected students (POST /courses/:id/classrooms).
+    if (enrollScope !== undefined && !["all", "none"].includes(enrollScope)) {
+      return res.status(400).json({ message: 'enrollScope must be "all" or "none"' });
     }
 
     // A course can only be created in a classroom the user may manage
@@ -88,14 +119,28 @@ const createCourse = async (req, res) => {
       }
     }
 
-    let assignedMentorId = mentorId || req.user.userId;
-    const universityId = req.user?.universityId || 1;
+    // A teacher creates courses they teach themselves; an admin names a teacher of the school.
+    // Students named must be students of the school.
+    let assignedMentorId = req.user.role === "admin" ? (mentorId || req.user.userId) : req.user.userId;
+    const universityId = req.user?.universityId;
+    if (req.user.role === "admin" && mentorId) {
+      const mentor = await get("SELECT id FROM users WHERE id = ? AND role IN ('mentor', 'teacher') AND university_id = ?", [mentorId, universityId]);
+      if (!mentor) return res.status(400).json({ message: "Choose a teacher of your school" });
+    }
+    if (Array.isArray(studentIds) && studentIds.length > 0) {
+      const uniqueIds = [...new Set(studentIds.map(String))];
+      const found = await all(
+        `SELECT id FROM users WHERE role = 'student' AND university_id = ? AND id IN (${uniqueIds.map(() => "?").join(",")})`,
+        [universityId, ...uniqueIds]
+      );
+      if (found.length !== uniqueIds.length) return res.status(400).json({ message: "Only students of your school can be assigned" });
+    }
 
     // Helper functions inside createCourse
     const autoAssignStudentsFromClassroom = (courseId, classroomId, callback) => {
       console.log(`\n🔗 === AUTO-ASSIGN STUDENTS FROM CLASSROOM START ===`);
       console.log(`🔗 Course ID: ${courseId}, Classroom ID: ${classroomId}`);
-      
+
       db.all(
         "SELECT sca.studentId FROM student_classroom_assignment sca WHERE sca.classroomId = ?",
         [classroomId],
@@ -108,7 +153,7 @@ const createCourse = async (req, res) => {
           }
 
           console.log(`🔗 Students found in classroom: ${students ? students.length : 0}`);
-          
+
           if (!students || students.length === 0) {
             console.warn(`⚠️ No students found in classroom ${classroomId} - skipping auto-assign`);
             if (callback) callback();
@@ -128,12 +173,13 @@ const createCourse = async (req, res) => {
             )`,
             () => {
               const stmt = db.prepare(
-                "INSERT OR IGNORE INTO course_students (courseId, studentId) VALUES (?, ?)"
+                // enrolled through the class (removing the class from the course removes these)
+                "INSERT OR IGNORE INTO course_students (courseId, studentId, enrolledViaClassroomId) VALUES (?, ?, ?)"
               );
 
               let assignedCount = 0;
               students.forEach((student) => {
-                stmt.run([courseId, student.studentId], function(runErr) {
+                stmt.run([courseId, student.studentId, classroomId], function(runErr) {
                   if (runErr) {
                     console.error(`❌ Error assigning student ${student.studentId}:`, runErr);
                   } else {
@@ -205,10 +251,10 @@ const createCourse = async (req, res) => {
             }
 
             const currentCourseCount = row ? row.count : 0;
-            
+
             // Get subscription for quota check
             const subscription = await getSuperadminSubscription("superadmin-1");
-            
+
             // Check course quota per class
             const quotaCheck = checkMentorCourseQuotaPerClass(subscription.planType, currentCourseCount);
             if (!quotaCheck.allowed) {
@@ -252,14 +298,21 @@ const createCourse = async (req, res) => {
 
             const courseId = this.lastID;
 
-            // ✅ AUTO-ASSIGN STUDENTS FROM CLASSROOM IF PROVIDED
+            // the home class is one of the course's classes, with its enrolment scope
             if (classroomId) {
+              db.run("INSERT OR IGNORE INTO course_classrooms (courseId, classroomId, assignedBy, enrollAll) VALUES (?, ?, ?, ?)",
+                [courseId, classroomId, req.user.userId, enrollScope === "none" ? 0 : 1],
+                (linkErr) => { if (linkErr) console.warn("Could not record the course's class:", linkErr.message); });
+            }
+
+            // ✅ AUTO-ASSIGN STUDENTS FROM CLASSROOM IF PROVIDED
+            if (classroomId && enrollScope !== "none") {
               autoAssignStudentsFromClassroom(courseId, classroomId, (assignedStudents) => {
                 // Get the assigned students' details
                 db.all(
-                  `SELECT cs.studentId, u.name as studentName 
-                   FROM course_students cs 
-                   LEFT JOIN users u ON cs.studentId = u.id 
+                  `SELECT cs.studentId, u.name as studentName
+                   FROM course_students cs
+                   LEFT JOIN users u ON cs.studentId = u.id
                    WHERE cs.courseId = ?`,
                   [courseId],
                   (studentErr, students) => {
@@ -289,9 +342,9 @@ const createCourse = async (req, res) => {
               // Auto-assign specific students
               autoAssignSpecificStudents(courseId, studentIds, () => {
                 db.all(
-                  `SELECT cs.studentId, u.name as studentName 
-                   FROM course_students cs 
-                   LEFT JOIN users u ON cs.studentId = u.id 
+                  `SELECT cs.studentId, u.name as studentName
+                   FROM course_students cs
+                   LEFT JOIN users u ON cs.studentId = u.id
                    WHERE cs.courseId = ?`,
                   [courseId],
                   (studentErr, students) => {
@@ -359,9 +412,9 @@ const getCoursesByMentor = async (req, res) => {
     const mentorId = req.user.userId || req.user.id;
 
     db.all(
-      `SELECT c.*, u.name as teacherName 
-       FROM courses c 
-       LEFT JOIN users u ON c.mentorId = u.id 
+      `SELECT c.*, u.name as teacherName
+       FROM courses c
+       LEFT JOIN users u ON c.mentorId = u.id
        WHERE c.mentorId = ?`,
       [mentorId],
       (err, courses) => {
@@ -385,9 +438,9 @@ const getCoursesByMentor = async (req, res) => {
 
         courses.forEach((course, index) => {
           db.all(
-            `SELECT cs.studentId, u.name as studentName 
-             FROM course_students cs 
-             LEFT JOIN users u ON cs.studentId = u.id 
+            `SELECT cs.studentId, u.name as studentName
+             FROM course_students cs
+             LEFT JOIN users u ON cs.studentId = u.id
              WHERE cs.courseId = ?`,
             [course.id],
             (studentErr, students) => {
@@ -422,10 +475,11 @@ const getCoursesByStudent = async (req, res) => {
     db.all(
       `SELECT c.*, u.name as courseTeacherName, u.email as courseTeacherEmail
        FROM courses c
-       INNER JOIN course_students cs ON c.id = cs.courseId
        LEFT JOIN users u ON c.mentorId = u.id
-       WHERE cs.studentId = ?`,
-      [studentId],
+       WHERE c.university_id = ? AND (
+         EXISTS (SELECT 1 FROM course_students cs WHERE cs.courseId = c.id AND cs.studentId = ?)
+       )`,
+      [req.user.universityId, studentId],
       (err, courses) => {
         if (err) {
           console.error(`❌ Database error:`, err);
@@ -434,11 +488,11 @@ const getCoursesByStudent = async (req, res) => {
 
         console.log(`📚 Query executed successfully`);
         console.log(`📚 Courses found: ${courses ? courses.length : 0}`);
-        
+
         if (courses && courses.length > 0) {
           console.log(`📚 First course:`, courses[0]);
         }
-        
+
         // Enhance courses with courseTeacher object
         const enhancedCourses = (courses || []).map(course => ({
           ...mapCourse(course),
@@ -467,9 +521,9 @@ const getCourseById = async (req, res) => {
     const userRole = req.user.role;
 
     db.get(
-      `SELECT c.*, u.name as mentorName, u.email as mentorEmail 
-       FROM courses c 
-       LEFT JOIN users u ON c.mentorId = u.id 
+      `SELECT c.*, u.name as mentorName, u.email as mentorEmail
+       FROM courses c
+       LEFT JOIN users u ON c.mentorId = u.id
        WHERE c.id = ?`,
       [courseId],
       (err, course) => {
@@ -484,34 +538,21 @@ const getCourseById = async (req, res) => {
 
         // Fetch assigned students
         db.all(
-          `SELECT cs.studentId as id, cs.studentId as _id, u.name, u.email, u.name as studentName 
-           FROM course_students cs 
-           LEFT JOIN users u ON cs.studentId = u.id 
+          `SELECT cs.studentId as id, cs.studentId as _id, u.name, u.email, u.name as studentName
+           FROM course_students cs
+           LEFT JOIN users u ON cs.studentId = u.id
            WHERE cs.courseId = ?`,
           [courseId],
           (stuErr, assignedStudents) => {
-            const studentList = assignedStudents || [];
+            let studentList = assignedStudents || [];
 
-            // Access control for students
+            // A student sees a course only when enrolled in it (being in its class is not enough),
+            // and sees classmates' names, not their email addresses
             if (userRole === 'student') {
-              const isDirectlyEnrolled = studentList.some(s => Number(s.id) === Number(userId));
-              if (!isDirectlyEnrolled) {
-                // Check classroom enrollment
-                if (course.classroomId) {
-                  return db.get(
-                    "SELECT id FROM student_classroom_assignment WHERE classroomId = ? AND studentId = ?",
-                    [course.classroomId, userId],
-                    (scaErr, sca) => {
-                      if (!sca) {
-                        return res.status(403).json({ message: "You are not enrolled in this course" });
-                      }
-                      return respondWithCourse();
-                    }
-                  );
-                } else {
-                  return res.status(403).json({ message: "You are not enrolled in this course" });
-                }
+              if (!studentList.some(s => Number(s.id) === Number(userId))) {
+                return res.status(403).json({ message: "You are not enrolled in this course" });
               }
+              studentList = studentList.map(({ email, ...rest }) => rest);
             }
 
             respondWithCourse();
@@ -551,17 +592,37 @@ const updateCourse = async (req, res) => {
   try {
     const courseId = req.params.id;
     const { title, description, category, duration, price } = req.body;
+    const sent = (value) => (value === undefined ? null : value);
+    let { classroomId, mentorId } = req.body;
 
     try {
       await authorizeCourse(req, courseId);
+      // Moving a course to another class or teacher is an admin decision
+      if (req.user.role !== "admin") {
+        classroomId = undefined;
+        mentorId = undefined;
+      }
+      if (classroomId !== undefined && classroomId !== null && classroomId !== "") {
+        await authorizeClassroom(req, classroomId);
+      }
+      if (mentorId !== undefined && mentorId !== null && mentorId !== "") {
+        const mentor = await get("SELECT id FROM users WHERE id = ? AND role IN ('mentor', 'teacher') AND university_id = ?", [mentorId, req.user.universityId]);
+        if (!mentor) return res.status(400).json({ message: "Choose a teacher of your school" });
+      }
     } catch (accessErr) {
       if (sendAccessError(accessErr, res)) return;
       throw accessErr;
     }
+    if (title !== undefined && String(title).trim() === "") {
+      return res.status(400).json({ message: "Course title cannot be empty" });
+    }
 
+    // COALESCE keeps the stored value for every field the request did not send
     db.run(
-      "UPDATE courses SET title = ?, description = ?, category = ?, duration = ?, price = ? WHERE id = ?",
-      [title, description, category, duration, price, courseId],
+      `UPDATE courses SET title = COALESCE(?, title), description = COALESCE(?, description), category = COALESCE(?, category),
+         duration = COALESCE(?, duration), price = COALESCE(?, price), classroomId = COALESCE(?, classroomId), mentorId = COALESCE(?, mentorId)
+       WHERE id = ?`,
+      [sent(title), sent(description), sent(category), sent(duration), sent(price), sent(classroomId || undefined), sent(mentorId || undefined), courseId],
       function(err) {
         if (err) {
           console.error("Error updating course:", err);
@@ -589,6 +650,8 @@ const deleteCourse = async (req, res) => {
       throw accessErr;
     }
 
+    // the course's class assignments go with it (enrolments are handled as before)
+    db.run("DELETE FROM course_classrooms WHERE courseId = ?", [courseId], () => {});
     db.run("DELETE FROM courses WHERE id = ?", [courseId], function(err) {
       if (err) {
         console.error("Error deleting course:", err);
@@ -609,8 +672,9 @@ const getCoursesByClassroom = async (req, res) => {
     // Accept both route param and query param
     const classroomId = req.params.classroomId || req.query.classroomId;
 
-    // Who may list a classroom's courses: its school admin, a teacher assigned to it
-    // (teachers who only teach there see their own courses), or a student who is a member.
+    // Who may list a classroom's courses: its school admin (all of them), a teacher who may use
+    // the class (only the courses that teacher mentors: being the class teacher gives no access
+    // to another teacher's course), or a student who is a member.
     const viewer = req.user || {};
     let ownCoursesOnly = false;
     try {
@@ -621,32 +685,27 @@ const getCoursesByClassroom = async (req, res) => {
         );
         if (!member) throw new HttpError(403, "You are not a member of this classroom");
       } else {
-        const classroom = await authorizeClassroom(req, classroomId);
-        if (viewer.role !== "admin") {
-          const staff = await get(
-            `SELECT c.id FROM classrooms c WHERE c.id = ? AND (
-               CAST(c.classTeacher AS INTEGER) = ? OR c.classTeacherId = ?
-               OR EXISTS (SELECT 1 FROM classroomAssignments ca WHERE ca.classroomId = c.id AND ca.teacherId = ?))`,
-            [classroom.id, viewer.userId, viewer.userId, viewer.userId]
-          );
-          ownCoursesOnly = !staff;
-        }
+        await authorizeClassroom(req, classroomId);
+        ownCoursesOnly = viewer.role !== "admin";
       }
     } catch (accessErr) {
       if (sendAccessError(accessErr, res)) return;
       throw accessErr;
     }
 
+    // a course of the class: its home class, or a class it is assigned to
     db.all(
-      `SELECT 
-         c.*, 
+      `SELECT
+         c.*,
          u.id as mentorUserId,
-         u.name as mentorName
-       FROM courses c 
-       LEFT JOIN users u ON c.mentorId = u.id 
-       WHERE c.classroomId = ? AND (? = 0 OR c.mentorId = ?)
+         u.name as mentorName,
+         u.email as mentorEmail
+       FROM courses c
+       LEFT JOIN users u ON c.mentorId = u.id
+       WHERE (c.classroomId = ? OR EXISTS (SELECT 1 FROM course_classrooms cc WHERE cc.courseId = c.id AND cc.classroomId = ?))
+         AND (? = 0 OR c.mentorId = ?)
        ORDER BY c.createdAt DESC`,
-      [classroomId, ownCoursesOnly ? 1 : 0, viewer.userId || 0],
+      [classroomId, classroomId, ownCoursesOnly ? 1 : 0, viewer.userId || 0],
       (err, courses) => {
         if (err) {
           console.error("Database error:", err);
@@ -659,13 +718,20 @@ const getCoursesByClassroom = async (req, res) => {
 
         // For each course, fetch the assigned students
         let completedCourses = 0;
-        const coursesWithStudents = courses.map(course => ({ ...course, _id: course.id, students: [] }));
+        // courseTeacher is the shape the other course lists already send (null = no mentor);
+        // mentorUserId / mentorName stay for pages that read them
+        const coursesWithStudents = courses.map(course => ({
+          ...course,
+          _id: course.id,
+          courseTeacher: course.mentorUserId ? { id: course.mentorUserId, name: course.mentorName, email: course.mentorEmail } : null,
+          students: [],
+        }));
 
         courses.forEach((course, index) => {
           db.all(
-            `SELECT cs.studentId, u.name as studentName 
-             FROM course_students cs 
-             LEFT JOIN users u ON cs.studentId = u.id 
+            `SELECT cs.studentId, u.name as studentName
+             FROM course_students cs
+             LEFT JOIN users u ON cs.studentId = u.id
              WHERE cs.courseId = ?`,
             [course.id],
             (studentErr, students) => {
@@ -697,74 +763,43 @@ const assignStudentsToCourse = async (req, res) => {
       return res.status(400).json({ message: "Invalid course ID or student IDs" });
     }
 
-    db.get("SELECT * FROM courses WHERE id = ?", [courseId], (err, course) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ message: "Database error" });
+    // The teacher of the course (or an admin of its school); throws 403 / 404 otherwise
+    await authorizeCourse(req, courseId);
+
+    // Every id must be a student of the caller's school. Duplicates count once.
+    const uniqueIds = [...new Set(studentIds.map((id) => String(id)))];
+    if (uniqueIds.length > 0) {
+      const placeholders = uniqueIds.map(() => "?").join(",");
+      const students = await all(
+        `SELECT id FROM users WHERE role = 'student' AND university_id = ? AND id IN (${placeholders})`,
+        [req.user.universityId, ...uniqueIds]
+      );
+      if (students.length !== uniqueIds.length) {
+        return res.status(400).json({ message: "Only students of your school can be assigned" });
       }
+    }
 
-      if (!course) {
-        return res.status(404).json({ message: "Course not found" });
+    // Set the roster in one transaction: if anything fails, the old roster stays. Students who stay
+    // enrolled keep their enrolment row (and so the class it came through); only the difference
+    // is written.
+    await withTransaction(async () => {
+      const current = await all("SELECT studentId FROM course_students WHERE courseId = ?", [courseId]);
+      const wanted = new Set(uniqueIds);
+      for (const row of current) {
+        if (!wanted.has(String(row.studentId))) await run("DELETE FROM course_students WHERE courseId = ? AND studentId = ?", [courseId, row.studentId]);
       }
-
-      if (course.mentorId !== req.user.userId && req.user.role !== "admin") {
-        return res.status(403).json({ message: "Not authorized" });
-      }
-
-      const values = studentIds.map(studentId => [courseId, studentId]);
-
-      db.run("DELETE FROM course_students WHERE courseId = ?", [courseId], (deleteErr) => {
-        if (deleteErr && deleteErr.message.includes("no such table")) {
-          db.run(
-            `CREATE TABLE IF NOT EXISTS course_students (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              courseId INTEGER NOT NULL,
-              studentId INTEGER NOT NULL,
-              createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-              UNIQUE(courseId, studentId),
-              FOREIGN KEY(courseId) REFERENCES courses(id)
-            )`,
-            (createErr) => {
-              if (createErr) {
-                return res.status(500).json({ message: "Server error" });
-              }
-              insertStudents();
-            }
-          );
-        } else if (deleteErr) {
-          return res.status(500).json({ message: "Server error" });
-        } else {
-          insertStudents();
-        }
-      });
-
-      function insertStudents() {
-        if (values.length === 0) {
-          return res.json({ message: "No students to assign" });
-        }
-
-        const placeholders = values.map(() => "(?, ?)").join(",");
-        const flatValues = values.flat();
-
-        db.run(
-          `INSERT INTO course_students (courseId, studentId) VALUES ${placeholders}`,
-          flatValues,
-          (insertErr) => {
-            if (insertErr) {
-              console.error("Error assigning students:", insertErr);
-              return res.status(500).json({ message: "Error assigning students" });
-            }
-
-            res.json({
-              message: "Students assigned successfully",
-              count: studentIds.length
-            });
-          }
-        );
+      for (const studentId of uniqueIds) {
+        await run("INSERT OR IGNORE INTO course_students (courseId, studentId) VALUES (?, ?)", [courseId, studentId]);
       }
     });
+
+    if (uniqueIds.length === 0) {
+      return res.json({ message: "No students to assign" });
+    }
+    res.json({ message: "Students assigned successfully", count: uniqueIds.length });
   } catch (err) {
-    console.error("ASSIGN STUDENTS ERROR:", err);
+    if (err instanceof HttpError) return res.status(err.status).json({ message: err.message });
+    console.error("ASSIGN STUDENTS ERROR:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -779,9 +814,9 @@ const getAssignedStudents = async (req, res) => {
     }
 
     db.all(
-      `SELECT cs.id, cs.studentId, u.name, u.email 
-       FROM course_students cs 
-       LEFT JOIN users u ON cs.studentId = u.id 
+      `SELECT cs.id, cs.studentId, u.name, u.email
+       FROM course_students cs
+       LEFT JOIN users u ON cs.studentId = u.id
        WHERE cs.courseId = ?
        ORDER BY u.name ASC`,
       [courseId],
@@ -792,8 +827,12 @@ const getAssignedStudents = async (req, res) => {
         }
 
         // Map id to _id for frontend compatibility
-        const mappedStudents = (students || []).map(student => ({
+        // (the route's guard allows only the course's teacher, an admin of its school, or an
+        // enrolled student; a student does not get classmates' email addresses)
+        const isStudent = req.user.role === 'student';
+        const mappedStudents = (students || []).map(({ email, ...student }) => ({
           ...student,
+          ...(isStudent ? {} : { email }),
           _id: student.studentId
         }));
 
@@ -810,15 +849,15 @@ const getAssignedStudents = async (req, res) => {
 const getStudentDebugData = async (req, res) => {
   try {
     const studentId = req.user.userId || req.user.id;
-    
+
     console.log(`\n🐛 === STUDENT DEBUG DATA START ===`);
     console.log(`🐛 Student ID: ${studentId}`);
 
     // Get classrooms
     db.all(
-      `SELECT sc.id, sc.classroom_id, c.name as classroom_name 
-       FROM student_classrooms sc 
-       LEFT JOIN classrooms c ON sc.classroom_id = c.id 
+      `SELECT sc.id, sc.classroom_id, c.name as classroom_name
+       FROM student_classrooms sc
+       LEFT JOIN classrooms c ON sc.classroom_id = c.id
        WHERE sc.student_id = ?`,
       [studentId],
       (err, classrooms) => {
@@ -826,9 +865,9 @@ const getStudentDebugData = async (req, res) => {
 
         // Get classroom assignments
         db.all(
-          `SELECT sca.id, sca.classroomId, c.name as classroom_name 
-           FROM student_classroom_assignment sca 
-           LEFT JOIN classrooms c ON sca.classroomId = c.id 
+          `SELECT sca.id, sca.classroomId, c.name as classroom_name
+           FROM student_classroom_assignment sca
+           LEFT JOIN classrooms c ON sca.classroomId = c.id
            WHERE sca.studentId = ?`,
           [studentId],
           (err2, assignments) => {
@@ -836,9 +875,9 @@ const getStudentDebugData = async (req, res) => {
 
             // Get course_students
             db.all(
-              `SELECT cs.id, cs.courseId, cs.studentId, c.title as course_title 
-               FROM course_students cs 
-               LEFT JOIN courses c ON cs.courseId = c.id 
+              `SELECT cs.id, cs.courseId, cs.studentId, c.title as course_title
+               FROM course_students cs
+               LEFT JOIN courses c ON cs.courseId = c.id
                WHERE cs.studentId = ?`,
               [studentId],
               (err3, courseStudents) => {
@@ -848,8 +887,8 @@ const getStudentDebugData = async (req, res) => {
                 if (assignments && assignments.length > 0) {
                   const classroomIds = assignments.map(a => a.classroomId);
                   db.all(
-                    `SELECT c.id, c.title, c.classroomId 
-                     FROM courses c 
+                    `SELECT c.id, c.title, c.classroomId
+                     FROM courses c
                      WHERE c.classroomId IN (${classroomIds.map(() => '?').join(',')})`,
                     classroomIds,
                     (err4, coursesInClassrooms) => {

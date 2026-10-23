@@ -1,3 +1,4 @@
+import { API_ORIGIN } from '../config/api';
 /**
  * LibreTranslate API Wrapper (via Backend Proxy)
  * Calls backend API which handles LibreTranslate requests
@@ -14,7 +15,7 @@ export async function translateText(text, sourceLanguage = 'en', targetLanguage)
   try {
     console.log(`🔄 Translating: "${text.substring(0, 30)}..." from ${sourceLanguage} to ${targetLanguage}`);
 
-const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'https://core5.io'}/api/translation`, {
+const response = await fetch(`${API_ORIGIN}/api/translation`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,3 +1,4 @@
+const { isWebUrl, isEmptyOrWebUrl } = require('../helpers/safeUrl');
 const db = require('../config/database-switch');
 const BilingualDataService = require("../services/BilingualDataService");
 
@@ -19,6 +20,9 @@ const createChapter = async (req, res) => {
     // Validation
     if (!courseId || !title || !videoUrl || order === undefined) {
       return res.status(400).json({ message: "courseId, title, videoUrl, and order are required" });
+    }
+    if (!isWebUrl(videoUrl) || !isEmptyOrWebUrl(imageUrl)) {
+      return res.status(400).json({ message: "Video and image links must be a web address starting with http:// or https://" });
     }
 
     db.get("SELECT * FROM courses WHERE id = ?", [courseId], (err, course) => {
@@ -58,6 +62,9 @@ const updateChapter = async (req, res) => {
     const { chapterId } = req.params;
     const { title, description, imageUrl, videoUrl, order } = req.body;
     const userId = req.user.userId;
+    if (!isEmptyOrWebUrl(videoUrl) || !isEmptyOrWebUrl(imageUrl)) {
+      return res.status(400).json({ message: "Video and image links must be a web address starting with http:// or https://" });
+    }
 
     db.get("SELECT c.*, ch.courseId FROM chapters ch JOIN courses c ON ch.courseId = c.id WHERE ch.id = ?", [chapterId], (err, row) => {
       if (err) return res.status(500).json({ message: "Database error" });
@@ -73,7 +80,7 @@ const updateChapter = async (req, res) => {
       }
 
       db.run(
-        `UPDATE chapters SET 
+        `UPDATE chapters SET
           title = COALESCE(?, title),
           description = COALESCE(?, description),
           imageUrl = COALESCE(?, imageUrl),
@@ -153,21 +160,11 @@ const getChapters = async (req, res) => {
 
       if (userRole === 'student') {
         db.get("SELECT id FROM course_students WHERE courseId = ? AND studentId = ?", [courseId, userId], (csErr, enrollment) => {
+          // only an enrolment counts: being in the course's class is not enough
           if (enrollment) {
             return checkAccessAndReturn();
           }
-
-          // Check classroom enrollment
-          if (course.classroomId) {
-            db.get("SELECT id FROM student_classroom_assignment WHERE classroomId = ? AND studentId = ?", [course.classroomId, userId], (scaErr, sca) => {
-              if (sca) {
-                return checkAccessAndReturn();
-              }
-              return res.status(403).json({ message: "You are not enrolled in this course" });
-            });
-          } else {
-            return res.status(403).json({ message: "You are not enrolled in this course" });
-          }
+          return res.status(403).json({ message: "You are not enrolled in this course" });
         });
       } else {
         checkAccessAndReturn();

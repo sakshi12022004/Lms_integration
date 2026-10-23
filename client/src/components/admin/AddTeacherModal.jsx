@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "../../auth/auth";
 import { toast } from "react-toastify";
+import { showPasswordNotice } from "./PasswordNotice";
 
 const AddTeacherModal = ({ open, onClose, onSuccess }) => {
   const { API, token } = useAuth();
@@ -11,7 +12,7 @@ const AddTeacherModal = ({ open, onClose, onSuccess }) => {
 
   const submit = async () => {
     try {
-      await fetch(`${API}/admin/create-teacher`, {
+      const res = await fetch(`${API}/admin/create-teacher`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -19,8 +20,10 @@ const AddTeacherModal = ({ open, onClose, onSuccess }) => {
         },
         body: JSON.stringify(form),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return toast.error(data.message || "Failed to create teacher");
 
-      toast.success("Teacher created");
+      showPasswordNotice({ message: "Teacher created", label: "Temporary password", password: data.generatedPassword });
       onSuccess?.();
       onClose();
     } catch {

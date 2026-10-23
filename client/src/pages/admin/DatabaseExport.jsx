@@ -5,6 +5,7 @@ import { useAuth } from '../../auth/auth';
 import { useTranslation } from '../../context/TranslationContext';
 import { Download, Database, FileSpreadsheet, RefreshCw, Eye, AlertCircle, CheckCircle, CheckCircle2, Circle, Users, GraduationCap, X, CheckSquare, Square, Layers, Sparkles } from 'lucide-react';
 import QuotaLimitModal from '../../components/QuotaLimitModal';
+import { downloadWithSession } from '../../config/download';
 
 const INDIVIDUAL_CATEGORIES = [
   {

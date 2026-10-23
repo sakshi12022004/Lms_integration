@@ -1,47 +1,8 @@
-const jwt = require('jsonwebtoken');
-
 /**
- * Strict authentication for payment-related routes.
- *
- * The general authMiddleware lets requests through as "guest" when the token
- * is missing or invalid and accepts the unsigned "superadmin-<base64>" token.
- * Other LMS routes rely on that, so it is left untouched; payment routes use
- * this middleware instead, which only accepts a signed, unexpired JWT.
+ * Payment routes use the same strict session check as the rest of the API
+ * (signed, unexpired token; account, role and school re-read from the database).
  */
-function requirePaymentAuth(req, res, next) {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    return res.status(503).json({ success: false, message: 'Authentication is not configured on this server.' });
-  }
-
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
-  if (!token) {
-    return res.status(401).json({ success: false, message: 'Authentication required.' });
-  }
-
-  let decoded;
-  try {
-    decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
-  } catch (err) {
-    const message = err.name === 'TokenExpiredError' ? 'Authentication token has expired.' : 'Invalid authentication token.';
-    return res.status(401).json({ success: false, message });
-  }
-
-  if (decoded.userId === undefined || decoded.userId === null || !decoded.role) {
-    return res.status(401).json({ success: false, message: 'Invalid authentication token.' });
-  }
-
-  req.user = {
-    userId: decoded.userId,
-    role: decoded.role,
-    email: decoded.email,
-    name: decoded.name || '',
-    // Unverified token claim, never defaulted; requireRoles replaces it with the users-table value
-    universityId: toTenantId(decoded.universityId ?? decoded.university_id)
-  };
-  next();
-}
+const requirePaymentAuth = require('./authMiddleware');
 
 /** A usable university id is a positive integer; anything else is "no tenant" (null). */
 function toTenantId(value) {

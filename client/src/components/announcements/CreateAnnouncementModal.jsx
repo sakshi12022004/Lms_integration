@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../auth/auth";
-import { useTranslation } from "react-i18next";
+import ClassSectionCoursePicker from "../ClassSectionCoursePicker";
 
 const CreateAnnouncementModal = ({
   open,
@@ -12,7 +12,9 @@ const CreateAnnouncementModal = ({
   onQuotaExceeded,
 }) => {
   const { user, token, API } = useAuth();
-  const { t } = useTranslation(['forms', 'common']);
+  const isTeacher = user?.role === "mentor" || user?.role === "teacher";
+  const [target, setTarget] = useState({ classroomId: "", courseId: "" });
+  const [forCourse, setForCourse] = useState(false); // false = all of this teacher's classes and sections
 
   const [form, setForm] = useState({
     title: "",
@@ -36,11 +38,15 @@ const CreateAnnouncementModal = ({
   /* ================= SUBMIT ================= */
   const handleSubmit = async () => {
     if (!form.title.trim() || !form.message.trim()) {
-      return toast.error(t('title_and_message_required', 'Title and message are required.'));
+      return toast.error("Title and message are required");
     }
 
-    if (user.role === "mentor" && !form.courseId) {
-      return toast.error(t('select_course_required', 'Please select a course for this announcement.'));
+    // Class and section are chosen only for a course announcement
+    if (isTeacher && forCourse && !target.classroomId) {
+      return toast.error("Please select a class and section");
+    }
+    if (isTeacher && forCourse && !target.courseId) {
+      return toast.error("Please select a course");
     }
 
     try {
@@ -65,12 +71,12 @@ const CreateAnnouncementModal = ({
 
               if (announcementRes.ok) {
                 const allAnnouncements = await announcementRes.json();
-                
+
                 // Count only announcements created by this mentor
                 const mentorAnnouncements = allAnnouncements.filter(
                   ann => ann.createdByRole === 'mentor'
                 );
-                
+
                 const currentCount = mentorAnnouncements.length;
 
                 // Check if limit is reached
@@ -122,10 +128,11 @@ const CreateAnnouncementModal = ({
       });
 
       if (!res.ok) {
-        throw new Error(t('publish_failed', 'Publish failed'));
+        const failure = await res.json().catch(() => ({}));
+        throw new Error(failure.message || "Failed to publish announcement");
       }
 
-      toast.success(t('announcement_posted_successfully', 'Announcement published'));
+      toast.success("Announcement published");
 
       // RESET FORM
       setForm({
@@ -140,7 +147,7 @@ const CreateAnnouncementModal = ({
       onSuccess?.(); // 🔔 refresh bell instantly
       onClose();
     } catch (err) {
-      toast.error(t('failed_to_publish_announcement', 'Failed to publish announcement'));
+      toast.error(err.message || "Failed to publish announcement");
       console.error(err);
     } finally {
       setLoading(false);
@@ -153,7 +160,7 @@ const CreateAnnouncementModal = ({
 
         {/* HEADER */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">{t('create_announcement_title', 'New Announcement')}</h2>
+          <h2 className="text-lg font-semibold">New Announcement</h2>
           <button onClick={onClose}>
             <X size={18} />
           </button>
@@ -163,7 +170,7 @@ const CreateAnnouncementModal = ({
         <input
           type="text"
           name="title"
-          placeholder={t('announcement_title_placeholder', 'Announcement title')}
+          placeholder="Announcement title"
           className="w-full border rounded px-3 py-2 mb-3"
           value={form.title}
           onChange={handleChange}
@@ -172,7 +179,7 @@ const CreateAnnouncementModal = ({
         {/* MESSAGE */}
         <textarea
           name="message"
-          placeholder={t('announcement_message_placeholder', 'Write announcement...')}
+          placeholder="Write announcement..."
           rows={4}
           className="w-full border rounded px-3 py-2 mb-3"
           value={form.message}
@@ -187,27 +194,31 @@ const CreateAnnouncementModal = ({
               onChange={handleChange}
               className="w-full border rounded px-3 py-2 mb-3"
             >
-              <option value="students">{t('publish_for_students', 'Students')}</option>
-              <option value="mentors">{t('publish_for_mentors', 'Faculty')}</option>
-              <option value="both">{t('publish_for_all', 'Both')}</option>
+              <option value="students">Students</option>
+              <option value="mentors">Faculty</option>
+              <option value="both">Both</option>
             </select>
         )}
 
-        {/* MENTOR OPTIONS */}
-        {user.role === "mentor" && (
-          <select
-            name="courseId"
-            value={form.courseId}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2 mb-3"
-          >
-            <option value="">{t('select_course_for_announcement', 'Select Course')}</option>
-            {courses.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
+        {/* MENTOR OPTIONS: class -> section -> optional course (only what this teacher is assigned to) */}
+        {isTeacher && (
+          <>
+            <div className="flex gap-4 mb-3 text-sm">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" checked={!forCourse} onChange={() => { setForCourse(false); setTarget({ classroomId: "", courseId: "" }); }} />
+                Whole class and section
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" checked={forCourse} onChange={() => setForCourse(true)} />
+                One course
+              </label>
+            </div>
+            {forCourse ? (
+              <ClassSectionCoursePicker value={target} onChange={setTarget} courseMode="required" />
+            ) : (
+              <p className="text-xs text-gray-500 mb-3">This goes to all the classes and sections you are assigned to.</p>
+            )}
+          </>
         )}
 
         {/* ACTIONS */}
@@ -216,7 +227,7 @@ const CreateAnnouncementModal = ({
             onClick={onClose}
             className="px-4 py-2 text-sm border rounded"
           >
-            {t('cancel', 'Cancel')}
+            Cancel
           </button>
 
           <button
@@ -224,7 +235,7 @@ const CreateAnnouncementModal = ({
             disabled={loading}
             className="px-4 py-2 text-sm bg-primary text-white rounded"
           >
-            {loading ? t('posting_announcement', 'Publishing...') : t('post_announcement_btn', 'Publish')}
+            {loading ? "Publishing..." : "Publish"}
           </button>
         </div>
       </div>

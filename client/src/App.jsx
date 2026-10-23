@@ -42,6 +42,10 @@ import Register from "./pages/Register";
 import AdminDashboard from "./pages/admin/Admin-Dashboard";
 
 import CreateCourseAdmin from "./pages/admin/CreateCourseAdmin";
+import AdminCourses from "./pages/admin/AdminCourses";
+import MyStudents from "./pages/mentor/MyStudents";
+import LiveLecture from "./pages/LiveLecture";
+import StudentLectures from "./pages/student/StudentLectures";
 
 import UserList from "./pages/admin/UserList";
 
@@ -354,6 +358,10 @@ function App() {
           <Route path="/" element={<RootRedirect />} />
 
           <Route path="/home" element={<Home />} />
+          <Route path="/admin/courses" element={<ProtectedRoute requiredRole="admin"><AdminCourses /></ProtectedRoute>} />
+          <Route path="/mentor/students" element={<ProtectedRoute requiredRole="mentor"><MyStudents /></ProtectedRoute>} />
+          <Route path="/live/:lectureId" element={<ProtectedRoute><LiveLecture /></ProtectedRoute>} />
+          <Route path="/student/lectures" element={<ProtectedRoute requiredRole="student"><StudentLectures /></ProtectedRoute>} />
 
           <Route path="/login" element={<Home />} />
 

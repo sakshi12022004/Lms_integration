@@ -47,6 +47,7 @@ export default function ClassFeeStatus() {
       }
     } catch (err) {
       console.error("Failed to fetch student fees:", err);
+      // Never show invented students: an empty list is the honest result of a failed request
       setStudents([]);
       toast.error(err.response?.data?.message || 'Could not load student fee records.');
     } finally {

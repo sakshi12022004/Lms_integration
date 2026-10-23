@@ -2,12 +2,15 @@ const tenantConnectionManager = require('../config/tenant-connection-manager');
 const bcrypt = require('bcryptjs');
 const db = require('../config/database-switch');
 
+// Roles that exist inside one school
+const SCHOOL_ROLES = ['student', 'mentor', 'teacher', 'admin', 'accountant', 'storekeeper'];
+
 
 
 /* ================= GET ALL USERS (ADMIN ONLY) ================= */
 const getAllUsers = async (req, res) => {
   try {
-    const adminUniversityId = req.user?.universityId || 1;
+    const adminUniversityId = req.user?.universityId;
     db.all(`
       SELECT u.id, u.name, u.email, u.role, u.isApproved, u.created_at as createdAt,
              CASE WHEN u.role = 'student' THEN s.studentId ELSE NULL END as studentId,
@@ -32,7 +35,7 @@ const getAllUsers = async (req, res) => {
 /* ================= GET MENTORS (ADMIN ONLY) ================= */
 const getMentors = async (req, res) => {
   try {
-    const adminUniversityId = req.user?.universityId || 1;
+    const adminUniversityId = req.user?.universityId;
     db.all("SELECT id, name, email, isApproved, createdAt FROM users WHERE role = ? AND university_id = ? ORDER BY name", ["mentor", adminUniversityId], (err, mentors) => {
       if (err) {
         console.error("Database error:", err);
@@ -49,8 +52,8 @@ const getMentors = async (req, res) => {
 /* ================= GET MENTORS SIMPLE (FOR DROPDOWNS) ================= */
 const getAllMentorsSimple = async (req, res) => {
   try {
-    const adminUniversityId = req.user?.universityId || 1;
-    db.all("SELECT id, name FROM users WHERE role = 'mentor' AND isApproved = 1 AND university_id = ? ORDER BY name", [adminUniversityId], (err, mentors) => {
+    const adminUniversityId = req.user?.universityId;
+    db.all("SELECT id, name, email FROM users WHERE role = 'mentor' AND isApproved = 1 AND university_id = ? ORDER BY name", [adminUniversityId], (err, mentors) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({ message: 'Database error' });
@@ -66,7 +69,7 @@ const getAllMentorsSimple = async (req, res) => {
 /* ================= GET MENTORS FOR COURSE TEACHERS ================= */
 const getMentorsForCourseTeachers = async (req, res) => {
   try {
-    const adminUniversityId = req.user?.universityId || 1;
+    const adminUniversityId = req.user?.universityId;
     db.all("SELECT id as _id, name, email FROM users WHERE role = 'mentor' AND isApproved = 1 AND university_id = ? ORDER BY name", [adminUniversityId], (err, mentors) => {
       if (err) {
         console.error("Database error:", err);
@@ -83,7 +86,7 @@ const getMentorsForCourseTeachers = async (req, res) => {
 /* ================= GET STUDENTS FOR MENTORS ================= */
 const getStudentsForMentors = async (req, res) => {
   try {
-    const adminUniversityId = req.user?.universityId || 1;
+    const adminUniversityId = req.user?.universityId;
     db.all(`
       SELECT u.id as _id, u.id, u.name, u.email, s.grade, s.rollNumber
       FROM users u
@@ -106,7 +109,7 @@ const getStudentsForMentors = async (req, res) => {
 /* ================= GET STUDENTS (ADMIN ONLY) ================= */
 const getStudents = async (req, res) => {
   try {
-    const adminUniversityId = req.user?.universityId || 1;
+    const adminUniversityId = req.user?.universityId;
     db.all(`
       SELECT u.id, u.name, u.email, u.isApproved, u.createdAt,
              s.grade, s.rollNumber, s.totalFees, s.feesPaid, s.pendingFees
@@ -223,6 +226,11 @@ const updateUser = async (req, res) => {
     const { userId } = req.params;
     const { name, email, role, isApproved } = req.body;
 
+    // A school admin can hand out school roles only - never the platform owner role.
+    if (role !== undefined && role !== null && role !== '' && !SCHOOL_ROLES.includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+
     // Check if user exists
     db.get("SELECT * FROM users WHERE id = ?", [userId], (err, user) => {
       if (err) {
@@ -255,9 +263,7 @@ const updateUser = async (req, res) => {
 /* ================= GET ADMIN DASHBOARD DATA ================= */
 const getAdminDashboard = async (req, res) => {
   try {
-    console.log('🔍 [DEBUG] getAdminDashboard called for user:', req.user);
-    const adminUniversityId = req.user?.universityId || 1;
-    console.log('🔍 [DEBUG] Admin university ID:', adminUniversityId);
+    const adminUniversityId = req.user?.universityId;
     
     // Get user statistics for admin's university only
     const userStats = await new Promise((resolve, reject) => {
@@ -332,9 +338,7 @@ const getAdminDashboard = async (req, res) => {
 /* ================= GET USER HIERARCHY ================= */
 const getUserHierarchy = async (req, res) => {
   try {
-    console.log('🔍 [DEBUG] getUserHierarchy called for user:', req.user);
-    const adminUniversityId = req.user?.universityId || 1;
-    console.log('🔍 [DEBUG] Admin university ID:', adminUniversityId);
+    const adminUniversityId = req.user?.universityId;
     
     // Get all users with their creator information
     const users = await new Promise((resolve, reject) => {

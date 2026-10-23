@@ -21,7 +21,7 @@ import { TYPE_LABEL, blankQuestion, toBody, toEditable } from "./questionForm";
  */
 
 const DIFFICULTIES = [["easy", "Easy"], ["medium", "Medium"], ["hard", "Hard"], ["mixed", "Mixed (easier to harder)"]];
-const EMPTY_FORM = { topic: "", subject: "", classroomId: "", count: 5, difficulty: "medium", instructions: "", questionType: "single_mcq", numericFormat: "", template: null };
+const EMPTY_FORM = { topic: "", subject: "", classroomId: "", courseId: "", count: 5, difficulty: "medium", instructions: "", questionType: "single_mcq", numericFormat: "", template: null };
 const TEMPLATE_ICON = {
   board_exam_practice: GraduationCap,
   concept_mastery: Lightbulb,
@@ -59,7 +59,7 @@ function Step({ n, title, hint, children }) {
   );
 }
 
-export default function AiAssessmentGenerator({ base, auth, classrooms, classLabel, errorText, onCancel, onSaved, prefill = null }) {
+export default function AiAssessmentGenerator({ base, auth, classrooms, coursesByClass = {}, classLabel, errorText, onCancel, onSaved, prefill = null }) {
   // prefill: from the AI Performance Report's suggested next assessment (form values only; no AI call).
   const [form, setForm] = useState(() => (prefill ? {
     ...EMPTY_FORM,
@@ -160,6 +160,7 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
     if (!questions.length) { toast.error("Add at least one question before assigning."); return; }
     const cls = classrooms.find((c) => String(c.id) === String(form.classroomId));
     if (!cls) { toast.error("Choose the class to assign this test to (in the form above)."); return; }
+    if (!form.courseId) { toast.error("Choose the course of this test (in the form above)."); return; }
     setAssignClass(cls);
   };
 
@@ -173,6 +174,7 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
         assessment: {
           title: details.title, subject: form.subject, description: details.description,
           classroomId: Number(form.classroomId),
+          ...(form.courseId ? { courseId: Number(form.courseId) } : {}),
           durationMinutes: details.durationMinutes === "" ? null : Number(details.durationMinutes),
         },
         questions: questions.map(toBody),
@@ -192,6 +194,7 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
 
   const save = () => locked(async () => { // also prevents a double-click from creating two drafts
     if (!form.classroomId) { toast.error("Choose the class for this test."); return; }
+    if (!form.courseId) { toast.error("Choose the course for this test."); return; }
     if (!questions.length) { toast.error("Add at least one question before saving."); return; }
     setSaving(true);
     try {
@@ -201,6 +204,7 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
           subject: form.subject,
           description: details.description,
           classroomId: form.classroomId === "" ? null : Number(form.classroomId),
+          ...(form.courseId ? { courseId: Number(form.courseId) } : {}),
           durationMinutes: details.durationMinutes === "" ? null : Number(details.durationMinutes),
         },
         questions: questions.map(toBody),
@@ -272,13 +276,24 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
               <select
                 className="p-2.5 border border-[#ebdcaa] rounded-none bg-white text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none"
                 value={form.classroomId}
-                onChange={(e) => setForm({ ...form, classroomId: e.target.value })}
+                onChange={(e) => setForm({ ...form, classroomId: e.target.value, courseId: "" })}
                 required
                 aria-label="Classroom (required)"
                 data-testid="aia-gen-classroom"
               >
                 <option value="">Classroom (required)</option>
                 {classrooms.map((c) => <option key={c.id} value={c.id}>{classLabel(c)}</option>)}
+              </select>
+              <select
+                className="p-2.5 border border-[#ebdcaa] rounded-none bg-white text-xs sm:text-sm text-[#1e1b4b] focus:border-[#B99652] focus:ring-1 focus:ring-[#B99652] outline-none"
+                value={form.courseId}
+                onChange={(e) => setForm({ ...form, courseId: e.target.value })}
+                disabled={!form.classroomId}
+                aria-label="Course (required)"
+                data-testid="aia-gen-course"
+              >
+                <option value="">{form.classroomId ? "Course (required)" : "Choose a classroom first"}</option>
+                {(coursesByClass[String(form.classroomId)] || []).map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
               <div className="grid grid-cols-2 gap-3">
                 <label className="text-xs font-bold text-[#665e4d]">
@@ -575,6 +590,7 @@ export default function AiAssessmentGenerator({ base, auth, classrooms, classLab
           base={base}
           auth={auth}
           classroom={assignClass}
+          courseId={form.courseId ? Number(form.courseId) : null}
           classLabel={classLabel}
           testTitle={details.title || form.topic}
           suggested={suggestedStudent}

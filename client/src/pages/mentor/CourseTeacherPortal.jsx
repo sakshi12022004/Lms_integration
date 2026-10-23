@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import LecturesTable from "../../components/lectures/LecturesTable";
 import MentorLayout from "../../components/MentorLayout";
 import { useAuth } from "../../auth/auth";
 import { useTranslation } from "../../context/TranslationContext";
 import { toast } from "react-toastify";
 import { Plus, Users, FileText, BarChart3, X, ChevronDown, Download, Lock, Video, Calendar, Clock, BookOpen, CheckSquare, GraduationCap, Hourglass, Radio, CheckCircle } from "lucide-react";
+import { fileLink } from "../../config/api";
 
 const CourseTeacherPortal = () => {
   const { courseId } = useParams();
@@ -727,7 +729,7 @@ const CourseTeacherPortal = () => {
                                   )}
                                   {material.fileUrl && (
                                     <a
-                                      href={material.fileUrl}
+                                      href={fileLink(material.fileUrl)}
                                       className="text-[#9a7837] hover:text-[#7c5f24] font-semibold text-xs ml-2 flex items-center gap-1"
                                     >
                                       <Download className="w-3.5 h-3.5" /> Download
@@ -786,97 +788,9 @@ const CourseTeacherPortal = () => {
         )}
 
         {expandedTab === 'live-classes' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b]">Live Classes</h3>
-              <button
-                onClick={() => setShowLiveClassModal(true)}
-                className="bg-[#B99652] hover:bg-[#a38241] text-white px-4 py-2 rounded-none font-semibold text-xs shadow-xs hover:shadow transition-all flex items-center gap-2"
-              >
-                <Video className="w-4 h-4" /> Schedule Live Class
-              </button>
-            </div>
-            
-            {liveClasses.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-none border border-[#ebdcaa] p-8 shadow-xs">
-                <Video className="w-12 h-12 text-[#9a7837] mx-auto mb-3" />
-                <p className="text-[#1e1b4b] text-base font-bold font-['DM_Serif_Display',serif] mb-1">No Live Classes Scheduled</p>
-                <p className="text-slate-500 text-xs">Schedule your first live class to interact with students in real-time</p>
-              </div>
-            ) : (
-              <div className="grid gap-3">
-                {liveClasses.map((liveClass, liveIndex) => (
-                  <div key={liveClass._id} data-tour={liveIndex === 0 ? 'course-live-class-block' : undefined} className="bg-white border border-[#ebdcaa] rounded-none p-5 shadow-xs">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <h4 className="text-lg font-bold font-['DM_Serif_Display',serif] text-[#1e1b4b] mb-1">{liveClass.title}</h4>
-                        <p className="text-slate-600 text-xs sm:text-sm mb-3">{liveClass.description}</p>
-                        
-                        <div className="flex flex-wrap gap-4 text-xs font-medium text-slate-600">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-[#9a7837]" />
-                            <span>{new Date(liveClass.scheduledStartTime).toLocaleDateString()}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-[#9a7837]" />
-                            <span>{new Date(liveClass.scheduledStartTime).toLocaleTimeString()} - {new Date(liveClass.scheduledEndTime).toLocaleTimeString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-2 ml-4">
-                        {liveClass.meetingLink && (
-                          <>
-                            {!liveClass.actualStartTime ? (
-                              <button
-                                onClick={() => handleStartLiveClass(liveClass)}
-                                className="bg-[#B99652] hover:bg-[#a38241] text-white px-3.5 py-1.5 rounded-none font-semibold text-xs shadow-xs transition-all flex items-center gap-1.5"
-                              >
-                                <Video className="w-3.5 h-3.5" /> Start Class
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => window.open(`${liveClass.meetingLink}#config.prejoinPageEnabled=false&userInfo={\"displayName\":\"Teacher\",\"role\":\"moderator\"}`, '_blank')}
-                                className="bg-[#1e1b4b] hover:bg-[#2d296a] text-white px-3.5 py-1.5 rounded-none font-semibold text-xs shadow-xs transition-all flex items-center gap-1.5"
-                              >
-                                <Video className="w-3.5 h-3.5" /> Rejoin Class
-                              </button>
-                            )}
-                          </>
-                        )}
-                        <button
-                          onClick={() => handleDeleteLiveClass(liveClass._id)}
-                          className="bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 px-2.5 py-1.5 rounded-none text-xs transition-colors"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {liveClass.actualStartTime && !liveClass.actualEndTime && (
-                      <div className="mt-3 p-2.5 bg-emerald-50 border border-emerald-200 rounded-none flex items-center gap-2">
-                        <Radio className="w-4 h-4 text-rose-600 animate-pulse" />
-                        <p className="text-emerald-700 text-xs font-semibold">Class is now live!</p>
-                      </div>
-                    )}
-                    
-                    {!liveClass.actualStartTime && new Date(liveClass.scheduledStartTime) > new Date() && (
-                      <div className="mt-3 p-2.5 bg-[#fffdf4] border border-[#ebdcaa] rounded-none flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-[#9a7837]" />
-                        <p className="text-[#9a7837] text-xs font-semibold">Scheduled - Class will start soon</p>
-                      </div>
-                    )}
-                    
-                    {liveClass.actualEndTime && (
-                      <div className="mt-3 p-2.5 bg-gray-50 border border-gray-200 rounded-none flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-emerald-600" />
-                        <p className="text-gray-700 text-xs font-medium">Class Ended</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">Start or schedule a class from the class page (My Classrooms, open the class, Start Class). Classes open inside the LMS.</p>
+            <LecturesTable API={API} token={token} mode="teacher" courseId={courseId} title="Live Classes" />
           </div>
         )}
 

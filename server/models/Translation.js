@@ -1,3 +1,5 @@
+// The handlers below use the shared LMS database connection.
+const db = require('../config/database-switch');
 
 
 class Translation {

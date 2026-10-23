@@ -6,7 +6,7 @@ import { useTranslation } from '../context/TranslationContext';
 import { Calendar, CheckCircle, Clock, ShieldCheck, CreditCard, ChevronRight } from 'lucide-react';
 
 // Razorpay test configuration
-const RAZORPAY_KEY_ID = 'rzp_test_S7aUmYSaQyE0h6';
+const RAZORPAY_KEY_ID = (import.meta.env.VITE_RAZORPAY_KEY_ID || '');
 
 export interface InstallmentStage {
   number: number;
